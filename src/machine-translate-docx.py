@@ -1259,7 +1259,7 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
         #pTranstlation
         #print("id=%s - pData=%s" % (pTranstlation['id'], pData))
 
-    input("Here")
+    #input("Here")
 
     #for translation in translation_array:
     #    #print(translation)
