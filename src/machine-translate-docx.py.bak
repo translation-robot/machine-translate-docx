@@ -2643,12 +2643,12 @@ def generate_html_file_from_phrases():
 
 <script type="text/javascript">
 function googleTranslateElementInit() {
-  new google.translate.TranslateElement({pageLanguage: '%s'}, 'google_translate_element');
+  new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
 }
 </script>
 <script>
     function googleTranslateElementInit() {
-        new google.translate.TranslateElement({pageLanguage: '%s', includedLanguages: '%s', autoDisplay: true}, 'google_translate_element');
+        new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: '%s', autoDisplay: true}, 'google_translate_element');
         var a = document.querySelector("#google_translate_element select");
         a.selectedIndex=1;
         a.dispatchEvent(new Event('change'));

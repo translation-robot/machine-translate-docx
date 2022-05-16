@@ -1,0 +1,8 @@
+
+2022-05-15
+* Debug other language to english using google and html file
+* Add grey text detection from shading, now only highlight are detected, shading are ignored
+* 
+
+
+ 
