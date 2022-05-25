@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-05-11"
+PROGRAM_VERSION="2022-05-25"
 # Day 0 is October 3rd 2017
 
 import pprint
@@ -1638,14 +1638,24 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         
         #copy_translation_element = "span:nth-child(2) path:nth-child(2)"
                 
-        # Version 2022-03-30
-        copy_translation_element = ".lmt__target_toolbar_right > div > span svg"
+
+
+        # Removed on 2022-05-25
         try:
-            # Version 2022-03-09
-            copy_translation_button = WebDriverWait(driver, 1).until(lambda driver: driver.find_element_by_css_selector(copy_translation_element))
+            # Added on version 2022-05-25
+            copy_translation_element = "div:nth-child(5) > .shared_module_contents__d48c9809 .button--2IZ9p"
+            copy_translation_button = WebDriverWait(driver, 4).until(
+                lambda driver: driver.find_element_by_css_selector(copy_translation_element))
         except:
-            copy_translation_element = ".lmt__target_toolbar_right > span path:nth-child(2)"
-            copy_translation_button = WebDriverWait(driver, 1).until(lambda driver: driver.find_element_by_css_selector(copy_translation_element))
+            try:
+                # Version 2022-03-09
+                copy_translation_element = ".lmt__target_toolbar_right > span path:nth-child(2)"
+                copy_translation_button = WebDriverWait(driver, 1).until(lambda driver: driver.find_element_by_css_selector(copy_translation_element))
+            except:
+                # Version 2022-03-30
+                copy_translation_element = ".lmt__target_toolbar_right > div > span svg"
+                copy_translation_button = WebDriverWait(driver, 1).until(
+                    lambda driver: driver.find_element_by_css_selector(copy_translation_element))
 
         busy_element = ".lmt__textarea_separator__border_inner"
         #busy_element = "//div[@id='dl_translator']/div/div/div[5]"
