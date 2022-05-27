@@ -139,6 +139,8 @@ docxfile_table_number_of_words = 0
 numrows = 0
 numcols = 0
 
+E_mail_str = 'sm' + 'tv' + '.' + 'bot' + '@g' + 'mail' + '.' + 'c' + 'o' + 'm'
+
 #import pandas as pd
 #import multiprocessing
 
@@ -181,7 +183,6 @@ except:
 
 show_version = args.version
 if show_version:
-    E_mail_str = 'sm' + 'tv' + '.' + 'bot' + '@g' + 'mail' + '.' + 'c' + 'o' + 'm'
 
     print("\nDeveloper: %s\n" %(E_mail_str))
     print("Program version: %s\n" % (PROGRAM_VERSION))
@@ -2423,6 +2424,7 @@ def read_and_parse_docx_document():
     global word_translation_table_length
 
     global table, numrows, numcols
+    global E_mail_str
 
 
     start = timeit.timeit()
@@ -2456,7 +2458,7 @@ def read_and_parse_docx_document():
         print("ERROR : The table has %s column but expected 3" % (numcols))
         print("Exiting\n")
 
-        print("\nDeveloper: smtv.bot@gmail.com")
+        print("\nDeveloper: %s" %(E_mail_str))
         print("Program version: %s\n" % (PROGRAM_VERSION))
         input("Enter to close program")
 
@@ -2669,15 +2671,7 @@ def read_and_parse_docx_document():
 
 read_and_parse_docx_document()
 
-end = timeit.timeit()
 
-if use_html :
-    print("</table><br>Number of errors: ", numerrors)
-    print("<br>")
-    #print from_text_table
-    print("<br>")
-    print("table length = ", len(from_text_table) - 1)
-    print("<br>")
 
 def create_webdriver():
     global driver
@@ -3457,11 +3451,7 @@ def set_docx_properties_comment_for_history():
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
     docxdoc.core_properties.comments = "Document translated by SMTV Robot version %s using %s engine on %s." % (PROGRAM_VERSION, translation_engine, dt_string)
 
-set_docx_properties_comment_for_history()
 
-end_time = datetime.datetime.now()
-
-elapsed_time = end_time - start_time
 
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
@@ -3475,8 +3465,7 @@ def local_time_offset(t=None):
     if time.localtime(t).tm_isdst == False or time.daylight != 1:
         localtimezone = -localtimezone
     return localtimezone
-	
-local_time_offset()
+
 
 def run_statistics():
     global use_api
@@ -3683,42 +3672,61 @@ def run_statistics():
     
     #time.sleep(10)
 
-run_statistics()
 
-file_saved=0
-while file_saved == 0:
+
+def save_docx_file():
+    global docxdoc
+
+    local_time_offset()
+
+    file_saved = 0
+    while file_saved == 0:
+        try:
+            docxdoc.save(word_file_to_translate)
+            file_saved = 1
+        except Exception:
+            var = traceback.format_exc()
+            txt_readline = input(
+                "\n\nERROR: File saving failed. Please close microsoft word or other program and press enter to save the translated document.\n")
+
+
+def main() -> int:
+    global E_mail_str
+    set_docx_properties_comment_for_history()
+
+    end_time = datetime.datetime.now()
+
+    elapsed_time = end_time - start_time
+
+    run_statistics()
+    save_docx_file()
+    end_time = datetime.datetime.now()
+
+    elapsed_time = end_time - start_time
+
+    if xlsxreplacefile is not None:
+        xtm.print_replaced_items_number_of_replacements('before')
+        xtm.print_replaced_items_number_of_replacements('after')
+
+    print("\nTranslation ended, file saved. Elasped time: %s (h:mm:ss.mmm)" % (elapsed_time))
+
     try:
-        docxdoc.save(word_file_to_translate)
-        file_saved=1
-    except Exception:
-        var = traceback.format_exc()
-        txt_readline = input("\n\nERROR: File saving failed. Please close microsoft word or other program and press enter to save the translated document.\n")
+        driver.close()
+        driver.quit()
+    except:
+        pass
 
-end_time = datetime.datetime.now()
+    if dest_lang_name is None or dest_lang_name == "":
+        if not splitonly:
+            print("\n*********************************************************************************")
+            print("WARNING: Target language name for %s not found. Translation may have have failed." % (dest_lang))
+            print("*********************************************************************************\n")
 
-elapsed_time = end_time - start_time
+    print("\nDeveloper: %s" % (E_mail_str))
+    print("Program version: %s\n" % (PROGRAM_VERSION))
+    input("Enter to close program")
+    return 0
 
-if xlsxreplacefile is not None:
-    xtm.print_replaced_items_number_of_replacements('before')
-    xtm.print_replaced_items_number_of_replacements('after')
-
-
-
-print("\nTranslation ended, file saved. Elasped time: %s (h:mm:ss.mmm)" % (elapsed_time))
-
-try:
-    driver.close()
-    driver.quit()
-except:
-    pass
-
-
-if dest_lang_name is None or dest_lang_name == "":
-    if not splitonly:
-        print("\n*********************************************************************************")
-        print("WARNING: Target language name for %s not found. Translation may have have failed." % (dest_lang))
-        print("*********************************************************************************\n")
-
-print("\nDeveloper: smtv.bot@gmail.com")
-print("Program version: %s\n" % (PROGRAM_VERSION))
-input("Enter to close program")
+if __name__ == '__main__':
+    main()  # next section explains the use of sys.exit
+    sys.exit(0)
