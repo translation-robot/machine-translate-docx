@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-05-25"
+PROGRAM_VERSION="2022-05-27"
 # Day 0 is October 3rd 2017
 
 import pprint
@@ -95,6 +95,50 @@ process_platform = platform.system()
 if platform.system() == 'Windows':
     from win32com.client import Dispatch
 
+
+from_text_table = [''] *1
+from_text_is_greyed_table = [0] *1
+from_text_is_red_color_table = [0] *1
+from_text_is_end_of_line_table = [0] *1
+from_text_is_beginning_of_line_table = [0] *1
+from_text_is_empty_line_table = [0] *1
+from_text_is_conditional_end_of_line_table = [0] *1
+from_text_by_phrase_separator_table = [''] *1
+from_text_by_phrase_table = [''] *1
+#number of lines in per phrase
+from_text_nb_lines_in_phrase = [0] *1
+from_text_nb_lines_in_cell = [0] *1
+#
+to_text_by_phrase_separator_table = [''] *1
+to_text_by_phrase_separator_removed_table = [''] *1
+to_text_splited_table1 = [''] *1
+to_text_by_phrase_table = [''] *1
+to_text_table = [''] *1
+to_raw_translated_table = [''] *1
+to_text_removed_line_separator = [''] *1
+translation_result_using_separator = [''] *1
+translation_result_phrase_array = [[]] *1
+translation_result = [''] *1
+from_text_is_read = [0] *1
+word_translation_table_length = 0
+table = None
+
+table_cells = [['' for i in range(1)] for j in range(1)]
+
+docxfile_table_number_of_phrases = 0
+
+selenium_chrome_machine_translate_once = None
+
+numerrors_deepl = 0
+
+# We have found zero phrase up to now
+docxfile_table_number_of_characters = 0
+docxfile_table_number_of_phrases = 0
+docxfile_table_number_of_words = 0
+
+numrows = 0
+numcols = 0
+
 #import pandas as pd
 #import multiprocessing
 
@@ -111,7 +155,7 @@ parser = argparse.ArgumentParser()
 
 #parser = argparse.ArgumentParser(description = "Translate everything!")
 #parser.add_argument('--source-language', required = True, choices = Languages, help="Specify the source language!")
-parser.add_argument('--srclang', required = False, help="Specify the s", default='en')
+parser.add_argument('--srclang', required = False, help="Specify the default source language, en is default (hi,ja,ru,de,ru,hi,ja,in, etc)", default='en')
 parser.add_argument('--destlang', required = False, help="Specify the destination language with 2 letter code (hi,ja,ru,de,ru,hi,ja,in, etc)")
 parser.add_argument('--engine', required = False, help="Specify the translation engine (google, deepl, yandex)")
 parser.add_argument('--enginemethod', required = False, help="Specify the method (javascript, phrasesblock, singlephrase, xlsxfile, textfile )")
@@ -930,6 +974,7 @@ def selenium_chrome_deepl_translate_maxchar_blocks():
     global docxfile_table_number_of_phrases
     global translation_errors_count
     global deepl_sleep_wait_translation_seconds
+    global selenium_chrome_machine_translate_once
     try:
         
         blocks_nchar_max_to_translate_array_len = len(blocks_nchar_max_to_translate_array)
@@ -1242,6 +1287,7 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
         if (result == True):
             driver.execute_script("window.scrollBy(0,window.innerHeight)")
             time.sleep(1)
+            print(".", end = '', flush=True)
             break;
     print()
 
@@ -1654,7 +1700,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             except:
                 # Version 2022-03-30
                 copy_translation_element = ".lmt__target_toolbar_right > div > span svg"
-                copy_translation_button = WebDriverWait(driver, 1).until(
+                copy_translation_button = WebDriverWait(driver, 5).until(
                     lambda driver: driver.find_element_by_css_selector(copy_translation_element))
 
         busy_element = ".lmt__textarea_separator__border_inner"
@@ -1801,31 +1847,34 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
     return translation
 
 
+def set_translation_function():
+    global selenium_chrome_machine_translate_once
+    if not splitonly:
+        print("\ntranslation_engine=%s" % (translation_engine))
+        print("engine_method=%s" % (engine_method))
+        if (engine_method == "phrasesblock"):
+            print("maximum number of characters per block: %d" % MAX_TRANSLATION_BLOCK_SIZE)
 
-
-if not splitonly:
-    print("\ntranslation_engine=%s" % (translation_engine))
-    print("engine_method=%s" % (engine_method))
-    if (engine_method == "phrasesblock"):
-        print("maximum number of characters per block: %d" % MAX_TRANSLATION_BLOCK_SIZE)
-
-if translation_engine == 'yandex':
-    print("Using translation_engine=%s" % (translation_engine))
-    selenium_chrome_machine_translate_once = selenium_chrome_yandex_translate
-elif translation_engine == 'deepl':
-    if engine_method == 'phrasesblock':
-        selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
+    if translation_engine == 'yandex':
+        print("Using translation_engine=%s" % (translation_engine))
+        selenium_chrome_machine_translate_once = selenium_chrome_yandex_translate
+    elif translation_engine == 'deepl':
+        if engine_method == 'phrasesblock':
+            selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
+        else:
+            selenium_chrome_machine_translate_once = selenium_chrome_deepl_translate
     else:
-        selenium_chrome_machine_translate_once = selenium_chrome_deepl_translate
-else:
-    if engine_method == 'textfile':
-        selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
-    elif engine_method == 'singlephrase':
-        selenium_chrome_machine_translate_once = selenium_chrome_google_translate
-    else:
-        selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
+        if engine_method == 'textfile':
+            selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
+        elif engine_method == 'singlephrase':
+            selenium_chrome_machine_translate_once = selenium_chrome_google_translate
+        else:
+            selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
+
+set_translation_function()
 
 def selenium_chrome_machine_translate(to_translate, index):
+    global selenium_chrome_machine_translate_once
     translation = ""
     translation_try_count = 1
     max_try_count = 15
@@ -1921,6 +1970,7 @@ def is_greyed_line(cell):
 
 # Return cell_non_greyed_text (string), cell_is_gray (integer for boolean)
 def get_cell_data(cell,row_n):
+    global from_text_nb_lines_in_cell
     cell_is_gray = None
     cell_is_red = None
     cell_non_greyed_text = ''
@@ -2189,7 +2239,7 @@ def generate_tmx_file():
         for i, line in enumerate(from_text_table):
             item = from_text_by_phrase_separator_table[i]
             item.strip()
-            from_language = 'EN'
+            from_language = src_lang
             phrase_separator_removed_str = ''
 
             p_remove_separator = re.compile(line_separator_regex_str)
@@ -2236,10 +2286,6 @@ def generate_tmx_file():
 #print(translation.origin, ' -> ', translation.text)
 
 
-start = timeit.timeit()
-
-if use_html :
-    print("Content-Type: text/html\n")
 
 #word = win32.Dispatch("Word.Application")
 #word.Visible = 1
@@ -2258,41 +2304,8 @@ if use_html :
 #curdoc = word.Documents.Open(word_file_to_translate)
 
 
-word_translation_table_length = len(docxdoc.tables[0].rows)
-
-nb_tables = len(docxdoc.tables)
-
-nb_character_total = 0
-
-
-
-if use_html :
-    print("<!doctype html><head><meta http-equiv=""Content-Type"" content=""text/html"" charset=utf-8 /><title>Winword in python</title></head><h2>tables</h2><span style=""font-family:monospace,monospace;"">")
-
-#Number of tables</h2>nb_tables=", nb_tables
-
-numerrors = 0
-#print("word_translation_table_length=%d" %(word_translation_table_length))
-#print("docx_translation_table_length=%d" %(docx_translation_table_length))
-
-table = docxdoc.tables[0]
-table_cells = [['' for i in range(len(table.columns))] for j in range(len(table.rows))]
-
-numrows = len(table.rows)
-numcols = len(table.columns)
-
-if numcols <= 2:
-    print("ERROR : The table has %s column but expected 3" % (numcols))
-    print("Exiting\n")
-    
-    print("\nDeveloper: smtv.bot@gmail.com")
-    print("Program version: %s\n" % (PROGRAM_VERSION))
-    input("Enter to close program")
-
-    sys.exit(1)
-
-
 def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
+    global table_cells
     paragraph_no = 0
     current_cell = table_cells[row_n][2]
     #print("prepare_and_clear_cell_for_writing")
@@ -2378,10 +2391,75 @@ def cell_add_paragraph(row_n, paragraph_text):
         change_cell_font (current_cell)
         
     table_cells[row_n][2] = current_cell
-        
 
-#for table in docxdoc.tables:
-if 1 == 1:
+def read_and_parse_docx_document():
+    global from_text_table
+    global from_text_is_greyed_table
+    global from_text_is_red_color_table
+    global from_text_is_end_of_line_table
+    global from_text_is_beginning_of_line_table
+    global from_text_is_empty_line_table
+    global from_text_is_conditional_end_of_line_table
+    global from_text_by_phrase_separator_table
+    global from_text_by_phrase_table
+    global from_text_nb_lines_in_phrase
+    global from_text_nb_lines_in_cell
+    global to_text_by_phrase_separator_table
+    global to_text_by_phrase_separator_removed_table
+    global to_text_splited_table1
+    global to_text_by_phrase_table
+    global to_text_table
+    global to_raw_translated_table
+    global to_text_removed_line_separator
+    global translation_result_using_separator
+    global translation_result_phrase_array
+    global translation_result
+    global from_text_is_read
+
+    global table_cells
+
+    global word_translation_table_length
+
+    global table, numrows, numcols
+
+
+    start = timeit.timeit()
+
+    if use_html:
+        print("Content-Type: text/html\n")
+
+    word_translation_table_length = len(docxdoc.tables[0].rows)
+
+    nb_tables = len(docxdoc.tables)
+
+    nb_character_total = 0
+
+    if use_html:
+        print(
+            "<!doctype html><head><meta http-equiv=""Content-Type"" content=""text/html"" charset=utf-8 /><title>Winword in python</title></head><h2>tables</h2><span style=""font-family:monospace,monospace;"">")
+
+    # Number of tables</h2>nb_tables=", nb_tables
+
+    numerrors = 0
+    # print("word_translation_table_length=%d" %(word_translation_table_length))
+    # print("docx_translation_table_length=%d" %(docx_translation_table_length))
+
+    table = docxdoc.tables[0]
+    table_cells = [['' for i in range(len(table.columns))] for j in range(len(table.rows))]
+
+    numrows = len(table.rows)
+    numcols = len(table.columns)
+
+    if numcols <= 2:
+        print("ERROR : The table has %s column but expected 3" % (numcols))
+        print("Exiting\n")
+
+        print("\nDeveloper: smtv.bot@gmail.com")
+        print("Program version: %s\n" % (PROGRAM_VERSION))
+        input("Enter to close program")
+
+        sys.exit(1)
+
     rownum = 0
 
     from_text_table = [''] * (numrows + 1)
@@ -2396,6 +2474,7 @@ if 1 == 1:
     #number of lines in per phrase
     from_text_nb_lines_in_phrase = [0] * (numrows + 1)
     from_text_nb_lines_in_cell = [0] * (numrows + 1)
+   #input(numrows)
     #
     to_text_by_phrase_separator_table = [''] * (numrows + 1)
     to_text_by_phrase_separator_removed_table = [''] * (numrows + 1)
@@ -2431,6 +2510,10 @@ if 1 == 1:
                 
                     #from_text_is_greyed_table[row_n] = is_greyed_line(cell)
                     #cellvalue = cell.text.replace('’', "'").strip()
+                    #print(from_text_is_greyed_table)
+                    #print(from_text_is_red_color_table)
+                    #print("row_n=%d" % (row_n))
+                    get_cell_data(cell, row_n)
                     cellvalue, from_text_is_greyed_table[i], from_text_is_red_color_table[i] = get_cell_data(cell,row_n)
                     p_remove_pause
                     cellvalue = p_remove_pause.sub(' ', cellvalue)
@@ -2582,6 +2665,8 @@ if 1 == 1:
             print(var)
             numerrors = numerrors + 1
 
+read_and_parse_docx_document()
+
 end = timeit.timeit()
 
 if use_html :
@@ -2592,31 +2677,35 @@ if use_html :
     print("table length = ", len(from_text_table) - 1)
     print("<br>")
 
-if not splitonly:
-    print("\nStarting translation using engine : %s" % (translation_engine.title()))
+def create_webdriver():
+    global driver
+    if not splitonly:
+        print("\nStarting translation using engine : %s" % (translation_engine.title()))
 
 
-if use_api == False and not splitonly:
-    print("Starting Chrome browser\n")
-    
-    driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
-    
-    #input("driver loaded and running")
-    driver.set_window_position(0, 350)
-    if translation_engine == 'yandex' or translation_engine == 'deepl':
-        driver.set_window_size(1400, 1000)
-        driver.set_window_position(0, 100)
-    else:
-        driver.set_window_size(1400, 1000)
-        #driver.set_window_size(400, 650)
+    if use_api == False and not splitonly:
+        print("Starting Chrome browser\n")
+
+        driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+
+        #input("driver loaded and running")
+        #driver.set_window_position(0, 350)
+        if translation_engine == 'yandex' or translation_engine == 'deepl':
+            driver.set_window_position(0, 100)
+            driver.set_window_size(1400, 1000)
+        else:
+            driver.set_window_size(1400, 1000)
+            #driver.set_window_size(400, 650)
 
 
+    numerrors_deepl = 0
+    numerrors_googletranslate= 0
+
+create_webdriver()
 # Reverse a string
 def reverse_string(s):
     return s[::-1]
 
-numerrors_deepl = 0
-numerrors_googletranslate= 0
 
 def generate_html_file_from_phrases():
     #input("Here")
@@ -2688,7 +2777,6 @@ window.onload = function(){
         var = traceback.format_exc()
         print(var)
 
-docxfile_table_number_of_phrases = 0
 
 def generate_text_file_from_phrases(text_file_path):
     global dest_lang_name
@@ -2929,9 +3017,10 @@ def generate_char_blocks_array_from_phrases(text_file_path):
     # if to_text_by_phrase_separator_table[i] != '':
         # docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
 # print("-- docxfile_table_number_of_phrases: %s" % (docxfile_table_number_of_phrases))
-        
-if engine_method == 'textfile':
-    word_file_to_translate
+
+def google_translate_from_text_file():
+    global docx_file_name, translation_array
+    #word_file_to_translate
     text_file_path = docx_file_name + '.txt'
     text_file_full_path = os.path.realpath(text_file_path)
     #print("text_file_full_path=%s" % text_file_full_path)
@@ -2946,7 +3035,9 @@ if engine_method == 'textfile':
     except:
         pass
 
-if engine_method == 'javascript':
+def google_translate_from_html_javascript():
+    global translation_array
+    global html_file_path
     #input("There")
     #input("Here, press enter:")
     print("Starting translation in google using html file...")
@@ -2962,8 +3053,8 @@ if engine_method == 'javascript':
     except:
         pass
 
-if engine_method == 'xlsxfile':
-    word_file_to_translate
+def google_translate_from_html_xlsxfile():
+    global word_file_to_translate, translation_array
     xlsx_file_path = word_file_to_translate + '.xlsx'
     xlsx_file_full_path = os.path.realpath(xlsx_file_path)
     #print("text_file_full_path=%s" % text_file_full_path)
@@ -2977,18 +3068,9 @@ if engine_method == 'xlsxfile':
         pass
     except:
         pass
-        
-    #input("Google translate was called !")
-    #translation_array = translation.split('\n')
-    #print("translation_array :")
-    #print(translation_array)
-    #input("Here, press enter:")
-    #print("translation result text:")
-    #print(translation)
-    #input("enter to continue")
 
-if engine_method == "phrasesblock":
-    word_file_to_translate
+def google_translate_from_phrasesblock():
+    global docx_file_name, translation_array
     text_file_path = docx_file_name + '.txt'
     text_file_full_path = os.path.realpath(text_file_path)
     #print("text_file_full_path=%s" % text_file_full_path)
@@ -3003,358 +3085,377 @@ if engine_method == "phrasesblock":
         pass
     except:
         pass
-    #input("Here")
-    #print(translation_array)
-    #input("translation_array")
-    #translation_array = translation.split('\n')
-    #print("translation_array :")
-    #print(translation_array)
-    #input("Here, press enter:")
-    #print("translation result text:")
-    #print(translation)
-    #input("enter to continue")
-#generate_html_from_phrases()
 
+if engine_method == 'textfile':
+    google_translate_from_text_file()
 
-phrase_no = 0
-for i, line in enumerate(from_text_table):
-    item = from_text_by_phrase_separator_table[i]
-    item.strip()
-    from_language = 'EN'
-    phrase_separator_removed_str = ''
+if engine_method == 'javascript':
+    google_translate_from_html_javascript()
 
-    p_remove_separator = re.compile(line_separator_regex_str)
+if engine_method == 'xlsxfile':
+    google_translate_from_html_xlsxfile()
+
+if engine_method == "phrasesblock":
+    google_translate_from_phrasesblock()
+
+def get_translation_and_replace_after():
+    global from_text_by_phrase_separator_table, to_text_by_phrase_separator_table, numerrors_deepl, use_api
+    phrase_no = 0
+
+    p_remove_pause = re.compile('(?i)<pause>')
     p_remove_double_spaces = re.compile(' +')
+    p_remove_parenthesis_spaces = re.compile('\( +')
 
-    # Avec separateurs ()
+    for i, line in enumerate(from_text_table):
+        item = from_text_by_phrase_separator_table[i]
+        item.strip()
+        from_language = src_lang
+        phrase_separator_removed_str = ''
 
-    try:
-        web_translation_separators = ''
-        if item.strip() != '':
-            phrase_no = phrase_no + 1
-            print("\n%d/%d" % (i, word_translation_table_length))
-            print("Phrase to translate :'%s'\n" % (item.strip()))
-            item = item.strip()
+        p_remove_separator = re.compile(line_separator_regex_str)
+        p_remove_double_spaces = re.compile(' +')
 
-            item_searched_and_replaced_before = item
-            if xlsxreplacefile is not None:
-                if xtm.wb is not None:
-                    item_searched_and_replaced_before, nb_searched_and_replaced_before = xtm.search_and_replace_text('before', item)
-                    if item_searched_and_replaced_before.strip() == '' or item_searched_and_replaced_before is None:
-                        continue
-            if splitonly:
-                web_translation_separators = get_translated_cells_content (i, item_searched_and_replaced_before)
-            elif use_api:
-                try:
-                    web_translation_separators = ""
-                    if use_api:
-                        translation = translator.translate(item_searched_and_replaced_before, src='en', dest=dest_lang)
-                        web_translation_separators = translation.text
-                    if not len(web_translation_separators) > 0:
+        # Avec separateurs ()
+
+        try:
+            web_translation_separators = ''
+            if item.strip() != '':
+                phrase_no = phrase_no + 1
+                print("\n%d/%d" % (i, word_translation_table_length))
+                print("Phrase to translate :'%s'\n" % (item.strip()))
+                item = item.strip()
+
+                item_searched_and_replaced_before = item
+                if xlsxreplacefile is not None:
+                    if xtm.wb is not None:
+                        item_searched_and_replaced_before, nb_searched_and_replaced_before = xtm.search_and_replace_text('before', item)
+                        if item_searched_and_replaced_before.strip() == '' or item_searched_and_replaced_before is None:
+                            continue
+                if splitonly:
+                    web_translation_separators = get_translated_cells_content (i, item_searched_and_replaced_before)
+                elif use_api:
+                    try:
+                        web_translation_separators = ""
+                        if use_api:
+                            translation = translator.translate(item_searched_and_replaced_before, src=src_lang, dest=dest_lang)
+                            web_translation_separators = translation.text
+                        if not len(web_translation_separators) > 0:
+                            use_api = False
+                            # Faster google Chrome translate failed, using Selenium as backup
+
+                            if translation_engine != 'yandex' and driver is not None:
+                                print("Starting Chrome browser\n")
+                                driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+                                driver.set_window_position(0, 350)
+                                driver.set_window_size(1400, 1000)
+                                #driver.set_window_size(400, 650)
+
+                            print("phrase_no=%d" % phrase_no)
+                            web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
+                    except Exception:
                         use_api = False
                         # Faster google Chrome translate failed, using Selenium as backup
 
-                        if translation_engine != 'yandex' and driver is not None:
+                        if driver is not None:
                             print("Starting Chrome browser\n")
                             driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+
+                        if translation_engine == 'google' and driver is not None:
                             driver.set_window_position(0, 350)
+                            driver.set_window_size(400, 650)
+
+                        if translation_engine == 'yandex' and driver is not None:
+                            driver.set_window_position(100, 100)
                             driver.set_window_size(1400, 1000)
-                            #driver.set_window_size(400, 650)
 
-                        print("phrase_no=%d" % phrase_no)
+                        if translation_engine == 'deepl' and driver is not None:
+                            driver.set_window_position(100, 100)
+                            driver.set_window_size(1400, 1000)
+
+                        print("phrase_no = %d" % phrase_no)
                         web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
-                except Exception:
-                    use_api = False
-                    # Faster google Chrome translate failed, using Selenium as backup
-
-                    if driver is not None:
-                        print("Starting Chrome browser\n")
-                        driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
-                    
-                    if translation_engine == 'google' and driver is not None:
-                        driver.set_window_position(0, 350)
-                        driver.set_window_size(400, 650)
-                    
-                    if translation_engine == 'yandex' and driver is not None:
-                        driver.set_window_position(100, 100)
-                        driver.set_window_size(1400, 1000)
-                        
-                    if translation_engine == 'deepl' and driver is not None:
-                        driver.set_window_position(100, 100)
-                        driver.set_window_size(1400, 1000)
-
-                    print("phrase_no = %d" % phrase_no)
+                else:
                     web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
-            else:
-                web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
-            #
-            #web_translation_separators = translation.text
-            phrase_separator_removed_str = p_remove_double_spaces.sub(' ', web_translation_separators)
-            
-            #print("Google translation='%s'" % (phrase_separator_removed_str.encode('utf8')))
-            if xlsxreplacefile is not None:
-                nb_searched_and_replaced = 0
-                web_translation_separators_searched_and_replaced, nb_searched_and_replaced = xtm.search_and_replace_text('after', phrase_separator_removed_str)
-                if nb_searched_and_replaced > 0:
-                    #print("\nPhrase %d replacements :\n'%s'" % (nb_searched_and_replaced, web_translation_separators))
-                    #print("Replaced phrase :\n'%s'" % (web_translation_separators_searched_and_replaced))
-                    phrase_separator_removed_str = web_translation_separators_searched_and_replaced
+                #
+                #web_translation_separators = translation.text
+                phrase_separator_removed_str = p_remove_double_spaces.sub(' ', web_translation_separators)
 
-            if dest_lang in right_to_left_languages_list.keys():
-                phrase_separator_removed_aligned_str = reverse_string (phrase_separator_removed_str)
-            else:
-                phrase_separator_removed_aligned_str = phrase_separator_removed_str
-            try:
-                if splitonly:
-                    print("Translated text :'%s'\n" % (phrase_separator_removed_aligned_str))
+                #print("Google translation='%s'" % (phrase_separator_removed_str.encode('utf8')))
+                if xlsxreplacefile is not None:
+                    nb_searched_and_replaced = 0
+                    web_translation_separators_searched_and_replaced, nb_searched_and_replaced = xtm.search_and_replace_text('after', phrase_separator_removed_str)
+                    if nb_searched_and_replaced > 0:
+                        #print("\nPhrase %d replacements :\n'%s'" % (nb_searched_and_replaced, web_translation_separators))
+                        #print("Replaced phrase :\n'%s'" % (web_translation_separators_searched_and_replaced))
+                        phrase_separator_removed_str = web_translation_separators_searched_and_replaced
+
+                if dest_lang in right_to_left_languages_list.keys():
+                    phrase_separator_removed_aligned_str = reverse_string (phrase_separator_removed_str)
                 else:
-                    print("%s translation (%s):'%s'" % (translation_engine.title() ,dest_lang_name, phrase_separator_removed_aligned_str))
-            except Exception:
-                print("")
-                print("Google translation='%s'" % (phrase_separator_removed_str.encode('utf8').decode('utf8')))
-            if web_translation_separators.strip() == '' and not splitonly:
-                print("Error translating='%s'" % (item))
-            to_text_by_phrase_separator_table[i] = phrase_separator_removed_str
-            phrase_separator_removed_str = p_remove_separator.sub(' ', phrase_separator_removed_str)
-            phrase_separator_removed_str.strip()
-            to_text_by_phrase_separator_removed_table[i] = phrase_separator_removed_str
-    except Exception:
-        var = traceback.format_exc()
-        numerrors_deepl = numerrors_deepl + 1
-        web_translation_separators = var
-        print("ERROR:%s" % (var))
-
-    item = from_text_by_phrase_table[i]
-    try:
-        web_translation_no_separators = ''
-        if item.strip() != '':
-            #google_translation_res = translator.translate(item, src='en', dest='fr')
-            #time.sleep(5)
-            #web_translation_no_separators = pydeepl.translate(item, to_language)
-            phrase_separator_removed_str = p_remove_double_spaces.sub(' ', web_translation_no_separators)
-            phrase_separator_removed_str = p_remove_parenthesis_spaces.sub('(', phrase_separator_removed_str)
-            to_text_by_phrase_table[i] = phrase_separator_removed_str
-    except Exception:
-        var = traceback.format_exc()
-        numerrors_googletranslate = numerrors_googletranslate + 1
-        web_translation_no_separators = var
-    Identical_with_without_separators = 'DIFFERENT<BR>'
-    if phrase_separator_removed_str == web_translation_no_separators:
-        Identical_with_without_separators = 'SAME<BR>'
-
-if not use_api and not splitonly:
-    # Minimize browser
-    #print("Minimizing browser...")
-    driver.minimize_window()
-
-
-# We have found zero phrase up to now
-docxfile_table_number_of_characters = 0
-docxfile_table_number_of_phrases = 0
-docxfile_table_number_of_words = 0
-
-# Decouper le resultat a partir des parentheses
-for i, line in enumerate(from_text_table):
-    if to_text_by_phrase_separator_table[i] != '':
-        docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
-        docxfile_table_number_of_characters = docxfile_table_number_of_characters + len(from_text_by_phrase_separator_table[i])
-        phrase_number_of_words = len(from_text_by_phrase_separator_table[i].strip().split(" "))
-        print("Phrase: %s" % (from_text_by_phrase_separator_table[i]))
-        print("number of words: %d" % (phrase_number_of_words))
-        docxfile_table_number_of_words = docxfile_table_number_of_words + phrase_number_of_words
-        try:
-
-            remaining_lines = to_text_by_phrase_separator_table[i]
-            lines = remaining_lines.split(line_separator_nospace_str)
-            str_translation_len = len(remaining_lines)
-
-            try:
-                if str_translation_len <= 0:
-                    str_phrase_stats = ""
-                else:
-                    str_nb_lines = from_text_nb_lines_in_phrase[i]
-                    if str_nb_lines > 0:
-                        str_line_average = str_translation_len / str_nb_lines
-                        str_phrase_stats = "[%d/%d=%d] " % (str_translation_len, str_nb_lines, str_line_average)
+                    phrase_separator_removed_aligned_str = phrase_separator_removed_str
+                try:
+                    if splitonly:
+                        print("Translated text :'%s'\n" % (phrase_separator_removed_aligned_str))
                     else:
-                        str_line_average = 0
-                        str_phrase_stats = "[%d/%d=%d] " % (str_translation_len, str_nb_lines, str_line_average)
-                    print("str_phrase_stats=%s" % (str_phrase_stats))
+                        print("%s translation (%s):'%s'" % (translation_engine.title() ,dest_lang_name, phrase_separator_removed_aligned_str))
+                except Exception:
+                    print("")
+                    print("Google translation='%s'" % (phrase_separator_removed_str.encode('utf8').decode('utf8')))
+                if web_translation_separators.strip() == '' and not splitonly:
+                    print("Error translating='%s'" % (item))
+                to_text_by_phrase_separator_table[i] = phrase_separator_removed_str
+                phrase_separator_removed_str = p_remove_separator.sub(' ', phrase_separator_removed_str)
+                phrase_separator_removed_str.strip()
+                to_text_by_phrase_separator_removed_table[i] = phrase_separator_removed_str
+        except Exception:
+            var = traceback.format_exc()
+            numerrors_deepl = numerrors_deepl + 1
+            web_translation_separators = var
+            print("ERROR:%s" % (var))
+
+        item = from_text_by_phrase_table[i]
+        try:
+            web_translation_no_separators = ''
+            if item.strip() != '':
+                #google_translation_res = translator.translate(item, src=src_lang, dest='fr')
+                #time.sleep(5)
+                #web_translation_no_separators = pydeepl.translate(item, to_language)
+                phrase_separator_removed_str = p_remove_double_spaces.sub(' ', web_translation_no_separators)
+                phrase_separator_removed_str = p_remove_parenthesis_spaces.sub('(', phrase_separator_removed_str)
+                to_text_by_phrase_table[i] = phrase_separator_removed_str
+        except Exception:
+            var = traceback.format_exc()
+            numerrors_googletranslate = numerrors_googletranslate + 1
+            web_translation_no_separators = var
+        Identical_with_without_separators = 'DIFFERENT<BR>'
+        if phrase_separator_removed_str == web_translation_no_separators:
+            Identical_with_without_separators = 'SAME<BR>'
+
+get_translation_and_replace_after()
+
+def minimize_browser():
+    if not use_api and not splitonly:
+        # Minimize browser
+        #print("Minimizing browser...")
+        driver.minimize_window()
+
+minimize_browser()
+
+
+def document_split_phrases():
+    # Split phrases into multiple lines to match source language number of lines
+    global docxfile_table_number_of_phrases, docxfile_table_number_of_characters, phrase_number_of_words, docxfile_table_number_of_words
+    for i, line in enumerate(from_text_table):
+        if to_text_by_phrase_separator_table[i] != '':
+            docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
+            docxfile_table_number_of_characters = docxfile_table_number_of_characters + len(from_text_by_phrase_separator_table[i])
+            phrase_number_of_words = len(from_text_by_phrase_separator_table[i].strip().split(" "))
+            print("Phrase: %s" % (from_text_by_phrase_separator_table[i]))
+            print("number of words: %d" % (phrase_number_of_words))
+            docxfile_table_number_of_words = docxfile_table_number_of_words + phrase_number_of_words
+            try:
+
+                remaining_lines = to_text_by_phrase_separator_table[i]
+                lines = remaining_lines.split(line_separator_nospace_str)
+                str_translation_len = len(remaining_lines)
+
+                try:
+                    if str_translation_len <= 0:
+                        str_phrase_stats = ""
+                    else:
+                        str_nb_lines = from_text_nb_lines_in_phrase[i]
+                        if str_nb_lines > 0:
+                            str_line_average = str_translation_len / str_nb_lines
+                            str_phrase_stats = "[%d/%d=%d] " % (str_translation_len, str_nb_lines, str_line_average)
+                        else:
+                            str_line_average = 0
+                            str_phrase_stats = "[%d/%d=%d] " % (str_translation_len, str_nb_lines, str_line_average)
+                        print("str_phrase_stats=%s" % (str_phrase_stats))
+                except Exception:
+                    var = traceback.format_exc()
+                    print("  ERROR:%s<br>" % (var))
+
+                if str_line_average > MAX_LINE_SIZE:
+                    str_line_average = MAX_LINE_SIZE
+                lines_divided = divide(remaining_lines, str_line_average + 4)
+
+                #print "lines(%d)=%s<br>" % (len(lines), lines)
+                number_lines = len(lines_divided)
+
+                divide_max_try = MAX_LINE_SIZE
+                while (number_lines > str_nb_lines) and (divide_max_try > 0):
+                    str_line_average += 1
+                    print("Too many lines in split : %d, max %d ..... increasing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
+                    lines_divided_attempt = divide(remaining_lines, str_line_average + 4)
+                    lines_divided = divide(remaining_lines, str_line_average + 4)
+                    number_lines = len(lines_divided_attempt)
+                    #print("   lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
+                    divide_max_try = divide_max_try - 1
+
+                #print("Before increasing line size -- %s (%d): %d " % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
+                number_lines = len(lines_divided)
+                divide_max_try = MAX_LINE_SIZE
+                while (number_lines < str_nb_lines) and (number_lines > 1) and (divide_max_try > 0):
+                    str_line_average = str_line_average - 1
+                    print("Too few lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
+                    lines_divided_attempt = divide(remaining_lines, str_line_average + 4)
+                    number_lines = len(lines_divided_attempt)
+                    if number_lines <= str_nb_lines:
+                        lines_divided = lines_divided_attempt
+                    divide_max_try = divide_max_try - 1
+
+                print("number_lines=%d  ; str_nb_lines=%d  ; divide_max_try=%d" % (number_lines, str_nb_lines, divide_max_try))
+                number_lines = len(lines_divided)
+                translation_result_phrase_array[i] = lines_divided
+                for line_no in range (0, number_lines):
+                    translation_result_using_separator[line_no+i] = lines_divided[line_no].rstrip().lstrip()
+                    #if (line_no > 2):
+                    #    if (translation_result_using_separator[line_no+i][:1] == ','):
+                    #        translation_result_using_separator[line_no] = translation_result_using_separator[line_no] + ','
+                    #        translation_result_using_separator[line_no+i] = translation_result_using_separator[line_no+i][1:].lstrip()
+                number_lines = len(lines_divided)
+
+                try:
+                    print("%s (%d): %d " % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
+                except Exception:
+                    try:
+                        print("%s (%d): %d " % (to_text_by_phrase_separator_table[i].encode("utf-8"), i, str_nb_lines + 0))
+                    except Exception:
+                        print("(unable to print content to screen) (%d): %d : " % (i, str_nb_lines + 0))
+
+                if number_lines != str_nb_lines:
+                    print("Error in number of line %d, expected %d." % (number_lines, str_nb_lines))
+                    #frequency = 2500  # Set Frequency To 2500 Hertz
+                    #duration = 600  # Set Duration To 1000 ms == 1 second
+                    #winsound.Beep(frequency, duration)
             except Exception:
                 var = traceback.format_exc()
                 print("  ERROR:%s<br>" % (var))
 
-            if str_line_average > MAX_LINE_SIZE:
-                str_line_average = MAX_LINE_SIZE
-            lines_divided = divide(remaining_lines, str_line_average + 4)
+document_split_phrases()
 
-            #print "lines(%d)=%s<br>" % (len(lines), lines)
-            number_lines = len(lines_divided)
+def print_html_program_result():
+    if use_html :
+        print("<table border=1 bgcolor=""#EEEEEE"">")
 
-            divide_max_try = MAX_LINE_SIZE
-            while (number_lines > str_nb_lines) and (divide_max_try > 0):
-                str_line_average += 1
-                print("Too many lines in split : %d, max %d ..... increasing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
-                lines_divided_attempt = divide(remaining_lines, str_line_average + 4)
-                lines_divided = divide(remaining_lines, str_line_average + 4)
-                number_lines = len(lines_divided_attempt)
-                #print("   lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
-                divide_max_try = divide_max_try - 1
+    for i, line in enumerate(from_text_table):
+        Identical_with_without_separators = 'DIFFERENT<BR>'
+        if to_text_by_phrase_separator_removed_table[i] == to_text_by_phrase_table[i]:
+            Identical_with_without_separators = 'SAME<BR>'
+        #print "<tr><td>%s<td>%s<td>%s<td>%s<td>%s%s" % (i, from_text_table[i], from_text_by_phrase_separator_table[i].encode('utf8'), to_text_by_phrase_separator_table[i].encode('utf8'), Identical_with_without_separators.encode('utf8'), to_text_by_phrase_separator_removed_table[i].encode('utf8') )
+        if len(from_text_by_phrase_separator_table[i]) == 0:
+            Identical_with_without_separators = ''
+        if use_html :
+            print("<tr><td>%d<td>'%s'<td>%s<td>%s<td>%s<td>%s%s" % (i, from_text_table[i], translation_result_using_separator[i].encode('utf8'), to_text_by_phrase_separator_table[i].encode('utf8'), to_text_by_phrase_table[i].encode('utf8'), Identical_with_without_separators.encode('utf8'), to_text_by_phrase_table[i].encode('utf8') ))
+        #sys.exit(0)
 
-            #print("Before increasing line size -- %s (%d): %d " % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
-            number_lines = len(lines_divided)
-            divide_max_try = MAX_LINE_SIZE
-            while (number_lines < str_nb_lines) and (number_lines > 1) and (divide_max_try > 0):
-                str_line_average = str_line_average - 1
-                print("Too few lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
-                lines_divided_attempt = divide(remaining_lines, str_line_average + 4)
-                number_lines = len(lines_divided_attempt)
-                if number_lines <= str_nb_lines:
-                    lines_divided = lines_divided_attempt
-                divide_max_try = divide_max_try - 1
+    if use_html :
+        print("</table><br>elapsedtime = ", elapsedtime)
+        print("</span>")
 
-            print("number_lines=%d  ; str_nb_lines=%d  ; divide_max_try=%d" % (number_lines, str_nb_lines, divide_max_try))
-            number_lines = len(lines_divided)
-            translation_result_phrase_array[i] = lines_divided
-            for line_no in range (0, number_lines):
-                translation_result_using_separator[line_no+i] = lines_divided[line_no].rstrip().lstrip()
-                #if (line_no > 2):
-                #    if (translation_result_using_separator[line_no+i][:1] == ','):
-                #        translation_result_using_separator[line_no] = translation_result_using_separator[line_no] + ','
-                #        translation_result_using_separator[line_no+i] = translation_result_using_separator[line_no+i][1:].lstrip()
-            number_lines = len(lines_divided)
+def write_destination_language_in_docx_cell():
+    if not splitonly:
+        docxdoc.tables[0].cell(1, 2).text = dest_lang_name
 
-            try:
-                print("%s (%d): %d " % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
-            except Exception:
-                try:
-                    print("%s (%d): %d " % (to_text_by_phrase_separator_table[i].encode("utf-8"), i, str_nb_lines + 0))
-                except Exception:
-                    print("(unable to print content to screen) (%d): %d : " % (i, str_nb_lines + 0))
+write_destination_language_in_docx_cell()
 
-            if number_lines != str_nb_lines:
-                print("Error in number of line %d, expected %d." % (number_lines, str_nb_lines))
-                #frequency = 2500  # Set Frequency To 2500 Hertz
-                #duration = 600  # Set Duration To 1000 ms == 1 second
-                #winsound.Beep(frequency, duration)
+def print_console_docx_file_translated():
+    print("\nTranslated text:\n")
+    numrows = len(table.rows)
+    numcols = len(table.columns)
+    current_cell_row = 2
+    for row_n in range(2, (numrows)):
+
+        str_translation_len = len(translation_result_using_separator[row_n])
+        translation_phrase_lines_len = len(translation_result_phrase_array[row_n])
+        if translation_phrase_lines_len == 0 and current_cell_row < row_n:
+            print("%d :" % row_n)
+        #print("row_n = %d" %  row_n)
+        if translation_phrase_lines_len >= 1 :
+            #print("%d : %s" % (row_n,' '.join(translation_result_phrase_array[row_n])))
+
+            if not split_translation:
+                translation_cell_text = to_text_by_phrase_separator_table[row_n]
+                prepare_and_clear_cell_for_writing(row_n, translation_cell_text)
+                if dest_lang in right_to_left_languages_list.keys():
+                    translation_cell_aligned_text = reverse_string (translation_cell_text)
+                else:
+                    translation_cell_aligned_text = translation_cell_text
+                print("%d : %s" % (row_n, translation_cell_aligned_text))
+            else:
+                #translation_cell_text = translation_result_using_separator[row_n]
+                #print("len array: %d" % (translation_phrase_lines_len))
+                #print("translation_result_phrase_array[%d] : %s" % (row_n,'\n'.join(translation_result_phrase_array[row_n])))
+
+                translation_phrase_line_pos = 0
+                translation_phrase_cell_pos = 0
+
+                while translation_phrase_line_pos < translation_phrase_lines_len:
+                    current_cell_row = row_n + translation_phrase_cell_pos
+                    cell_lines_len = from_text_nb_lines_in_cell[row_n + translation_phrase_cell_pos]
+                    cell_line_pos = 0
+                    current_cell = table_cells[current_cell_row][2]
+                    while cell_line_pos < cell_lines_len \
+                        and translation_phrase_line_pos < translation_phrase_lines_len:
+
+                        translation_phrase_line_str = translation_result_phrase_array[row_n][translation_phrase_line_pos]
+                        if dest_lang in right_to_left_languages_list.keys():
+                            translation_cell_aligned_text = reverse_string (translation_phrase_line_str)
+                        else:
+                            translation_cell_aligned_text = translation_phrase_line_str
+                        if cell_lines_len > 1:
+                            print("%d-%d : %s" % (current_cell_row, cell_line_pos + 1, translation_cell_aligned_text))
+                        else:
+                            print("%d : %s" % (current_cell_row, translation_cell_aligned_text))
+                        if cell_line_pos == 0:
+                            #print("cell_line_pos=%d" % cell_line_pos)
+                            if splitonly:
+                                prepare_and_clear_cell_for_writing(current_cell_row, translation_phrase_line_str)
+                            else:
+                            #prepare_and_clear_cell_for_writing(current_cell_row, translation_phrase_line_str)
+                                cell_set_1st_paragraph(current_cell_row, translation_phrase_line_str)
+                            # Not needed
+                            #current_cell.paragraphs[0].text = translation_phrase_line_str
+                        else:
+                            # Add empty paragraph between translation lines
+                            cell_add_paragraph(current_cell_row, "")
+                            # Add the translation line
+                            cell_add_paragraph(current_cell_row, translation_phrase_line_str)
+                        cell_line_pos = cell_line_pos + 1
+                        translation_phrase_line_pos = translation_phrase_line_pos + 1
+                        #input("press enter")
+                    translation_phrase_cell_pos = translation_phrase_cell_pos + 1
+
+        try:
+            if str_translation_len <= 0:
+                str_phrase_stats = ""
+            else:
+                str_translation_len = len(translation_result_using_separator[row_n])
+                str_nb_lines = from_text_nb_lines_in_phrase[row_n]
+                if str_nb_lines > 0:
+                    str_line_average = str_translation_len / str_nb_lines
+                    str_phrase_stats = "[%d/%d=%d] " % (str_translation_len, str_nb_lines, str_line_average)
+                else:
+                    str_line_average = 0
+                    str_phrase_stats = ""
+
         except Exception:
             var = traceback.format_exc()
             print("  ERROR:%s<br>" % (var))
 
-
-if use_html :
-    print("<table border=1 bgcolor=""#EEEEEE"">")
-
-for i, line in enumerate(from_text_table):
-    Identical_with_without_separators = 'DIFFERENT<BR>'
-    if to_text_by_phrase_separator_removed_table[i] == to_text_by_phrase_table[i]:
-        Identical_with_without_separators = 'SAME<BR>'
-    #print "<tr><td>%s<td>%s<td>%s<td>%s<td>%s%s" % (i, from_text_table[i], from_text_by_phrase_separator_table[i].encode('utf8'), to_text_by_phrase_separator_table[i].encode('utf8'), Identical_with_without_separators.encode('utf8'), to_text_by_phrase_separator_removed_table[i].encode('utf8') )
-    if len(from_text_by_phrase_separator_table[i]) == 0:
-        Identical_with_without_separators = ''
-    if use_html :
-        print("<tr><td>%d<td>'%s'<td>%s<td>%s<td>%s<td>%s%s" % (i, from_text_table[i], translation_result_using_separator[i].encode('utf8'), to_text_by_phrase_separator_table[i].encode('utf8'), to_text_by_phrase_table[i].encode('utf8'), Identical_with_without_separators.encode('utf8'), to_text_by_phrase_table[i].encode('utf8') ))
-    #sys.exit(0)
-
-if use_html :
-    print("</table><br>elapsedtime = ", elapsedtime)
-    print("</span>")
-
-if not splitonly:
-    docxdoc.tables[0].cell(1, 2).text = dest_lang_name
-
-print("\nTranslated text:\n")
-numrows = len(table.rows)
-numcols = len(table.columns)
-current_cell_row = 2
-for row_n in range(2, (numrows)):
-
-    str_translation_len = len(translation_result_using_separator[row_n])
-    translation_phrase_lines_len = len(translation_result_phrase_array[row_n])
-    if translation_phrase_lines_len == 0 and current_cell_row < row_n:
-        print("%d :" % row_n)
-    #print("row_n = %d" %  row_n)        
-    if translation_phrase_lines_len >= 1 :
-        #print("%d : %s" % (row_n,' '.join(translation_result_phrase_array[row_n])))
-        
-        if not split_translation:
-            translation_cell_text = to_text_by_phrase_separator_table[row_n]
-            prepare_and_clear_cell_for_writing(row_n, translation_cell_text)
-            if dest_lang in right_to_left_languages_list.keys():
-                translation_cell_aligned_text = reverse_string (translation_cell_text)
-            else:
-                translation_cell_aligned_text = translation_cell_text
-            print("%d : %s" % (row_n, translation_cell_aligned_text))
-        else:
-            #translation_cell_text = translation_result_using_separator[row_n]
-            #print("len array: %d" % (translation_phrase_lines_len))
-            #print("translation_result_phrase_array[%d] : %s" % (row_n,'\n'.join(translation_result_phrase_array[row_n])))
-            
-            translation_phrase_line_pos = 0
-            translation_phrase_cell_pos = 0
-            
-            while translation_phrase_line_pos < translation_phrase_lines_len:
-                current_cell_row = row_n + translation_phrase_cell_pos
-                cell_lines_len = from_text_nb_lines_in_cell[row_n + translation_phrase_cell_pos]
-                cell_line_pos = 0
-                current_cell = table_cells[current_cell_row][2]
-                while cell_line_pos < cell_lines_len \
-                    and translation_phrase_line_pos < translation_phrase_lines_len:
-                    
-                    translation_phrase_line_str = translation_result_phrase_array[row_n][translation_phrase_line_pos]
-                    if dest_lang in right_to_left_languages_list.keys():
-                        translation_cell_aligned_text = reverse_string (translation_phrase_line_str)
-                    else:
-                        translation_cell_aligned_text = translation_phrase_line_str
-                    if cell_lines_len > 1:
-                        print("%d-%d : %s" % (current_cell_row, cell_line_pos + 1, translation_cell_aligned_text))
-                    else:
-                        print("%d : %s" % (current_cell_row, translation_cell_aligned_text))
-                    if cell_line_pos == 0:
-                        #print("cell_line_pos=%d" % cell_line_pos)
-                        if splitonly:
-                            prepare_and_clear_cell_for_writing(current_cell_row, translation_phrase_line_str)
-                        else:
-                        #prepare_and_clear_cell_for_writing(current_cell_row, translation_phrase_line_str)
-                            cell_set_1st_paragraph(current_cell_row, translation_phrase_line_str)
-                        # Not needed
-                        #current_cell.paragraphs[0].text = translation_phrase_line_str
-                    else:
-                        # Add empty paragraph between translation lines
-                        cell_add_paragraph(current_cell_row, "")
-                        # Add the translation line
-                        cell_add_paragraph(current_cell_row, translation_phrase_line_str)
-                    cell_line_pos = cell_line_pos + 1
-                    translation_phrase_line_pos = translation_phrase_line_pos + 1
-                    #input("press enter")
-                translation_phrase_cell_pos = translation_phrase_cell_pos + 1
-                   
-    try:
-        if str_translation_len <= 0:
-            str_phrase_stats = ""
-        else:
-            str_translation_len = len(translation_result_using_separator[row_n])
-            str_nb_lines = from_text_nb_lines_in_phrase[row_n]
-            if str_nb_lines > 0:
-                str_line_average = str_translation_len / str_nb_lines
-                str_phrase_stats = "[%d/%d=%d] " % (str_translation_len, str_nb_lines, str_line_average)
-            else:
-                str_line_average = 0
-                str_phrase_stats = ""
-
-    except Exception:
-        var = traceback.format_exc()
-        print("  ERROR:%s<br>" % (var))
+print_console_docx_file_translated()
 
 #print("Generating TMX file for translation comparison")
 #generate_tmx_file ()
 #word.Application.ActiveWindow.Close()
 #word.Application.Quit()
 
-now = datetime.datetime.now()
-dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-docxdoc.core_properties.comments = "Document translated by SMTV Robot version %s using %s engine on %s." % (PROGRAM_VERSION, translation_engine, dt_string)
+def set_docx_properties_comment_for_history():
+    now = datetime.datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    docxdoc.core_properties.comments = "Document translated by SMTV Robot version %s using %s engine on %s." % (PROGRAM_VERSION, translation_engine, dt_string)
 
+set_docx_properties_comment_for_history()
 
 end_time = datetime.datetime.now()
 
