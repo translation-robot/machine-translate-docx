@@ -181,7 +181,9 @@ except:
 
 show_version = args.version
 if show_version:
-    print("\nDeveloper: smtv.bot@gmail.com\n")
+    E_mail_str = 'sm' + 'tv' + '.' + 'bot' + '@g' + 'mail' + '.' + 'c' + 'o' + 'm'
+
+    print("\nDeveloper: %s\n" %(E_mail_str))
     print("Program version: %s\n" % (PROGRAM_VERSION))
     input("\nEnter to close program")
     sys.exit(1)
