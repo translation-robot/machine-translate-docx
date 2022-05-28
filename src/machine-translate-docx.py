@@ -971,7 +971,7 @@ def selenium_chrome_google_translate(to_translate):
     return translation
 
 
-def selenium_chrome_deepl_translate_maxchar_blocks():
+def selenium_chrome_translate_maxchar_blocks():
     global found_google_cookies_consent_button
     global google_translate_first_page_loaded
     global docxfile_table_number_of_phrases
@@ -1017,7 +1017,7 @@ def selenium_chrome_deepl_translate_maxchar_blocks():
                             translation = selenium_chrome_google_translate(to_translate)
                     translation_try_count = translation_try_count + 1
             except:
-                print("Error in selenium_chrome_deepl_translate_maxchar_blocks...")
+                print("Error in selenium_chrome_translate_maxchar_blocks...")
                 var = traceback.format_exc()
                 print(var)
                 print("Error in selenium_chrome_machine_translate")
@@ -1912,14 +1912,17 @@ def selenium_chrome_machine_translate(to_translate, index):
         print("Error in selenium_chrome_machine_translate")
     return translation
     
+def initialize_translation_memory_xlsx():
+    global xtm
+    # If --xlsxreplacefile was provided in the command line
+    if xlsxreplacefile is not None:
+        print("xlsxreplacefile: %s" % (xlsxreplacefile))
+        xtm = xlsx_translation_memory.xlsx_translation_memory(xlsxreplacefile)
+        print("")
+    else:
+        xtm = None
 
-# If --xlsxreplacefile was provided in the command line
-if xlsxreplacefile is not None:
-    print("xlsxreplacefile: %s" % (xlsxreplacefile))
-    xtm = xlsx_translation_memory.xlsx_translation_memory(xlsxreplacefile)
-    print("")
-else:
-    xtm = None
+initialize_translation_memory_xlsx()
 
 def is_end_of_line(line):
     for eol in eol_array:
@@ -3075,7 +3078,7 @@ def google_translate_from_phrasesblock():
     #input("phrasesblock")
     print("Starting translation in deepl using phrase blocks or %d characters..." % (MAX_TRANSLATION_BLOCK_SIZE))
 
-    translation_array = selenium_chrome_deepl_translate_maxchar_blocks()
+    translation_array = selenium_chrome_translate_maxchar_blocks()
     try:
         os.remove(text_file_path)
         pass
@@ -3227,7 +3230,6 @@ def get_translation_and_replace_after():
         if phrase_separator_removed_str == web_translation_no_separators:
             Identical_with_without_separators = 'SAME<BR>'
 
-get_translation_and_replace_after()
 
 def minimize_browser():
     if not use_api and not splitonly:
@@ -3235,7 +3237,6 @@ def minimize_browser():
         #print("Minimizing browser...")
         driver.minimize_window()
 
-minimize_browser()
 
 
 def document_split_phrases():
@@ -3328,7 +3329,6 @@ def document_split_phrases():
                 var = traceback.format_exc()
                 print("  ERROR:%s<br>" % (var))
 
-document_split_phrases()
 
 def print_html_program_result():
     if use_html :
@@ -3353,7 +3353,6 @@ def write_destination_language_in_docx_cell():
     if not splitonly:
         docxdoc.tables[0].cell(1, 2).text = dest_lang_name
 
-write_destination_language_in_docx_cell()
 
 def print_console_docx_file_translated():
     print("\nTranslated text:\n")
@@ -3439,7 +3438,6 @@ def print_console_docx_file_translated():
             var = traceback.format_exc()
             print("  ERROR:%s<br>" % (var))
 
-print_console_docx_file_translated()
 
 #print("Generating TMX file for translation comparison")
 #generate_tmx_file ()
@@ -3470,7 +3468,7 @@ def local_time_offset(t=None):
 def run_statistics():
     global use_api
     global splitonly, driver
-    global engine_method
+    global engine_method, end_time, elapsed_time
     
     bool_print_stats = False
     
@@ -3691,7 +3689,17 @@ def save_docx_file():
 
 
 def main() -> int:
-    global E_mail_str
+    global E_mail_str, end_time, elapsed_time
+
+    get_translation_and_replace_after()
+
+    minimize_browser()
+
+    document_split_phrases()
+
+    write_destination_language_in_docx_cell()
+
+    print_console_docx_file_translated()
     set_docx_properties_comment_for_history()
 
     end_time = datetime.datetime.now()
