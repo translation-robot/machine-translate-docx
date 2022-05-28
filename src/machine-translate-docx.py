@@ -1874,7 +1874,6 @@ def set_translation_function():
         else:
             selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
 
-set_translation_function()
 
 def selenium_chrome_machine_translate(to_translate, index):
     global selenium_chrome_machine_translate_once
@@ -1922,7 +1921,6 @@ def initialize_translation_memory_xlsx():
     else:
         xtm = None
 
-initialize_translation_memory_xlsx()
 
 def is_end_of_line(line):
     for eol in eol_array:
@@ -2672,8 +2670,6 @@ def read_and_parse_docx_document():
             print(var)
             numerrors = numerrors + 1
 
-read_and_parse_docx_document()
-
 
 
 def create_webdriver():
@@ -2700,13 +2696,12 @@ def create_webdriver():
     numerrors_deepl = 0
     numerrors_googletranslate= 0
 
-create_webdriver()
 # Reverse a string
 def reverse_string(s):
     return s[::-1]
 
 
-def generate_html_file_from_phrases():
+def generate_html_file_from_phrases_for_google_translate_javascript():
     #input("Here")
     global dest_lang_name
     global html_file_path
@@ -3011,12 +3006,6 @@ def generate_char_blocks_array_from_phrases(text_file_path):
         print(var)
 
 
-# docxfile_table_number_of_phrases = 0
-# for i, line in enumerate(to_text_by_phrase_separator_table):
-    # if to_text_by_phrase_separator_table[i] != '':
-        # docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
-# print("-- docxfile_table_number_of_phrases: %s" % (docxfile_table_number_of_phrases))
-
 def google_translate_from_text_file():
     global docx_file_name, translation_array
     #word_file_to_translate
@@ -3041,7 +3030,7 @@ def google_translate_from_html_javascript():
     #input("Here, press enter:")
     print("Starting translation in google using html file...")
     
-    generate_html_file_from_phrases()
+    generate_html_file_from_phrases_for_google_translate_javascript()
     
     translation_array = selenium_chrome_google_translate_html_javascript_file(html_file_path)
     
@@ -3051,6 +3040,8 @@ def google_translate_from_html_javascript():
         pass
     except:
         pass
+
+    return translation_array
 
 def google_translate_from_html_xlsxfile():
     global word_file_to_translate, translation_array
@@ -3068,7 +3059,7 @@ def google_translate_from_html_xlsxfile():
     except:
         pass
 
-def google_translate_from_phrasesblock():
+def translate_from_phrasesblock():
     global docx_file_name, translation_array
     text_file_path = docx_file_name + '.txt'
     text_file_full_path = os.path.realpath(text_file_path)
@@ -3085,17 +3076,22 @@ def google_translate_from_phrasesblock():
     except:
         pass
 
-if engine_method == 'textfile':
-    google_translate_from_text_file()
+def translate_docx():
+    translation_array = []
 
-if engine_method == 'javascript':
-    google_translate_from_html_javascript()
+    if engine_method == 'textfile':
+        google_translate_from_text_file()
 
-if engine_method == 'xlsxfile':
-    google_translate_from_html_xlsxfile()
+    if engine_method == 'javascript':
+        translation_array = google_translate_from_html_javascript()
+        #print (translation_array)
 
-if engine_method == "phrasesblock":
-    google_translate_from_phrasesblock()
+    if engine_method == 'xlsxfile':
+        google_translate_from_html_xlsxfile()
+
+    # For both deepl and google translate
+    if engine_method == "phrasesblock":
+        translate_from_phrasesblock()
 
 def get_translation_and_replace_after():
     global from_text_by_phrase_separator_table, to_text_by_phrase_separator_table, numerrors_deepl, use_api
@@ -3690,6 +3686,15 @@ def save_docx_file():
 
 def main() -> int:
     global E_mail_str, end_time, elapsed_time
+
+    create_webdriver()
+
+    set_translation_function()
+    initialize_translation_memory_xlsx()
+
+    read_and_parse_docx_document()
+
+    translate_docx()
 
     get_translation_and_replace_after()
 
