@@ -4,6 +4,8 @@ import timeit
 import re
 from typing import Any
 from typing import NamedTuple
+from newmm_tokenizer.tokenizer import word_tokenize
+import tinysegmenter
 from pprint import pprint
 import traceback
 import os
@@ -21,6 +23,7 @@ class SearchAndReplace(NamedTuple):
     IgnoreWordBoundary: bool
     KeepSpacesAtTheEndOfSearch: bool
     RegularExpressionCompiled: Any
+    FollowedByAnotherWord : bool
     number_replacement: int
 
 class xlsx_translation_memory():
@@ -107,7 +110,7 @@ class xlsx_translation_memory():
                         KeepSpacesAtTheEndOfSearch = False
                         Search = Search.strip()
                         Replace = Replace.strip()
-                    
+
                     RegularExpression = row[2]
                     RegularExpressionCompiled = None
                     if self.string_is_yes(RegularExpression):
@@ -136,7 +139,17 @@ class xlsx_translation_memory():
                         
                         if re_end_word_boundary.match (Search) is not None:
                             SearchRegularExpression = "%s\\b" % (SearchRegularExpression)
-                        
+
+                    try:
+                        FollowedByAnotherWord = row[6]
+                        if self.string_is_yes(FollowedByAnotherWord):
+                            FollowedByAnotherWord = True
+                            SearchRegularExpression = "%s[ \\t]+[^ \\t]+" % SearchRegularExpression
+                        else:
+                            FollowedByAnotherWord = False
+                    except:
+                        FollowedByAnotherWord = False
+
                     number_replacement = 0
                     
                     CaseSensitive = row[3]
@@ -155,7 +168,9 @@ class xlsx_translation_memory():
                             var = traceback.format_exc()
                             print(var)
                         
-                        sr = SearchAndReplace(Search, SearchRegularExpression, Replace, RegularExpression, CaseSensitive, IgnoreWordBoundary, KeepSpacesAtTheEndOfSearch, RegularExpressionCompiled, number_replacement)
+                        sr = SearchAndReplace(Search, SearchRegularExpression, Replace, RegularExpression, CaseSensitive, IgnoreWordBoundary, KeepSpacesAtTheEndOfSearch, RegularExpressionCompiled, FollowedByAnotherWord, number_replacement)
+                        #if sheet_name == "keep_on_same_line":
+                        #    print("search=%s" % (sr.Search))
                         search_and_replace_list.append(sr)
                     
                     self.worksheets_search_and_replace_dictionary[sheet_name] = search_and_replace_list
@@ -202,6 +217,26 @@ class xlsx_translation_memory():
             var = traceback.format_exc()
             print("ERROR: %s" % (var))
         return text_replaced, nb_replacements
+
+    def tokenize_phrase(selfself, text, dest_lang):
+        len_text = 0
+        try:
+            len_text = len(text)
+        except:
+            print("Error getting text length.")
+        do_not_split_array = [0] * (len_text)
+
+        if dest_lang.lower() == 'ja' or dest_lang.lower() == 'zh-cn' or dest_lang.lower() == 'zh' or dest_lang.lower() == 'zh-tw' or dest_lang.lower() == 'ko':
+            words = self.cjk_segmenter.tokenize(text)
+        # In other languages, just use spaces
+        elif dest_lang.lower() == 'th':
+            # words = thai_segmenter(text)
+            words = word_tokenize(text)
+        # In other languages, just use spaces
+        else:
+            words = text.split()
+            #input("Setting do not split array values")
+        return words
 
     def pprint_translation_memory_list(self):
         """Method pprint_translation_memory_list pprint the worksheets_search_and_replace_dictionary"""
@@ -270,6 +305,9 @@ class xlsx_translation_memory():
         self.xlsx_path = xlsx_path
         self.total_number_of_replacements = 0
         self.worksheets_search_and_replace_dictionary = {}
+
+        self.cjk_segmenter = tinysegmenter.TinySegmenter()
+
         print ("Init XLSXTranslationMemory")
         if not os.path.exists(xlsx_path) :
             print ("ERROR: File not found: %s" % (xlsx_path))

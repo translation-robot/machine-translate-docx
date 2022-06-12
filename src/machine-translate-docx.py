@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-05-27"
+PROGRAM_VERSION="2022-06-12"
 # Day 0 is October 3rd 2017
 
 import pprint
@@ -978,6 +978,9 @@ def selenium_chrome_translate_maxchar_blocks():
     global translation_errors_count
     global deepl_sleep_wait_translation_seconds
     global selenium_chrome_machine_translate_once
+
+    translation_succeded = True
+
     try:
         
         blocks_nchar_max_to_translate_array_len = len(blocks_nchar_max_to_translate_array)
@@ -1005,7 +1008,10 @@ def selenium_chrome_translate_maxchar_blocks():
                     if translation_engine == 'deepl':
                         #print(to_translate)
                         #print(translation_try_count)
-                        translation = selenium_chrome_deepl_translate(to_translate, translation_try_count - 1)
+                        translation_succeded, translation = selenium_chrome_deepl_translate(to_translate, translation_try_count - 1)
+                        if translation_succeded == False:
+                            print("Deepl translation permited limit exeeded")
+                            return translation_succeded, []
                     elif translation_engine == 'google':
                         if engine_method == 'xlsxfile':
                             translation = selenium_chrome_machine_translate_once(to_translate, index)
@@ -1063,7 +1069,7 @@ def selenium_chrome_translate_maxchar_blocks():
         var = traceback.format_exc()
         print(var)
         sys.exit(0)
-    return translation_array
+    return translation_succeded, translation_array
 
 
 def selenium_chrome_google_click_cookies_consent_button():
@@ -1629,6 +1635,7 @@ def remove_span_tag(text):
 
 def selenium_chrome_deepl_translate(to_translate, retry_count):
     translation = ""
+    Translated = False
     # Progress bar to show only when deepl also shows it on the browser
     bar = None
     
@@ -1688,11 +1695,14 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         #copy_translation_element = "span:nth-child(2) path:nth-child(2)"
                 
 
-
+        # Wait for copy translation button
         # Removed on 2022-05-25
         try:
             # Added on version 2022-05-25
-            copy_translation_element = "div:nth-child(5) > .shared_module_contents__d48c9809 .button--2IZ9p"
+            #copy_translation_element = "div:nth-child(5) > .shared_module_contents__d48c9809 .button--2IZ9p"
+
+            # Added on version 2022-05-31
+            copy_translation_element = "div:nth-child(5)"
             copy_translation_button = WebDriverWait(driver, 4).until(
                 lambda driver: driver.find_element_by_css_selector(copy_translation_element))
         except:
@@ -1718,12 +1728,31 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             busybox_innerhtml = busybox.get_attribute('innerHTML')
             while busybox_innerhtml != "" and timeout_busy_translating > 0:
                 sleep(0.3)
-                busybox = WebDriverWait(driver, 30).until(lambda driver: driver.find_element_by_css_selector(busy_element))
+                busybox = WebDriverWait(driver, 15).until(lambda driver: driver.find_element_by_css_selector(busy_element))
                 busybox_innerhtml = busybox.get_attribute('innerHTML')
                 attrs = driver.execute_script('var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;', busybox)
                 timeout_busy_translating -=1
+
+                deepl_usage_limit_reached_element = "//button[contains(.,'Try Pro for 30 days free')]"
+                try:
+                    deepl_usage_limit_reached_button = WebDriverWait(driver, 0.05).until(
+                        lambda driver: driver.find_element_by_xpath(deepl_usage_limit_reached_element))
+                    print("Here")
+                    return False, ""
+                except:
+                    pass
         except:
             var = traceback.format_exc()
+
+            # Look for usage limit reached, and try pro for 30 days
+            deepl_usage_limit_reached_element = "//button[contains(.,'Try Pro for 30 days free')]"
+            try:
+                deepl_usage_limit_reached_button = WebDriverWait(driver, 0.05).until(
+                    lambda driver: driver.find_element_by_xpath(deepl_usage_limit_reached_element))
+                print("Error : deepl usage limit reached")
+                return False, ""
+            except:
+                pass
             # Sometimes the busy element does not show up, just ignore it and continue
 
         actions = ActionChains(driver)
@@ -1776,8 +1805,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                             pass
                         
                     #input("of characters translated")
-                
-                    
+
                 if bar is not None:
                     bar.update(100)
                 
@@ -1847,7 +1875,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         print(var)
         sleep(1)
         #sys.exit(0)
-    return translation
+    return True, translation
 
 
 def set_translation_function():
@@ -2078,7 +2106,7 @@ def join_from_lines(line_start, line_end, separator_str):
 
 
 def divide(text, width):
-
+    global dest_lang
     # In japanese tokenize words
     print("Divide into max %d size lines" % (width))
     if dest_lang.lower() == 'ja' or dest_lang.lower() == 'zh-cn' or dest_lang.lower() == 'zh' or dest_lang.lower() == 'zh-tw' or dest_lang.lower() == 'ko':
@@ -2089,6 +2117,7 @@ def divide(text, width):
         words = word_tokenize(text)
     # In other languages, just use spaces
     else:
+        #xtm.tokenize_phrase(text, dest_lang)
         words = text.split()
 
     count = len(words)
@@ -3066,18 +3095,23 @@ def translate_from_phrasesblock():
     #print("text_file_full_path=%s" % text_file_full_path)
     #generate_text_file_from_phrases(text_file_full_path)
     generate_char_blocks_array_from_phrases(text_file_full_path)
+
+    translation_succeded = True
+
     #input("phrasesblock")
     print("Starting translation in deepl using phrase blocks or %d characters..." % (MAX_TRANSLATION_BLOCK_SIZE))
 
-    translation_array = selenium_chrome_translate_maxchar_blocks()
+    translation_succeded, translation_array = selenium_chrome_translate_maxchar_blocks()
     try:
         os.remove(text_file_path)
         pass
     except:
         pass
+    return translation_succeded
 
 def translate_docx():
     translation_array = []
+    translation_succeded = True
 
     if engine_method == 'textfile':
         google_translate_from_text_file()
@@ -3091,7 +3125,9 @@ def translate_docx():
 
     # For both deepl and google translate
     if engine_method == "phrasesblock":
-        translate_from_phrasesblock()
+        translation_succeded = translate_from_phrasesblock()
+
+    return translation_succeded
 
 def get_translation_and_replace_after():
     global from_text_by_phrase_separator_table, to_text_by_phrase_separator_table, numerrors_deepl, use_api
@@ -3103,7 +3139,7 @@ def get_translation_and_replace_after():
 
     for i, line in enumerate(from_text_table):
         item = from_text_by_phrase_separator_table[i]
-        item.strip()
+        item = item.strip()
         from_language = src_lang
         phrase_separator_removed_str = ''
 
@@ -3170,8 +3206,11 @@ def get_translation_and_replace_after():
                         print("phrase_no = %d" % phrase_no)
                         web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
                 else:
-                    web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
-                #
+                    if engine_method == "singlephrase" and translation_engine == 'deepl':
+                        translation_succeded, web_translation_separators  = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
+                    else:
+                        web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
+
                 #web_translation_separators = translation.text
                 phrase_separator_removed_str = p_remove_double_spaces.sub(' ', web_translation_separators)
 
@@ -3685,16 +3724,28 @@ def save_docx_file():
 
 
 def main() -> int:
-    global E_mail_str, end_time, elapsed_time
-
-    create_webdriver()
+    global E_mail_str, end_time, elapsed_time, translation_engine, engine_method
+    translation_succeded = False
 
     set_translation_function()
     initialize_translation_memory_xlsx()
 
     read_and_parse_docx_document()
 
-    translate_docx()
+    create_webdriver()
+
+
+    translation_succeded = translate_docx()
+
+    if translation_succeded == False and translation_engine == 'deepl' and engine_method == 'phrasesblock':
+        engine_method = 'singlephrase'
+        set_translation_function()
+        try:
+            driver.close()
+            driver.quit()
+        except:
+            pass
+        create_webdriver()
 
     get_translation_and_replace_after()
 
