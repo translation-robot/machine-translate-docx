@@ -1,8 +1,19 @@
 
 2022-05-15
-* Debug other language to english using google and html file
-* Add grey text detection from shading, now only highlight are detected, shading are ignored
-* 
+* Debug other language to english using google and html file : OK
+* Add grey text detection from shading, now only highlight are detected, shading are ignored : no quick fix
+
+2022-06-12 TO DO:
+* Checking version online for updates via javascript and github pages
+* Externalizing setting via json file and checking for updates on github pages (usefull for deepl button ID changing)
+* Adding online logging:
+	* Error to google forms
+	* Failed update statistics to google forms
+* Split get_translation_and_replace_after in 2 functions
+	* Do translation
+	* Replace_after_translation
+	
+
 
 
  
