@@ -1703,8 +1703,9 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
             # Added on version 2022-05-31
             copy_translation_element = "div:nth-child(5)"
-            copy_translation_button = WebDriverWait(driver, 4).until(
+            copy_translation_button = WebDriverWait(driver, 6).until(
                 lambda driver: driver.find_element_by_css_selector(copy_translation_element))
+
         except:
             try:
                 # Version 2022-03-09
@@ -1733,11 +1734,11 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 attrs = driver.execute_script('var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;', busybox)
                 timeout_busy_translating -=1
 
-                deepl_usage_limit_reached_element = "//button[contains(.,'Try Pro for 30 days free')]"
+                deepl_usage_limit_reached_element = "//button[contains(.,'Back to Translator')]"
                 try:
                     deepl_usage_limit_reached_button = WebDriverWait(driver, 0.05).until(
                         lambda driver: driver.find_element_by_xpath(deepl_usage_limit_reached_element))
-                    print("Here")
+                    deepl_usage_limit_reached_button.click()
                     return False, ""
                 except:
                     pass
@@ -1745,11 +1746,12 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             var = traceback.format_exc()
 
             # Look for usage limit reached, and try pro for 30 days
-            deepl_usage_limit_reached_element = "//button[contains(.,'Try Pro for 30 days free')]"
+            deepl_usage_limit_reached_element = "//button[contains(.,'Back to Translator')]"
             try:
                 deepl_usage_limit_reached_button = WebDriverWait(driver, 0.05).until(
                     lambda driver: driver.find_element_by_xpath(deepl_usage_limit_reached_element))
                 print("Error : deepl usage limit reached")
+                deepl_usage_limit_reached_button.click()
                 return False, ""
             except:
                 pass
