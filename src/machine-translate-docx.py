@@ -33,7 +33,6 @@ import pyderman
 
 from screeninfo import get_monitors
 
-from googletrans import Translator
 
 from selenium import webdriver
 from selenium.webdriver import Firefox, FirefoxOptions
@@ -748,7 +747,7 @@ cjk_segmenter = tinysegmenter.TinySegmenter()
 #thai_segmenter = thai_tokenizer_tokenizer()
 #word_tokenize(text)
 
-translator = Translator(service_urls=['translate.google.com'], user_agent='Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0')
+#translator = Translator(service_urls=['translate.google.com'], user_agent='Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0')
 #user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36')
 
 #driver = webdriver.Chrome()
@@ -1797,7 +1796,8 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     if mo:
                         try:
                             if bar is None:
-                                bar = progressbar.ProgressBar(max_value=100)
+                                bar = progressbar.ProgressBar().start()
+                                bar.maxval = 100
                             block_previous_translation_percent_done = block_translation_percent_done
                             block_translation_percent_done = mo.group(1)
                             if block_previous_translation_percent_done != block_translation_percent_done:
@@ -3735,7 +3735,6 @@ def main() -> int:
     read_and_parse_docx_document()
 
     create_webdriver()
-
 
     translation_succeded = translate_docx()
 
