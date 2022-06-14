@@ -1795,9 +1795,9 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     mo = re.search(search_percent_re, page_source_str)
                     if mo:
                         try:
-                            if bar is None:
-                                bar = progressbar.ProgressBar().start()
-                                bar.maxval = 100
+                            bar = progressbar.ProgressBar().start()
+                            bar.maxval = 100
+
                             block_previous_translation_percent_done = block_translation_percent_done
                             block_translation_percent_done = mo.group(1)
                             if block_previous_translation_percent_done != block_translation_percent_done:
@@ -1810,6 +1810,8 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
                 if bar is not None:
                     bar.update(100)
+                    bar = None
+                    print("")
                 
                 #print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
                 #print(driver.page_source)
