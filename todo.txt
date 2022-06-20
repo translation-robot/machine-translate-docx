@@ -12,6 +12,7 @@
 * Split get_translation_and_replace_after in 2 functions
 	* Do translation
 	* Replace_after_translation
+	* Add do not split to tokenize_text_to_array functions
 	
 
 
