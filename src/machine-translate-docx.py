@@ -2109,25 +2109,30 @@ def join_from_lines(line_start, line_end, separator_str):
     #print "joined_str (%d, %d)=%s<br>" % (line_start, line_end, joined_str)
     return joined_str
 
-
-def divide(text, width):
-    global dest_lang
+def tokenize_text_to_array(text, lang_code):
+    lang_code = lang_code + ""
+    lang_code = lang_code.lower()
+    words = []
     # In japanese tokenize words
-    print("Divide into max %d size lines" % (width))
-    if dest_lang.lower() == 'ja' or dest_lang.lower() == 'zh-cn' or dest_lang.lower() == 'zh' or dest_lang.lower() == 'zh-tw' or dest_lang.lower() == 'ko':
+    if lang_code == 'ja' or lang_code== 'zh-cn' or lang_code == 'zh' or lang_code == 'zh-tw' or lang_code == 'ko':
         words = cjk_segmenter.tokenize(text)
     # In other languages, just use spaces
-    elif dest_lang.lower() == 'th':
+    elif lang_code == 'th':
         #words = thai_segmenter(text)
         words = word_tokenize(text)
     # In other languages, just use spaces
     else:
         #xtm.tokenize_phrase(text, dest_lang)
         words = text.split()
+    return words
 
-    count = len(words)
+def divide_array(words_array, dest_lang, width):
+    dest_lang = dest_lang.lower()
+
+    print("Divide into max %d size lines" % (width))
+    count = len(words_array)
     offsets = [0]
-    for w in words:
+    for w in words_array:
         offsets.append(offsets[-1] + len(w))
 
     minima = [0] + [10 ** 20] * count
@@ -2177,18 +2182,17 @@ def divide(text, width):
     j = count
     while j > 0:
         i = breaks[j]
-        # In japanese just join words without adding any spaces
-        if dest_lang.lower() == 'ja' or dest_lang.lower() == 'zh-cn' or dest_lang.lower() == 'zh-tw' or dest_lang.lower() == 'ko' \
-                or dest_lang.lower() == 'th':
-            lines.append(''.join(words[i:j]))
-        # In other languages, join words using a space
+        # In japanese just join words_array without adding any spaces
+        if dest_lang == 'ja' or dest_lang == 'zh-cn' or dest_lang == 'zh-tw' or dest_lang == 'ko' \
+                or dest_lang == 'th':
+            lines.append(''.join(words_array[i:j]))
+        # In other languages, join words_array using a space
         else:
-            lines.append(' '.join(words[i:j]))
+            lines.append(' '.join(words_array[i:j]))
 
         j = i
     lines.reverse()
     return lines
-
 
 def split_phrases():
     n_last_row_phrase = 3
@@ -3291,10 +3295,10 @@ def document_split_phrases():
             print("number of words: %d" % (phrase_number_of_words))
             docxfile_table_number_of_words = docxfile_table_number_of_words + phrase_number_of_words
             try:
-
-                remaining_lines = to_text_by_phrase_separator_table[i]
-                lines = remaining_lines.split(line_separator_nospace_str)
-                str_translation_len = len(remaining_lines)
+                current_line = to_text_by_phrase_separator_table[i]
+                # Using () as separator for splitting phrases, not used anymore
+                #lines = current_line.split(line_separator_nospace_str)
+                str_translation_len = len(current_line)
 
                 try:
                     if str_translation_len <= 0:
@@ -3314,7 +3318,8 @@ def document_split_phrases():
 
                 if str_line_average > MAX_LINE_SIZE:
                     str_line_average = MAX_LINE_SIZE
-                lines_divided = divide(remaining_lines, str_line_average + 4)
+                current_phrase_tokenized_array = tokenize_text_to_array(current_line, dest_lang)
+                lines_divided = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
 
                 #print "lines(%d)=%s<br>" % (len(lines), lines)
                 number_lines = len(lines_divided)
@@ -3323,8 +3328,8 @@ def document_split_phrases():
                 while (number_lines > str_nb_lines) and (divide_max_try > 0):
                     str_line_average += 1
                     print("Too many lines in split : %d, max %d ..... increasing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
-                    lines_divided_attempt = divide(remaining_lines, str_line_average + 4)
-                    lines_divided = divide(remaining_lines, str_line_average + 4)
+                    lines_divided_attempt = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
+                    lines_divided = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
                     number_lines = len(lines_divided_attempt)
                     #print("   lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
                     divide_max_try = divide_max_try - 1
@@ -3335,7 +3340,7 @@ def document_split_phrases():
                 while (number_lines < str_nb_lines) and (number_lines > 1) and (divide_max_try > 0):
                     str_line_average = str_line_average - 1
                     print("Too few lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
-                    lines_divided_attempt = divide(remaining_lines, str_line_average + 4)
+                    lines_divided_attempt = divide_array(current_line, dest_lang, str_line_average + 4)
                     number_lines = len(lines_divided_attempt)
                     if number_lines <= str_nb_lines:
                         lines_divided = lines_divided_attempt
