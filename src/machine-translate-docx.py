@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-06-12"
+PROGRAM_VERSION="2022-06-23"
 # Day 0 is October 3rd 2017
 
 import pprint
@@ -2112,6 +2112,7 @@ def join_from_lines(line_start, line_end, separator_str):
 def tokenize_text_to_array(text, lang_code):
     lang_code = lang_code + ""
     lang_code = lang_code.lower()
+
     words = []
     # In japanese tokenize words
     if lang_code == 'ja' or lang_code== 'zh-cn' or lang_code == 'zh' or lang_code == 'zh-tw' or lang_code == 'ko':
@@ -2123,7 +2124,17 @@ def tokenize_text_to_array(text, lang_code):
     # In other languages, just use spaces
     else:
         #xtm.tokenize_phrase(text, dest_lang)
-        words = text.split()
+
+        # search do not split here
+        #xtm.pprint_translation_memory_list()
+
+        # Old simple split method replaced by tokenize_phrase method having do not split
+        # words = text.split()
+
+        words = xtm.tokenize_phrase(text, lang_code)
+        #input("Wait, remove tokenize_phrase here..")
+
+
     return words
 
 def divide_array(words_array, dest_lang, width):

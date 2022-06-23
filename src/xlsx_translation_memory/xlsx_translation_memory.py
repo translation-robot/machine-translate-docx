@@ -218,7 +218,7 @@ class xlsx_translation_memory():
             print("ERROR: %s" % (var))
         return text_replaced, nb_replacements
 
-    def tokenize_phrase(selfself, text, dest_lang):
+    def tokenize_phrase(self, text, dest_lang):
         len_text = 0
         try:
             len_text = len(text)
@@ -234,14 +234,89 @@ class xlsx_translation_memory():
             words = word_tokenize(text)
         # In other languages, just use spaces
         else:
-            words = text.split()
+            # Old simple tokenizer used split
+            #words = text.split()
+
             #input("Setting do not split array values")
+            try:
+                # print("Search and replace text '%s'" % (text_replaced))
+                se_no = 1
+                sheet_name = "keep_on_same_line"
+                nb_replacements = 0
+                sheet_name = sheet_name.lower()
+                text_replaced = text
+                text_len = len(text)
+                text_do_not_split_pos_array = [0] * (text_len)
+                for search_do_not_replace_item in self.worksheets_search_and_replace_dictionary[sheet_name]:
+                    # print("Search '%s' and replace '%s' # %d" % (search_do_not_replace_item.Search , search_do_not_replace_item.Replace ,se_no))
+                    # print("Search and replace # %d" % (se_no))
+
+                    iterator_do_not_replace_match = search_do_not_replace_item.RegularExpressionCompiled.finditer(text)
+                    nb_match_do_not_split = 0
+                    #print("nb_match_do_not_split: %d" % (nb_match_do_not_split))
+                    for match in iterator_do_not_replace_match:
+                        nb_match_do_not_split = nb_match_do_not_split + 1
+                        match_start_pos = match.start()
+                        match_end_pos = match.end()
+                        #print(match.span())
+                        #print(match.start())
+                        #print(match.end())
+                        for char_pos_dont_split in range(match_start_pos, match_end_pos):
+                            text_do_not_split_pos_array[char_pos_dont_split] = 1
+                        #print("search : %s" % (search_do_not_replace_item.Search))
+                        #print("'" + text[match.start():match.end()] + "'")
+                        #print(text_do_not_split_pos_array)
+                        #input("Here in search do not split")
+                        pass
+
+                spaces_pattern = re.compile(r' +')
+                iterator_spaces = spaces_pattern.finditer(text)
+                split_text_array = []
+                text_current_pos = 0
+                for space_match in iterator_spaces:
+                    spaces_match_start_pos = space_match.start()
+                    spaces_match_end_pos = space_match.end()
+                    #print(space_match.span())
+                    #print(space_match.start())
+                    #print(space_match.end())
+                    #print("text_current_pos: %d" % (text_current_pos))
+                    #print("text current: '%s'" % (text[text_current_pos:spaces_match_start_pos]))
+                    #print(text_do_not_split_pos_array)
+                    if text_do_not_split_pos_array[spaces_match_start_pos] == 0:
+                        do_not_split_token = text[text_current_pos:spaces_match_start_pos]
+                        #print("do_not_split_token : '%s'" % (do_not_split_token))
+                        split_text_array.append(do_not_split_token)
+                        text_current_pos = spaces_match_end_pos
+                        #print("Remaining: '%s'" % (text[text_current_pos:]))
+                        pass
+
+                    #print("split_text_array:")
+                    #print(split_text_array)
+                if text_len > text_current_pos:
+                    do_not_split_token = text[text_current_pos:]
+                    #print("do_not_split_token : '%s'" % (do_not_split_token))
+                    split_text_array.append(do_not_split_token)
+
+                #print("text: %s" % (text))
+                #print("split_text_array:")
+                #print(split_text_array)
+                #print(text_do_not_split_pos_array)
+                words = split_text_array
+            except Exception:
+                print("Error reading excel translation memory file.")
+                var = traceback.format_exc()
+                print("ERROR: %s" % (var))
+            #input("This function is not complete, use only for debug")
         return words
 
     def pprint_translation_memory_list(self):
         """Method pprint_translation_memory_list pprint the worksheets_search_and_replace_dictionary"""
         pprint (self.worksheets_search_and_replace_dictionary['before'])
         pprint (self.worksheets_search_and_replace_dictionary['after'])
+        try:
+            pprint (self.worksheets_search_and_replace_dictionary['keep_on_same_line'])
+        except:
+            pass
 
     def get_sheet_number_of_replacements(self, sheet_name):
         """This method prints the number of replaced search items
