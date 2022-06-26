@@ -67,7 +67,11 @@ class xlsx_translation_memory():
             
             search_end_word_boundary = r'.+\b$'
             re_end_word_boundary = re.compile(search_end_word_boundary)
-			
+
+            sheet_name = 'keep_on_same_line'
+            if not bool(self.worksheets_search_and_replace_dictionary.get(sheet_name)):
+                print("Sheet '%s' not found in excel file '%s'" % (sheet_name, self.xlsx_path))
+
             for s in range(len(self.wb.sheetnames)):
                 self.wb.active = s
                 self.ws = self.wb.active
@@ -247,6 +251,11 @@ class xlsx_translation_memory():
                 text_replaced = text
                 text_len = len(text)
                 text_do_not_split_pos_array = [0] * (text_len)
+
+                if not bool(self.worksheets_search_and_replace_dictionary.get(sheet_name)):
+                    words = text.split()
+                    return words
+
                 for search_do_not_replace_item in self.worksheets_search_and_replace_dictionary[sheet_name]:
                     # print("Search '%s' and replace '%s' # %d" % (search_do_not_replace_item.Search , search_do_not_replace_item.Replace ,se_no))
                     # print("Search and replace # %d" % (se_no))
