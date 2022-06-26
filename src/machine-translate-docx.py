@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-06-23"
+PROGRAM_VERSION="2022-06-26"
 # Day 0 is October 3rd 2017
 
 import pprint
