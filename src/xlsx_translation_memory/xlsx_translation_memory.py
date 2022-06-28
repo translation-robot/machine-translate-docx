@@ -25,6 +25,7 @@ class SearchAndReplace(NamedTuple):
     RegularExpressionCompiled: Any
     FollowedByAnotherWord : bool
     number_replacement: int
+    number_do_not_split: int
 
 class xlsx_translation_memory():
     """class xlsx_translation_memory
@@ -155,6 +156,7 @@ class xlsx_translation_memory():
                         FollowedByAnotherWord = False
 
                     number_replacement = 0
+                    number_do_not_split = 0
                     
                     CaseSensitive = row[3]
                     if self.string_is_yes(CaseSensitive):
@@ -172,7 +174,8 @@ class xlsx_translation_memory():
                             var = traceback.format_exc()
                             print(var)
                         
-                        sr = SearchAndReplace(Search, SearchRegularExpression, Replace, RegularExpression, CaseSensitive, IgnoreWordBoundary, KeepSpacesAtTheEndOfSearch, RegularExpressionCompiled, FollowedByAnotherWord, number_replacement)
+                        sr = SearchAndReplace(Search, SearchRegularExpression, Replace, RegularExpression, CaseSensitive, IgnoreWordBoundary,
+                                              KeepSpacesAtTheEndOfSearch,RegularExpressionCompiled, FollowedByAnotherWord, number_replacement, number_do_not_split)
                         #if sheet_name == "keep_on_same_line":
                         #    print("search=%s" % (sr.Search))
                         search_and_replace_list.append(sr)
@@ -256,15 +259,20 @@ class xlsx_translation_memory():
                     words = text.split()
                     return words
 
-                for search_do_not_replace_item in self.worksheets_search_and_replace_dictionary[sheet_name]:
-                    # print("Search '%s' and replace '%s' # %d" % (search_do_not_replace_item.Search , search_do_not_replace_item.Replace ,se_no))
+                se_no = 1
+                for search_do_not_split_item in self.worksheets_search_and_replace_dictionary[sheet_name]:
+                    # print("Search '%s' and replace '%s' # %d" % (search_do_not_split_item.Search , search_do_not_split_item.Replace ,se_no))
                     # print("Search and replace # %d" % (se_no))
 
-                    iterator_do_not_replace_match = search_do_not_replace_item.RegularExpressionCompiled.finditer(text)
+                    iterator_do_not_replace_match = search_do_not_split_item.RegularExpressionCompiled.finditer(text)
                     nb_match_do_not_split = 0
                     #print("nb_match_do_not_split: %d" % (nb_match_do_not_split))
                     for match in iterator_do_not_replace_match:
                         nb_match_do_not_split = nb_match_do_not_split + 1
+
+                        search_do_not_split_item = search_do_not_split_item._replace(
+                            number_do_not_split=search_do_not_split_item.number_do_not_split + 1)
+                        self.worksheets_search_and_replace_dictionary[sheet_name][se_no-1] = search_do_not_split_item
                         match_start_pos = match.start()
                         match_end_pos = match.end()
                         #print(match.span())
@@ -272,11 +280,11 @@ class xlsx_translation_memory():
                         #print(match.end())
                         for char_pos_dont_split in range(match_start_pos, match_end_pos):
                             text_do_not_split_pos_array[char_pos_dont_split] = 1
-                        #print("search : %s" % (search_do_not_replace_item.Search))
+                        #print("search : %s" % (search_do_not_split_item.Search))
                         #print("'" + text[match.start():match.end()] + "'")
                         #print(text_do_not_split_pos_array)
                         #input("Here in search do not split")
-                        pass
+                    se_no = se_no + 1
 
                 spaces_pattern = re.compile(r' +')
                 iterator_spaces = spaces_pattern.finditer(text)
@@ -327,6 +335,23 @@ class xlsx_translation_memory():
         except:
             pass
 
+    def get_sheet_number_of_keep_on_same_line_matches(self, sheet_name):
+        """This method prints the number of replaced search items
+        and the number of it they were replaced"""
+        nb_do_not_split = 0
+        sheet_name = sheet_name.lower()
+        try:
+            #print("Search and replace text '%s'" % (text_replaced))
+            se_no = 1
+            for keep_on_same_line_item in self.worksheets_search_and_replace_dictionary[sheet_name]:
+                nb_do_not_split= self.worksheets_search_and_replace_dictionary[sheet_name][se_no-1].number_do_not_split + nb_do_not_split
+                se_no = se_no + 1
+        except Exception:
+            print ("Error in get_sheet_number_of_keep_on_same_line_matches.")
+            var = traceback.format_exc()
+            print("ERROR: %s" % (var))
+        return nb_do_not_split
+
     def get_sheet_number_of_replacements(self, sheet_name):
         """This method prints the number of replaced search items
         and the number of it they were replaced"""
@@ -364,6 +389,41 @@ class xlsx_translation_memory():
                     se_no = se_no + 1
                 number_of_replacements = self.get_sheet_number_of_replacements(sheet_name)
                 print ("\nNumber of replacements using sheet '%s' : %d from a list of %d entries.\n" % (sheet_name, number_of_replacements, len(self.worksheets_search_and_replace_dictionary[sheet_name])))
+        except Exception:
+            print ("Error calling methof print_replaced_items_number_of_replacements")
+            var = traceback.format_exc()
+            print("ERROR: %s" % (var))
+
+    def print_do_not_split_number_of_matches(self, sheet_name):
+        """This method Method print_replaced_items_number_of_replacements prints the number of replaced search items
+        and the number of it they were replaced"""
+        sheet_name = sheet_name.lower()
+        total_number_do_not_split = 0
+        try:
+            if self.wb is None:
+                print ("\nTranslation search and replace file '%s' missing : ignored." % (self.xlsx_path))
+            else:
+                print ("\nCharacter string do not split number matches '%s' :\n" % (sheet_name))
+                se_no = 1
+
+                for do_not_split_item in self.worksheets_search_and_replace_dictionary[sheet_name]:
+                    if do_not_split_item.number_do_not_split > 0:
+                        total_number_do_not_split = total_number_do_not_split + do_not_split_item.number_do_not_split
+                        if do_not_split_item.FollowedByAnotherWord == True:
+                            followed_by_another_word = ", followed by another word, "
+                        else:
+                            followed_by_another_word = ""
+                        if do_not_split_item.number_do_not_split > 1:
+                            str_print =  "Keep on same line '%s'%s(excel line %d) matched %d times."
+                        else:
+                            str_print =  "Keep on same line '%s' %s(excel line %d) matched %d time."
+                        print (str_print % (do_not_split_item.Search , followed_by_another_word, se_no + 1, do_not_split_item.number_do_not_split))
+                    se_no = se_no + 1
+
+                number_do_not_split = self.get_sheet_number_of_keep_on_same_line_matches(sheet_name)
+
+                print ("\nNumber of keep on the same line using sheet '%s' : %d from a list of %d entries.\n" % (
+                    sheet_name, total_number_do_not_split, len(self.worksheets_search_and_replace_dictionary[sheet_name])))
         except Exception:
             print ("Error calling methof print_replaced_items_number_of_replacements")
             var = traceback.format_exc()

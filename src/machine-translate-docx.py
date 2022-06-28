@@ -3791,6 +3791,7 @@ def main() -> int:
     if xlsxreplacefile is not None:
         xtm.print_replaced_items_number_of_replacements('before')
         xtm.print_replaced_items_number_of_replacements('after')
+        xtm.print_do_not_split_number_of_matches('keep_on_same_line')
 
     print("\nTranslation ended, file saved. Elasped time: %s (h:mm:ss.mmm)" % (elapsed_time))
 
