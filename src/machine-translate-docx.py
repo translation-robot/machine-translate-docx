@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-06-26"
+PROGRAM_VERSION="2022-07-04"
 # Day 0 is October 3rd 2017
 
 import pprint
@@ -3552,6 +3552,8 @@ def run_statistics():
             replacebeforelistreplaced = xtm.get_sheet_number_of_replacements('before')
             replaceafterlistsize = len(xtm.worksheets_search_and_replace_dictionary['after'])
             replaceafterlistreplaced = xtm.get_sheet_number_of_replacements('after')
+            donotsplitlistsize = len(xtm.worksheets_search_and_replace_dictionary['keep_on_same_line'])
+            donotsplitfound = xtm.get_sheet_number_of_do_not_split_match('keep_on_same_line')
         else:
             replacebeforelistsize = ""
             replacebeforelistreplaced = ""
@@ -3629,6 +3631,8 @@ def run_statistics():
                 print("replacebeforelistreplaced: %s" % (replacebeforelistreplaced))
                 print("replaceafterlistsize: %s" % (replaceafterlistsize))
                 print("replaceafterlistreplaced: %s" % (replaceafterlistreplaced))
+                print("donotsplitlistsize: %s" % (donotsplitlistsize))
+                print("donotsplitfound: %s" % (donotsplitfound))
             
             print("str_uname : %s" % (str(platform_uname)))
             # print("platform_uname: %s" % (platform_uname))
@@ -3683,6 +3687,8 @@ def run_statistics():
             "replaceafterlistreplaced" : replaceafterlistreplaced,
             "replaceafterlistsize" : replaceafterlistsize,
             "replaceafterlistreplaced" : replaceafterlistreplaced,
+            "donotsplitlistsize" : donotsplitlistsize,
+            "donotsplitfound" : donotsplitfound,
             "platform_uname" : platform_uname,
             "platform_system" : platform_system,
             "platform_release" : platform_release,

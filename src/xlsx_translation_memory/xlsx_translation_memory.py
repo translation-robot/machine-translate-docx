@@ -369,6 +369,24 @@ class xlsx_translation_memory():
             print("ERROR: %s" % (var))
         return nb_replacements
 
+
+    def get_sheet_number_of_do_not_split_match(self, sheet_name):
+        """This method prints the number of replaced search items
+        and the number of it they were replaced"""
+        nb_do_not_split_match = 0
+        sheet_name = sheet_name.lower()
+        try:
+            #print("Search and replace text '%s'" % (text_replaced))
+            se_no = 1
+            for do_not_spit_item in self.worksheets_search_and_replace_dictionary[sheet_name]:
+                nb_do_not_split_match = self.worksheets_search_and_replace_dictionary[sheet_name][se_no-1].number_do_not_split + nb_do_not_split_match
+                se_no = se_no + 1
+        except Exception:
+            print ("Error in get_sheet_number_of_do_not_split_match.")
+            var = traceback.format_exc()
+            print("ERROR: %s" % (var))
+        return nb_do_not_split_match
+
     def print_replaced_items_number_of_replacements(self, sheet_name):
         """This method Method print_replaced_items_number_of_replacements prints the number of replaced search items
         and the number of it they were replaced"""
