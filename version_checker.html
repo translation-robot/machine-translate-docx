@@ -1,0 +1,121 @@
+<html lang="en">
+<head>
+	<title>Translation Robot Version Checker</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+</head>
+<body>
+<script>
+    function check_versions() {
+	  var program_version = document.getElementsByName('program_version')[0].value
+	  var docxfile = document.getElementsByName('docxfile')[0].value
+	  var docxfile_size = document.getElementsByName('docxfile_size')[0].value
+	  var docxfile_table_number_of_lines = document.getElementsByName('docxfile_table_number_of_lines')[0].value
+	  var docxfile_table_number_of_words = document.getElementsByName('docxfile_table_number_of_words')[0].value
+	  var docxfile_table_number_of_characters = document.getElementsByName('docxfile_table_number_of_characters')[0].value
+	  var docxfile_table_number_of_phrases = document.getElementsByName('docxfile_table_number_of_phrases')[0].value
+	  var docxfile_page_count = document.getElementsByName('docxfile_page_count')[0].value
+	  var action = document.getElementsByName('action')[0].value
+	  var destlang_code = document.getElementsByName('destlang_code')[0].value
+	  var destlang_name = document.getElementsByName('destlang_name')[0].value
+	  var engine = document.getElementsByName('engine')[0].value
+	  var engine_method = document.getElementsByName('engine_method')[0].value
+	  var xlsxreplacefile = document.getElementsByName('xlsxreplacefile')[0].value
+	  var destfont = document.getElementsByName('destfont')[0].value
+	  var split_translation = document.getElementsByName('split_translation')[0].value
+	  var start_time = document.getElementsByName('start_time')[0].value
+	  var end_time = document.getElementsByName('end_time')[0].value
+	  var elapsed_time = document.getElementsByName('elapsed_time')[0].value
+	  var showbrowser = document.getElementsByName('showbrowser')[0].value
+	  var replacebeforelistsize = document.getElementsByName('replacebeforelistsize')[0].value
+	  var replacebeforelistreplaced = document.getElementsByName('replacebeforelistreplaced')[0].value
+	  var replaceafterlistsize = document.getElementsByName('replaceafterlistsize')[0].value
+	  var replaceafterlistreplaced = document.getElementsByName('replaceafterlistreplaced')[0].value
+	  var donotsplitlistsize = document.getElementsByName('donotsplitlistsize')[0].value
+	  var donotsplitfound = document.getElementsByName('donotsplitfound')[0].value
+	  var platform_uname = document.getElementsByName('platform_uname')[0].value
+	  var platform_system = document.getElementsByName('platform_system')[0].value
+	  var platform_node = document.getElementsByName('platform_node')[0].value
+	  var platform_release = document.getElementsByName('platform_release')[0].value
+	  var platform_version = document.getElementsByName('platform_version')[0].value
+	  var platform_machine = document.getElementsByName('platform_machine')[0].value
+	  var platform_processor = document.getElementsByName('platform_processor')[0].value
+	  var cpu_count = document.getElementsByName('cpu_count')[0].value
+	  var mem_total = document.getElementsByName('mem_total')[0].value
+	  var local_time_offset = document.getElementsByName('local_time_offset')[0].value
+	  
+	  var message_text = ""
+	  var message_html = ""
+	  
+	  switch (program_version) {
+		  case '2022-05-31':
+		    message_text = "You are using the latest version"
+			break;
+		  default:
+			message_text = "You are not using the latest version, please download the latest version here:\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
+	  }
+	  
+	  document.getElementById("message_text").innerHTML = message_text;
+	  document.getElementById("message_html").innerHTML = message_text;
+		
+	  return false
+    }
+</script>
+	<h1 lang="en" translate="no">Translation Robot Version Checker</h1>
+
+<span translate="no">
+
+			
+			<form onsubmit="return check_versions(this)">
+			<table>
+			
+            <tr><td>program_version:<td><input type="text" name="program_version">
+            <tr><td>docxfile:<td><input type="text" name="docxfile" value="">
+            <tr><td>docxfile_size:<td><input type="text" name="docxfile_size" value="">
+            <tr><td>docxfile_table_number_of_lines:<td><input type="text" name="docxfile_table_number_of_lines" value="">
+            <tr><td>docxfile_table_number_of_words:<td><input type="text" name="docxfile_table_number_of_words" value="">
+            <tr><td>docxfile_table_number_of_characters:<td><input type="text" name="docxfile_table_number_of_characters" value="">
+
+            <tr><td>docxfile_table_number_of_phrases:<td><input type="text" name="docxfile_table_number_of_phrases" value="">
+			
+			
+            <tr><td>docxfile_page_count:<td><input type="text" name="docxfile_page_count" value="">
+            <tr><td>action:<td><input type="text" name="action" value="">
+            <tr><td>destlang_code:<td><input type="text" name="destlang_code" value="">
+            <tr><td>destlang_name:<td><input type="text" name="destlang_name" value="">
+            <tr><td>engine:<td><input type="text" name="engine" value="">
+            <tr><td>engine_method:<td><input type="text" name="engine_method" value="">
+            <tr><td>xlsxreplacefile:<td><input type="text" name="xlsxreplacefile" value="">
+            <tr><td>destfont:<td><input type="text" name="destfont" value="">
+            <tr><td>split_translation:<td><input type="text" name="split_translation" value="">
+            <tr><td>start_time:<td><input type="text" name="start_time" value="">
+            <tr><td>end_time:<td><input type="text" name="end_time" value="">
+            <tr><td>elapsed_time:<td><input type="text" name="elapsed_time" value="">
+            <tr><td>showbrowser:<td><input type="text" name="showbrowser" value="">
+            <tr><td>replacebeforelistsize:<td><input type="text" name="replacebeforelistsize" value="">
+            <tr><td>replacebeforelistreplaced:<td><input type="text" name="replacebeforelistreplaced" value="">
+            <tr><td>replaceafterlistsize:<td><input type="text" name="replaceafterlistsize" value="">
+            <tr><td>replaceafterlistreplaced:<td><input type="text" name="replaceafterlistreplaced" value="">
+            <tr><td>donotsplitlistsize:<td><input type="text" name="donotsplitlistsize" value="">
+            <tr><td>donotsplitfound:<td><input type="text" name="donotsplitfound" value="">
+            <tr><td>platform_uname:<td><input type="text" name="platform_uname" value="">
+            <tr><td>platform_system:<td><input type="text" name="platform_system" value="">
+            <tr><td>platform_node:<td><input type="text" name="platform_node" value="">
+            <tr><td>platform_release:<td><input type="text" name="platform_release" value="">
+            <tr><td>platform_version:<td><input type="text" name="platform_version" value="">
+            <tr><td>platform_machine:<td><input type="text" name="platform_machine" value="">
+            <tr><td>platform_processor:<td><input type="text" name="platform_processor" value="">
+            <tr><td>cpu_count:<td><input type="text" name="cpu_count" value="">
+			<tr><td>mem_total:<td><input type="text" name="mem_total" value="">
+			<tr><td>local_time_offset:<td><input type="text" name="local_time_offset" value="">
+			
+			
+            <tr><td><input type="hidden" name="form_submitted" value="1" />
+			<td><div id="divSubmit" styleold="display: none;"><input type="submit"></div>
+            </form>
+			</table>
+			<div id="message_text"></div>
+			<div id="message_html"></div>
+</span>
+</body> 
+</html>
