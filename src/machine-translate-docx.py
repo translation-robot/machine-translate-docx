@@ -2,7 +2,8 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-07-04"
+PROGRAM_VERSION="2022-12-05"
+json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration.json'
 # Day 0 is October 3rd 2017
 
 import pprint
@@ -19,6 +20,15 @@ import time
 import codecs
 import urllib
 import urllib.request
+import requests
+import json
+
+# Future development : load configuration from a json file on internet (github for example)
+#json_configuration_content = requests.get(json_configuration_url).content
+#j = json.loads(json_configuration_content)
+#print (json_configuration_content)
+#print ("URL: %s" % (j["javascript_version_checker_url"]))
+#input('Press enter')
 
 from inspect import currentframe, getframeinfo
 import chardet
@@ -387,7 +397,7 @@ html_file_path = ''
 
 nb_character_total = 0
 MAX_LINE_SIZE = 36
-MAX_TRANSLATION_BLOCK_SIZE = 5000
+MAX_TRANSLATION_BLOCK_SIZE = 3000
 
 deepl_sleep_wait_translation_seconds = 0.2
 translation_errors_count = 0
@@ -421,9 +431,10 @@ if dest_lang == 'zh-cn':
 if dest_lang == 'zh-tw':
     dest_lang = 'zh-TW'
 print("*********************************************************")
-print("*  machine-translate-docx program version : %s  *" % (PROGRAM_VERSION))
+print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
 print("*********************************************************")
 
+print("Python programming language %s" % (platform.python_version()))
 
 src_lang_name = (google_translate_lang_codes.get(src_lang))
 if src_lang_name is None:
@@ -678,7 +689,7 @@ if splitted_filename_size > 1:
     word_file_to_translate_extension = splitted_filename[splitted_filename_size-1].lower()
 
 if word_file_to_translate_extension == ".docx":
-    docxdoc = Document(word_file_to_translate)
+    docxdoc = docx.Document(word_file_to_translate)
     styles = docxdoc.styles
     
     if dest_lang_tag != '':
@@ -3802,8 +3813,21 @@ def main() -> int:
     print("\nTranslation ended, file saved. Elasped time: %s (h:mm:ss.mmm)" % (elapsed_time))
 
     try:
+        #driver.maximize_window()
+        print("Closing chrome browser...")
+        driver_before_close_time = datetime.datetime.now()
         driver.close()
+        driver_after_close_time = datetime.datetime.now()
         driver.quit()
+        driver_after_quit_time = datetime.datetime.now()
+
+        driver_close_time = driver_after_close_time - driver_before_close_time
+        driver_quit_time = driver_after_quit_time - driver_after_close_time
+        driver_close_quit_time = driver_after_quit_time - driver_before_close_time
+
+        #print("\nDriver close time: %s (h:mm:ss.mmm)" % (driver_close_time))
+        #print("\nDriver quit time: %s (h:mm:ss.mmm)" % (driver_quit_time))
+        #print("\nDriver close and quit time: %s (h:mm:ss.mmm)" % (driver_close_quit_time))
     except:
         pass
 
