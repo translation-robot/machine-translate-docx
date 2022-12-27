@@ -389,7 +389,8 @@ line_separator_regex_str = ' ?\(\) ?'
 
 # ... = \u2026 Horizontal ellipsis
 # ”  = \u201D Right double quotation mark
-eol_array = ['\. {0,}$', '\! {0,}$', '\? {0,}$', '[\.\!\?\'] ?["”\'\)] {0,}$', u'\u2026 {0,}$']
+# '\。{0,}$',
+eol_array = ['\. {0,}$', '\! {0,}$', '\? {0,}$',  '[\.\!\?\'] ?["”\'\)] {0,}$', u'\u2026 {0,}$']
 eol_conditional_array = ['\" {0,}$', u'\u201D {0,}$']
 bol_array = ['^[A-Z]']
 
@@ -782,7 +783,8 @@ def get_translated_cells_content(lineno, to_translate):
     else:
         cell_space = ' '
 
-    for row_n in range(lineno, from_text_nb_lines_in_phrase[lineno] + lineno - 1):
+    last_row_n = from_text_nb_lines_in_phrase[lineno] + lineno
+    for row_n in range(lineno, last_row_n):
         #cell_text = docxdoc.tables[0].cell(row_n, 2).text
         cell_text = table_cells[row_n][2].text
         cell_text = cell_text.strip()
@@ -1969,7 +1971,7 @@ def initialize_translation_memory_xlsx():
         xtm = xlsx_translation_memory.xlsx_translation_memory(xlsxreplacefile)
         print("")
     else:
-        xtm = None
+        xtm = xlsx_translation_memory.xlsx_translation_memory(None)
 
 
 def is_end_of_line(line):
@@ -3576,6 +3578,8 @@ def run_statistics():
             replacebeforelistreplaced = ""
             replaceafterlistsize = ""
             replaceafterlistreplaced = ""
+            donotsplitlistsize = ""
+            donotsplitfound = ""
         
         platform_uname = platform.uname()
         platform_system = platform.system()

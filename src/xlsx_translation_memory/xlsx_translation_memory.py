@@ -519,27 +519,34 @@ class xlsx_translation_memory():
         self.cjk_segmenter = tinysegmenter.TinySegmenter()
 
         print ("Init XLSXTranslationMemory")
-        if not os.path.exists(xlsx_path) :
-            print ("ERROR: File not found: %s" % (xlsx_path))
+        if xlsx_path is None :
             self.wb = None
             self.ws = None
             self.worksheets_search_and_replace_dictionary = {}
         else:
-            self.xlsx_splitted_filename = os.path.splitext(os.path.basename(xlsx_path))
-            
-            # number of segment separated by dot in the docx filename
-            self.xlsx_splitted_filename_size = len(self.xlsx_splitted_filename)
-            
-            if self.xlsx_splitted_filename_size > 1:
-                self.xlsx_file_to_translate_extension = self.xlsx_splitted_filename[self.xlsx_splitted_filename_size-1].lower()
-             
-            if self.xlsx_file_to_translate_extension == ".xlsx":
-                self.load_xlsx_translation_memory(xlsx_path)
-            else:
-                print ("ERROR: translation memory file is not xlsx file: %s" % (xlsx_path))
+            try:
+                if not os.path.exists(xlsx_path):
+                    print ("ERROR: File not found: %s" % (xlsx_path))
+                else:
+                    self.xlsx_splitted_filename = os.path.splitext(os.path.basename(xlsx_path))
+
+                    # number of segment separated by dot in the docx filename
+                    self.xlsx_splitted_filename_size = len(self.xlsx_splitted_filename)
+
+                    if self.xlsx_splitted_filename_size > 1:
+                        self.xlsx_file_to_translate_extension = self.xlsx_splitted_filename[
+                            self.xlsx_splitted_filename_size - 1].lower()
+
+                    if self.xlsx_file_to_translate_extension == ".xlsx":
+                        self.load_xlsx_translation_memory(xlsx_path)
+                    else:
+                        print("ERROR: translation memory file is not xlsx file: %s" % (xlsx_path))
+                        self.wb = None
+                        self.ws = None
+            except Exception:
                 self.wb = None
                 self.ws = None
-
+                self.worksheets_search_and_replace_dictionary = {}
 
 def main():
     start = timeit.timeit()
