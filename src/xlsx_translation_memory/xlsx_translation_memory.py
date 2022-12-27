@@ -194,6 +194,13 @@ class xlsx_translation_memory():
         and does the search each in text_to_replace string"""
         nb_replacements = 0
         sheet_name = sheet_name.lower()
+
+        try:
+            if self.worksheets_search_and_replace_dictionary[sheet_name] is None:
+                print("Excel worksheet %s was not found %s." % (sheet_name))
+        except Exception:
+            return text_to_replace, 0
+
         text_replaced = text_to_replace
         try:
             #print("Search and replace text '%s'" % (text_replaced))
@@ -352,11 +359,35 @@ class xlsx_translation_memory():
             print("ERROR: %s" % (var))
         return nb_do_not_split
 
+    def get_sheet_number_lines(self, sheet_name):
+        """This method prints the number of lines in
+        the excel sheet without counting the header line"""
+        nb_lines = 0
+        sheet_name = sheet_name.lower()
+
+        try:
+            nb_lines = len(self.worksheets_search_and_replace_dictionary[sheet_name])
+        except Exception:
+            # Ignore the missing excel sheet and leave the variable nb_lines to 0
+            #print ("Warning, sheet %s does not exist in the excel file." % (sheet_name))
+            var = traceback.format_exc()
+            #print("Warning : %s" % (var))
+
+        return nb_lines
+
     def get_sheet_number_of_replacements(self, sheet_name):
         """This method prints the number of replaced search items
         and the number of it they were replaced"""
         nb_replacements = 0
         sheet_name = sheet_name.lower()
+
+        try:
+            if self.worksheets_search_and_replace_dictionary[sheet_name] is None:
+                #print("Excel worksheet %s was not found %s." % (sheet_name))
+                pass
+        except Exception:
+            return 0
+
         try:
             #print("Search and replace text '%s'" % (text_replaced))
             se_no = 1
@@ -375,6 +406,14 @@ class xlsx_translation_memory():
         and the number of it they were replaced"""
         nb_do_not_split_match = 0
         sheet_name = sheet_name.lower()
+
+        try:
+            if self.worksheets_search_and_replace_dictionary[sheet_name] is None:
+                #print("Excel worksheet %s was not found %s." % (sheet_name))
+                pass
+        except Exception:
+            return 0
+
         try:
             #print("Search and replace text '%s'" % (text_replaced))
             se_no = 1
@@ -382,17 +421,26 @@ class xlsx_translation_memory():
                 nb_do_not_split_match = self.worksheets_search_and_replace_dictionary[sheet_name][se_no-1].number_do_not_split + nb_do_not_split_match
                 se_no = se_no + 1
         except Exception:
-            print ("Error in get_sheet_number_of_do_not_split_match.")
+            print ("\nWarning in get_sheet_number_of_do_not_split_match, sheet '%s' not found in excel file '%s'."
+                   % (sheet_name, self.xlsx_path))
             var = traceback.format_exc()
-            print("ERROR: %s" % (var))
+            print("This will be ignored." % (sheet_name))
         return nb_do_not_split_match
 
     def print_replaced_items_number_of_replacements(self, sheet_name):
         """This method Method print_replaced_items_number_of_replacements prints the number of replaced search items
         and the number of it they were replaced"""
         sheet_name = sheet_name.lower()
+
         try:
-            if self.wb is None:
+            if self.worksheets_search_and_replace_dictionary[sheet_name] is None:
+                #print("Excel worksheet %s was not found %s." % (sheet_name))
+                pass
+        except Exception:
+            return
+
+        try:
+            if self.wb is None or self.worksheets_search_and_replace_dictionary[sheet_name] is None:
                 print ("\nTranslation search and replace file '%s' missing : ignored." % (self.xlsx_path))
             else:
                 print ("\nSearch and replace number of replacements for excel sheet name '%s' :\n" % (sheet_name))
@@ -418,7 +466,7 @@ class xlsx_translation_memory():
         sheet_name = sheet_name.lower()
         total_number_do_not_split = 0
         try:
-            if self.wb is None:
+            if self.wb is None or self.worksheets_search_and_replace_dictionary[sheet_name] is None:
                 print ("\nTranslation search and replace file '%s' missing : ignored." % (self.xlsx_path))
             else:
                 print ("\nCharacter string do not split number matches '%s' :\n" % (sheet_name))
@@ -443,9 +491,9 @@ class xlsx_translation_memory():
                 print ("\nNumber of keep on the same line using sheet '%s' : %d from a list of %d entries.\n" % (
                     sheet_name, total_number_do_not_split, len(self.worksheets_search_and_replace_dictionary[sheet_name])))
         except Exception:
-            print ("Error calling methof print_replaced_items_number_of_replacements")
+            #print ("Warning calling method print_replaced_items_number_of_replacements, sheet %s was not found." % (sheet_name))
             var = traceback.format_exc()
-            print("ERROR: %s" % (var))
+            #print("ERROR: %s" % (var))
 
     def load_xlsx_translation_memory(self, xlsx_path):
         """This method opens the xlsx file"""

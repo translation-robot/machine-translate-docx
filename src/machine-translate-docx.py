@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-12-05"
+PROGRAM_VERSION="2022-12-27"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -694,10 +694,14 @@ if word_file_to_translate_extension == ".docx":
     
     if dest_lang_tag != '':
         styles_element = docxdoc.styles.element
-        rpr_default = styles_element.xpath('./w:docDefaults/w:rPrDefault/w:rPr')[0]
-        lang_default = rpr_default.xpath('w:lang')[0]
-        lang_default.set(docx.oxml.shared.qn('w:val'),dest_lang_tag)
-        lang_default.set(docx.oxml.shared.qn('w:val'),dest_lang_tag)
+        try:
+            # Some office suite like WPS does not handle language tag in a document, ignore it
+            rpr_default = styles_element.xpath('./w:docDefaults/w:rPrDefault/w:rPr')[0]
+            lang_default = rpr_default.xpath('w:lang')[0]
+            lang_default.set(docx.oxml.shared.qn('w:val'),dest_lang_tag)
+        except Exception:
+            # Ignore the language tag of the document, it is not supported by some office suites
+            pass
 
     # Create Right to Left Style if it is not found
     try:
@@ -1886,6 +1890,8 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
         #translation = res
         translation = "\n".join(translated_phrases_array)
+        #print("translation=%s" % (translation))
+        #input("Press enter to continue")
     except Exception:
         var = traceback.format_exc()
         print(var)
@@ -3559,11 +3565,11 @@ def run_statistics():
             xlsxreplacefile_name = ""
         
         if xlsxreplacefile_name != "":
-            replacebeforelistsize = len(xtm.worksheets_search_and_replace_dictionary['before'])
+            replacebeforelistsize = xtm.get_sheet_number_lines('before')
             replacebeforelistreplaced = xtm.get_sheet_number_of_replacements('before')
-            replaceafterlistsize = len(xtm.worksheets_search_and_replace_dictionary['after'])
+            replaceafterlistsize = xtm.get_sheet_number_lines('after')
             replaceafterlistreplaced = xtm.get_sheet_number_of_replacements('after')
-            donotsplitlistsize = len(xtm.worksheets_search_and_replace_dictionary['keep_on_same_line'])
+            donotsplitlistsize = xtm.get_sheet_number_lines('keep_on_same_line')
             donotsplitfound = xtm.get_sheet_number_of_do_not_split_match('keep_on_same_line')
         else:
             replacebeforelistsize = ""
