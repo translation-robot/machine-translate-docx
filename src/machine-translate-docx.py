@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2022-12-27"
+PROGRAM_VERSION="2023-01-29"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -389,8 +389,10 @@ line_separator_regex_str = ' ?\(\) ?'
 
 # ... = \u2026 Horizontal ellipsis
 # ”  = \u201D Right double quotation mark
-# '\。{0,}$',
-eol_array = ['\. {0,}$', '\! {0,}$', '\? {0,}$',  '[\.\!\?\'] ?["”\'\)] {0,}$', u'\u2026 {0,}$']
+eol_array = ['\. {0,}$', '\! {0,}$', '\? {0,}$',  '[\.\!\?\'] ?["”\'\)] {0,}$', u'\u2026 {0,}$',
+             '। {0,}$', # Hindi period
+             '。 {0,}$', '？ {0,}$', '！ {0,}$'# Chinese and Japanese period
+             ]
 eol_conditional_array = ['\" {0,}$', u'\u201D {0,}$']
 bol_array = ['^[A-Z]']
 
@@ -2789,8 +2791,22 @@ def generate_html_file_from_phrases_for_google_translate_javascript():
     for i, line in enumerate(from_text_table):
         item = from_text_by_phrase_separator_table[i]
         item.strip()
-        item_html_escaped = html.escape(item)
-        if item != '':
+        
+        item_searched_and_replaced_before = item
+        
+        if item_searched_and_replaced_before != '':
+            if xlsxreplacefile is not None:
+                #if xtm.wb is not None:
+                if xtm.wb is not None:
+                    #print("%d/%d" % (i, word_translation_table_length))
+                    #print("Phrase to translate :'%s'\n" % (item.strip()))
+                    item_searched_and_replaced_before, nb_searched_and_replaced_before = xtm.search_and_replace_text('before', item, count=False)
+                    if item_searched_and_replaced_before.strip() == '' or item_searched_and_replaced_before is None:
+                        continue
+        
+        item_html_escaped = html.escape(item_searched_and_replaced_before.strip())  
+        
+        if item_searched_and_replaced_before != '':
             html_to_translate = html_to_translate + '''
 <tr>
     <td>%s</td>
@@ -3769,7 +3785,8 @@ def save_docx_file():
             var = traceback.format_exc()
             txt_readline = input(
                 "\n\nERROR: File saving failed. Please close microsoft word or other program and press enter to save the translated document.\n")
-
+def test_thai_tokenizer_save_html():
+    return
 
 def main() -> int:
     global E_mail_str, end_time, elapsed_time, translation_engine, engine_method
@@ -3840,6 +3857,8 @@ def main() -> int:
         #print("\nDriver close and quit time: %s (h:mm:ss.mmm)" % (driver_close_quit_time))
     except:
         pass
+
+    test_thai_tokenizer_save_html()
 
     if dest_lang_name is None or dest_lang_name == "":
         if not splitonly:

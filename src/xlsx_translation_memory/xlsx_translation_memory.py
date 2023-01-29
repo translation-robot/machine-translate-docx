@@ -189,7 +189,7 @@ class xlsx_translation_memory():
             self.worksheets_search_and_replace_dictionary[sheet_name] = search_and_replace_list
     
 
-    def search_and_replace_text(self, sheet_name, text_to_replace):
+    def search_and_replace_text(self, sheet_name, text_to_replace, count=True):
         """This method loop for all the search and replace list
         and does the search each in text_to_replace string"""
         nb_replacements = 0
@@ -212,10 +212,12 @@ class xlsx_translation_memory():
                 subn_count = subn_result[1]
                 if subn_count > 0:
                     search_replace_item._replace (number_replacement = search_replace_item.number_replacement + subn_count)
-                    self.total_number_of_replacements = self.total_number_of_replacements + subn_count
+                    if count:
+                        self.total_number_of_replacements = self.total_number_of_replacements + subn_count
                     nb_replacements = nb_replacements + subn_count
-                    #print ("Original text :%s" % (text_replaced)) 
-                    print ("Replaced '%s' by '%s' %d times (%s)." % (search_replace_item.Search, search_replace_item.Replace, subn_count, sheet_name))
+                    #print ("Original text :%s" % (text_replaced))
+                    if count:
+                        print ("Replaced '%s' by '%s' %d times (%s)." % (search_replace_item.Search, search_replace_item.Replace, subn_count, sheet_name))
                     #print ("Replaced text :%s" % (subn_result[0])) 
                 text_replaced = subn_result[0]
                 
@@ -224,7 +226,7 @@ class xlsx_translation_memory():
                 #print ("res_str=%s, count=%i" % (res_str, subn_count))
                 #pprint (search_replace_item)
                 se_no = se_no + 1
-            if nb_replacements > 0:
+            if nb_replacements > 0 and count:
                 print ("\n")
         except Exception:
             print ("Error reading excel translation memory file.")
