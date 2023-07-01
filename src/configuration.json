@@ -1,3 +1,27 @@
 {
-  "javascript_version_checker_url": "http://translationbot.42web.io/version_checker.html"
+  "depl" :{
+	  "account":{
+		  "account": "smtv.bot.deepl.user@gmail.com",
+		  "password": "a8OD2mo8T6b4TV7eqtOC",
+		  "type": "free",
+		  "maximum_character_block": 5000
+	  }
+  },
+  "google" :{
+	  "javascript_translation":{
+	  },
+	  "html_translation_form": {
+		  "maximum_character_block": 5000
+	  }
+  },
+  "statistics": {
+	  "html_statistics_form_url" : "http://translationbot.42web.io/robot-stats.php",
+	  "google_sheets_statistics":{
+		  "account":{
+			  "google_account": "to be determined"
+		  }
+  },
+  "version_checker": {
+	  "javascript_json_version_checker_url": "http://translationbot.42web.io/version_checker.html",
+  }
 }
