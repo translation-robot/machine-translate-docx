@@ -20,6 +20,7 @@
 		  "account":{
 			  "google_account": "to be determined"
 		  }
+	  }
   },
   "version_checker": {
 	  "javascript_json_version_checker_url": "http://translationbot.42web.io/version_checker.html"
