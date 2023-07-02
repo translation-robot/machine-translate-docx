@@ -8,13 +8,9 @@
 		"to_translated_column_number" : 3,
 		"cell_maximum_characters" : 36
 	 }
-  }
+  },
   "deepl" :{
 	  "account":{
-		  "email_": "user******@gmail.com",
-		  "password_": "*******************",
-		  "rsa_encypted_password": "*******************",
-		  "type": "free",
 		  "maximum_character_block": 5000
 	  },
 	  "no_account" : {

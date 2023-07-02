@@ -141,7 +141,7 @@ def get_nested_value_from_json_array(json_array, keys, default_when_none = None)
         print("Invalid JSON input")
         return default_when_none
 
-
+# Remove the _ a the end of the email and password key name
 DefaultJsonConfiguration = """{
     "local_configuration":{
         "json_filename_path": "configuration.json"
@@ -172,7 +172,7 @@ DefaultJsonConfiguration = """{
 		}
 	},
 	"version_checker": {
-		"javascript_json_version_checker_url": "http://translationbot.42web.io/version_checker.html"
+	  "javascript_json_version_checker_url": "zzzzhttp://translationbot.42web.io/version_checker_js1.0.html"
 	}
 }"""
 
@@ -193,10 +193,6 @@ elif __file__:
 
 configuration_file_full_path = os.path.join(application_path, local_configuration_json_path)
 
-print('configuration_file_full_path:     ', configuration_file_full_path)
-
-
-
 try:
     with open(configuration_file_full_path) as configuration_file:
       local_json_contents = configuration_file.read()
@@ -211,6 +207,7 @@ process_platform = platform.system()
 if platform.system() == 'Windows':
     from win32com.client import Dispatch
 
+tried_login_in_deepl = False
 
 from_text_table = [''] *1
 from_text_is_greyed_table = [0] *1
@@ -1795,6 +1792,85 @@ def remove_span_tag(text):
         #    input ("Replaced span %d times" % (subn_count))
                 
     return text
+
+
+
+def selenium_chrome_deepl_log_in():
+    global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
+    
+    
+    deepl_account_email_key = ['deepl', 'account', 'email']
+    deepl_account_email = get_nested_value_from_json_array(json_configuration_array, deepl_account_email_key)
+    
+    deepl_account_password_key = ['deepl', 'account', 'password']
+    deepl_account_password = get_nested_value_from_json_array(json_configuration_array, deepl_account_password_key)
+    
+    if (deepl_account_email is None) or (deepl_account_email is None):
+        return False
+        
+    driver.set_window_size(1000, 800)
+
+    try:
+        driver.get("https://www.deepl.com/en/login/")
+        
+        try:
+        
+            try:
+                # Accept cookies
+                deepl_accept_cookies_element = "//button[contains(.,'Accept all cookies')]"
+                deepl_accept_cookies_button = WebDriverWait(driver, 1).until(
+                    lambda driver: driver.find_element_by_xpath(deepl_accept_cookies_element))
+                deepl_accept_cookies_button.click()
+            except:
+                print("No cookies accept button. Continuing.")
+        
+            # Fill username 
+            deepl_login_email_element = "//input[@name='email']"
+            deepl_login_email_field = WebDriverWait(driver, 1).until(
+                lambda driver: driver.find_element_by_xpath(deepl_login_email_element))
+            deepl_login_email_field.send_keys(deepl_account_email)
+            
+            # Fill password
+            deepl_login_password_element = "//input[@name='password']"
+            deepl_login_password_field = WebDriverWait(driver, 1).until(
+                lambda driver: driver.find_element_by_xpath(deepl_login_password_element))
+            deepl_login_password_field.send_keys(deepl_account_password)
+            
+            # Submit login
+            deepl_login_submit_element = "//form/button"
+            deepl_login_submit_element = "//input[@name='submit']"
+            deepl_login_submit_element = "//button[contains(.,'Log in')]"
+            deepl_login_submit_button = WebDriverWait(driver, 1).until(
+                lambda driver: driver.find_element_by_xpath(deepl_login_submit_element))
+            sleep(0.5)
+            deepl_login_submit_button.click()
+            
+            
+            # Check account button exist
+            deepl_login_menu_element = ".dl_header_menu_v2__buttons__opener"
+            deepl_login_menu_button = WebDriverWait(driver, 3).until(
+                lambda driver: driver.find_element_by_css_selector(deepl_login_menu_element))
+            deepl_login_menu_button.click()
+            
+            # Success change block size if value exists
+            deepl_max_char_bloc_size_key = ['deepl', 'account','maximum_character_block']
+            deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key)
+            
+            if isinstance(deepl_maximum_character_block, int):
+                if deepl_maximum_character_block > MAX_TRANSLATION_BLOCK_SIZE:
+                    MAX_TRANSLATION_BLOCK_SIZE = deepl_maximum_character_block
+                    print("\nRobot is now logged in Deepl using %s account." % (deepl_account_email))
+                    print("Changing the value of maximum number of characters per block: %s\n" % (MAX_TRANSLATION_BLOCK_SIZE))
+                
+            return True
+            
+        except:
+            var = traceback.format_exc()
+            print(var)
+
+    except:
+        var = traceback.format_exc()
+        print(var)
 
 
 def selenium_chrome_deepl_translate(to_translate, retry_count):
@@ -3723,7 +3799,10 @@ def local_time_offset(t=None):
 def run_statistics():
     global use_api
     global splitonly, driver
-    global engine_method, end_time, elapsed_time
+    global engine_method, end_time, elapsed_time, json_configuration_array
+    
+    statistics_html_statistics_form_url_key = ['statistics', 'html_statistics_form_url']
+    statistics_html_statistics_form_url = get_nested_value_from_json_array(json_configuration_array, statistics_html_statistics_form_url_key)
     
     bool_print_stats = False
     
@@ -3907,10 +3986,11 @@ def run_statistics():
             "docxfile" : docx_file_name
         }
         
-        base_url = "http://translationbot.42web.io/robot-stats.php"
+        base_url = statistics_html_statistics_form_url
         encoded_params = urlencode(query_params, quote_via=quote_plus)
         url = f"{base_url}?{encoded_params}"
         
+        print(url)
         driver.get(url)
         
         #time.sleep(20)
@@ -3952,9 +4032,37 @@ def get_robot_usage_comment():
     
     javascript_json_version_checker_url_key = ['version_checker', 'javascript_json_version_checker_url']
     javascript_json_version_checker_url = get_nested_value_from_json_array(json_configuration_array, javascript_json_version_checker_url_key)
+        
+    if use_api == True:
+        engine_method = "api"
+    elif engine_method is None or engine_method == "":
+        engine_method = "web"
+    
+    if xlsxreplacefile is not None:
+        xlsxreplacefile_splitted = os.path.splitext(os.path.basename(xlsxreplacefile))
+        xlsxreplacefile_filename_size = len(xlsxreplacefile_splitted)
+        xlsxreplacefile_name = "%s%s" % (xlsxreplacefile_splitted[xlsxreplacefile_filename_size-2], xlsxreplacefile_splitted[xlsxreplacefile_filename_size-1])
+    else:
+        xlsxreplacefile_name = ""
+    
+    if xlsxreplacefile_name != "":
+        replacebeforelistsize = xtm.get_sheet_number_lines('before')
+        replacebeforelistreplaced = xtm.get_sheet_number_of_replacements('before')
+        replaceafterlistsize = xtm.get_sheet_number_lines('after')
+        replaceafterlistreplaced = xtm.get_sheet_number_of_replacements('after')
+        donotsplitlistsize = xtm.get_sheet_number_lines('keep_on_same_line')
+        donotsplitfound = xtm.get_sheet_number_of_do_not_split_match('keep_on_same_line')
+    else:
+        replacebeforelistsize = ""
+        replacebeforelistreplaced = ""
+        replaceafterlistsize = ""
+        replaceafterlistreplaced = ""
+        donotsplitlistsize = ""
+        donotsplitfound = ""
+    
 
     try:
-        driver.get('http://translationbot.42web.io/version_checker_js1.0.html')
+        driver.get(javascript_json_version_checker_url)
         bool_print_stats = False
 
         json_obj = json.loads("{}")
@@ -4239,12 +4347,12 @@ def get_robot_usage_comment():
                 "docxfile": docx_file_name
             }
 
-            base_url = "http://translationbot.42web.io/robot-stats.php"
+            base_url = javascript_json_version_checker_url
             encoded_params = urlencode(query_params, quote_via=quote_plus)
             url = f"{base_url}?{encoded_params}"
 
+            print(url)
             driver.get(url)
-
             # time.sleep(20)
 
             submit_stats_element = "//input[@value='Submit']"
@@ -4258,20 +4366,32 @@ def get_robot_usage_comment():
                     lambda driver: driver.find_element_by_xpath(submited_div_element))
                 # print("statistics updated")
             except:
-                print("Warning failed to update stats, you can ignore this.")
+                print("\n-----------------------------------------------------------------------------")
+                print("Warning failed to get available updates status, the URL may have been denied.")
+                print("Your firewall or antivirus might be blocking URL or the server may be down: \n\n%s\n" % (javascript_json_version_checker_url))
+                print("You may add this URL to your trusted URL for reading latest version available if this error appears everytime.")
+                print("-----------------------------------------------------------------------------\n")
                 # pass
 
         except:
             var = traceback.format_exc()
-            print(var)
-            print("Warning failed to update stats, you can ignore this...")
+            #print(var)
+            print("\n-----------------------------------------------------------------------------")
+            print("Warning failed to get available updates status, the URL may have been denied.")
+            print("Your firewall or antivirus might be blocking URL or the server may be down: \n\n%s\n" % (javascript_json_version_checker_url))
+            print("You may add this URL to your trusted URL for reading latest version available if this error appears everytime.")
+            print("-----------------------------------------------------------------------------\n")
 
         # time.sleep(10)
 
     except:
         var = traceback.format_exc()
-        print(var)
-        print("Warning failed to update stats, you can ignore this...")
+        #print(var)
+        print("\n-----------------------------------------------------------------------------")
+        print("Warning failed to get available updates status, the URL may have been denied.")
+        print("Your firewall or antivirus might be blocking URL or the server may be down: \n\n%s\n" % (javascript_json_version_checker_url))
+        print("You may add this URL to your trusted URL for reading latest version available if this error appears everytim e.")
+        print("-----------------------------------------------------------------------------\n")
 
 def save_docx_file():
     global docxdoc
@@ -4291,7 +4411,7 @@ def test_thai_tokenizer_save_html():
     return
 
 def main() -> int:
-    global E_mail_str, end_time, elapsed_time, translation_engine, engine_method
+    global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl
     translation_succeded = False
 
     set_translation_function()
@@ -4300,6 +4420,9 @@ def main() -> int:
     read_and_parse_docx_document()
 
     create_webdriver()
+    
+    if translation_engine == 'deepl':
+        selenium_chrome_deepl_log_in()
 
     translation_succeded = translate_docx()
 
