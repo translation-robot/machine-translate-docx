@@ -12,7 +12,8 @@
   "deepl" :{
 	  "account":{
 		  "email": "smtv.bot.deepl.user@gmail.com",
-		  "password_": "a8OD2mo8T6b4TV7eqtOC",
+		  "password": "a8OD2mo8T6b4TV7eqtOC",
+		  "rsa_encypted_password": "*******************",
 		  "type": "free",
 		  "maximum_character_block": 5000
 	  },
