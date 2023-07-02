@@ -11,6 +11,9 @@
   },
   "deepl" :{
 	  "account":{
+		  "email_": "smtv.bot.deepl.user@gmail.com",
+		  "password_": "a8OD2mo8T6b4TV7eqtOC",
+		  "type": "free",
 		  "maximum_character_block": 5000
 	  },
 	  "no_account" : {
