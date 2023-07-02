@@ -172,7 +172,7 @@ DefaultJsonConfiguration = """{
 		}
 	},
 	"version_checker": {
-	  "javascript_json_version_checker_url": "zzzzhttp://translationbot.42web.io/version_checker_js1.0.html"
+	  "javascript_json_version_checker_url": "http://translationbot.42web.io/version_checker_js1.0.html"
 	}
 }"""
 
@@ -1804,9 +1804,6 @@ def selenium_chrome_deepl_log_in():
     
     deepl_account_password_key = ['deepl', 'account', 'password']
     deepl_account_password = get_nested_value_from_json_array(json_configuration_array, deepl_account_password_key)
-    
-    if (deepl_account_email is None) or (deepl_account_email is None):
-        return False
         
     driver.set_window_size(1000, 800)
 
@@ -1824,6 +1821,10 @@ def selenium_chrome_deepl_log_in():
             except:
                 print("No cookies accept button. Continuing.")
         
+            # End function if no email or password are provided
+            if (deepl_account_email is None) or (deepl_account_email is None):
+                return False
+                
             # Fill username 
             deepl_login_email_element = "//input[@name='email']"
             deepl_login_email_field = WebDriverWait(driver, 1).until(
@@ -1851,6 +1852,19 @@ def selenium_chrome_deepl_log_in():
             deepl_login_menu_button = WebDriverWait(driver, 3).until(
                 lambda driver: driver.find_element_by_css_selector(deepl_login_menu_element))
             deepl_login_menu_button.click()
+            # Close the opener dialog, not required but cleaner
+            sleep(0.1)
+            deepl_login_menu_button.click()
+            
+            try:
+                # Close the annoying plugin for deepl if displayed - bug : it does not find this element
+                deepl_plugin_dialog_element = ".w-6 path"
+                deepl_plugin_dialog_button = WebDriverWait(driver, 0.3).until(
+                    lambda driver: driver.find_element_by_css_selector(deepl_plugin_dialog_element))
+                deepl_plugin_dialog_button.click()
+            except:
+                # Just ignore if this plugin dialog does not appear
+                pass
             
             # Success change block size if value exists
             deepl_max_char_bloc_size_key = ['deepl', 'account','maximum_character_block']
