@@ -10,4 +10,8 @@ URL to be added after uploaded
 ## Mac version
 Download the binaries for macos here:
 
+<<<<<<< HEAD
 URL to be added after uploaded
+=======
+URL to be added after uploaded
+>>>>>>> 0350c7f18c8c63fae339dc61db84d1ab45158c31
