@@ -1,10 +1,20 @@
 {
+  "docx": {
+	 "table":{
+		"from_translate_column_number" : 2,
+		"to_translated_column_number" : 3,
+		"cell_maximum_characters" : 36
+	 }
+  }
   "deepl" :{
 	  "account":{
-		  "email": "smtv.bot.deepl.user@gmail.com",
-		  "password": "a8OD2mo8T6b4TV7eqtOC",
+		  "email": "user******@gmail.com",
+		  "rsa_encypted_password": "*******************",
 		  "type": "free",
 		  "maximum_character_block": 5000
+	  },
+	  "no_account" : {
+		  "maximum_character_block": 1500
 	  }
   },
   "google" :{
