@@ -196,7 +196,7 @@ configuration_file_full_path = os.path.join(application_path, local_configuratio
 try:
     with open(configuration_file_full_path) as configuration_file:
       local_json_contents = configuration_file.read()
-      print("finished reading %s" % (configuration_file_full_path))
+      #print("finished reading %s" % (configuration_file_full_path))
       
 except:
     local_json_contents = None
