@@ -1805,6 +1805,9 @@ def selenium_chrome_deepl_log_in():
     deepl_account_password_key = ['deepl', 'account', 'password']
     deepl_account_password = get_nested_value_from_json_array(json_configuration_array, deepl_account_password_key)
         
+    deepl_account_enabled_key = ['deepl', 'account', 'enabled']
+    deepl_account_enabled = get_nested_value_from_json_array(json_configuration_array, deepl_account_enabled_key)
+        
     driver.set_window_size(1000, 800)
 
     try:
@@ -1824,6 +1827,8 @@ def selenium_chrome_deepl_log_in():
             # End function if no email or password are provided
             if (deepl_account_email is None) or (deepl_account_email is None):
                 return False
+            elif deepl_account_enabled == False:
+                return False
                 
             # Fill username 
             deepl_login_email_element = "//input[@name='email']"
@@ -1836,20 +1841,23 @@ def selenium_chrome_deepl_log_in():
             deepl_login_password_field = WebDriverWait(driver, 1).until(
                 lambda driver: driver.find_element_by_xpath(deepl_login_password_element))
             deepl_login_password_field.send_keys(deepl_account_password)
+            sleep(1)
             
             # Submit login
             deepl_login_submit_element = "//form/button"
             deepl_login_submit_element = "//input[@name='submit']"
             deepl_login_submit_element = "//button[contains(.,'Log in')]"
-            deepl_login_submit_button = WebDriverWait(driver, 1).until(
+            deepl_login_submit_button = WebDriverWait(driver, 3).until(
                 lambda driver: driver.find_element_by_xpath(deepl_login_submit_element))
-            sleep(0.5)
-            deepl_login_submit_button.click()
-            
+            sleep(1.5)
+            try:
+                deepl_login_submit_button.click()
+            except:
+                pass
             
             # Check account button exist
             deepl_login_menu_element = ".dl_header_menu_v2__buttons__opener"
-            deepl_login_menu_button = WebDriverWait(driver, 3).until(
+            deepl_login_menu_button = WebDriverWait(driver, 9).until(
                 lambda driver: driver.find_element_by_css_selector(deepl_login_menu_element))
             deepl_login_menu_button.click()
             # Close the opener dialog, not required but cleaner
@@ -1881,10 +1889,14 @@ def selenium_chrome_deepl_log_in():
         except:
             var = traceback.format_exc()
             print(var)
+            print("Failed to login into Deepl, continuing without being logged on.")
+            return False
 
     except:
         var = traceback.format_exc()
         print(var)
+        print("Failed to login into Deepl, continuing without being logged on.")
+        return False
 
 
 def selenium_chrome_deepl_translate(to_translate, retry_count):
@@ -4004,7 +4016,6 @@ def run_statistics():
         encoded_params = urlencode(query_params, quote_via=quote_plus)
         url = f"{base_url}?{encoded_params}"
         
-        print(url)
         driver.get(url)
         
         #time.sleep(20)
@@ -4365,7 +4376,6 @@ def get_robot_usage_comment():
             encoded_params = urlencode(query_params, quote_via=quote_plus)
             url = f"{base_url}?{encoded_params}"
 
-            print(url)
             driver.get(url)
             # time.sleep(20)
 
