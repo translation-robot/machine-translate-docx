@@ -3,7 +3,7 @@
 
 # - *- coding: utf- 8 - *-
 PROGRAM_VERSION="2023-07-02"
-json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration.json'
+json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
 import pprint
