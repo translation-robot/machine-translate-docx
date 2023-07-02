@@ -1,4 +1,7 @@
 {
+  "local_configuration":{
+        "json_filename_path": "configuration.json"
+    },
   "docx": {
 	 "table":{
 		"from_translate_column_number" : 2,
@@ -8,7 +11,8 @@
   }
   "deepl" :{
 	  "account":{
-		  "email": "user******@gmail.com",
+		  "email_": "user******@gmail.com",
+		  "password_": "*******************",
 		  "rsa_encypted_password": "*******************",
 		  "type": "free",
 		  "maximum_character_block": 5000
@@ -33,6 +37,6 @@
 	  }
   },
   "version_checker": {
-	  "javascript_json_version_checker_url": "http://translationbot.42web.io/version_checker.html"
+	  "javascript_json_version_checker_url": "http://translationbot.42web.io/version_checker_js1.0.html"
   }
 }
