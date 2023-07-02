@@ -4465,7 +4465,7 @@ def main() -> int:
 
     elapsed_time = end_time - start_time
 
-    #run_statistics()
+    run_statistics()
     save_docx_file()
     end_time = datetime.datetime.now()
 
