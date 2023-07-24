@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-07-02"
+PROGRAM_VERSION="2023-07-24"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -96,8 +96,8 @@ from bs4 import BeautifulSoup
 
 # pip install pycryptodome
 # used for passwords (deepl, etc)
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
+#from Crypto.PublicKey import RSA
+#from Crypto.Cipher import PKCS1_OAEP
 
 # Load configuration from a json file on internet (github for example)
 
@@ -110,7 +110,9 @@ from docx.oxml import parse_xml
 # The first json object containing the key value is returned or default_when_none value.
 def validate_json_string(json_string):
     try:
-        json_obj = json.loads(json_str)
+        json_obj = json.loads(json_string)
+        if json_obj is None:
+            return False
         return True
         
     except json.JSONDecodeError:
@@ -181,6 +183,7 @@ DefaultJsonConfiguration = """{
 
 json_online_configuration = requests.get(json_configuration_url).content
 
+
 # Find default configuration file name from other configuration files
 local_configuration_json_path_key = ["local_configuration", "json_filename_path"]
 local_configuration_json_path = get_nested_value_from_json_array([json_online_configuration,DefaultJsonConfiguration], local_configuration_json_path_key)
@@ -196,11 +199,9 @@ configuration_file_full_path = os.path.join(application_path, local_configuratio
 try:
     with open(configuration_file_full_path) as configuration_file:
       local_json_contents = configuration_file.read()
-      #print("finished reading %s" % (configuration_file_full_path))
-      
 except:
     local_json_contents = None
-
+          
 json_configuration_array = [local_json_contents,json_online_configuration,DefaultJsonConfiguration]
 
 process_platform = platform.system()
@@ -208,6 +209,7 @@ if platform.system() == 'Windows':
     from win32com.client import Dispatch
 
 tried_login_in_deepl = False
+logged_into_deepl = False
 
 from_text_table = [''] *1
 from_text_is_greyed_table = [0] *1
@@ -548,7 +550,23 @@ print("*********************************************************")
 print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
 print("*********************************************************")
 
-print("Python programming language %s" % (platform.python_version()))
+print("Python programming language %s\n" % (platform.python_version()))
+
+valid_online_json = validate_json_string(json_online_configuration)
+if not valid_online_json == True:
+    print(f"Warning: Json file at {json_configuration_url} is not valid. Ignoring this configuration file.")
+else:
+    #print(f"Json file at {configuration_file_full_path} is OK")
+    pass
+    
+valid_local_json = validate_json_string(local_json_contents)
+if not valid_local_json == True:
+    print(f"Warning: Json file at {configuration_file_full_path} is not valid. Ignoring this configuration file.")
+else:
+    #print(f"Json file at {configuration_file_full_path} is OK")
+    pass
+
+print("")
 
 src_lang_name = (google_translate_lang_codes.get(src_lang))
 if src_lang_name is None:
@@ -689,6 +707,12 @@ def get_chrome_driver_version_unix():
         version_3_numbers=m.group(1)
 
     #print("version_3_numbers=%s" % (version_3_numbers))
+    try:
+        major_version_int = int(major_version)
+        if (major_version_int >= 115):
+            return info
+    except:
+        pass
 
     chromedriver_url_latest_release_current_version="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_%s" % (version_3_numbers)
 
@@ -725,6 +749,13 @@ def get_chrome_driver_version_mac():
         version_3_numbers=m.group(1)
 
     #print("version_3_numbers=%s" % (version_3_numbers))
+    
+    try:
+        major_version_int = int(major_version)
+        if (major_version_int >= 115):
+            return info
+    except:
+        pass
 
     chromedriver_url_latest_release_current_version="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_%s" % (version_3_numbers)
 
@@ -759,15 +790,29 @@ def get_chrome_driver_version_win():
     print("\nChrome version      : %s" % (info))
 
     re1 = re.compile('^([0-9]+\.[0-9]+\.[0-9]+)')
+    major_version_re = re.compile('^([0-9]+)\.')
 
     m = re1.search(info)
+    m_major = major_version_re.search(info)
 
     if ( len(m.groups()) == 1):
         version_3_numbers=m.group(1)
+    
+    if ( len(m_major.groups()) == 1):
+        major_version=m_major.group(1)
 
+    #print("major_version=%s" % (major_version))
     #print("version_3_numbers=%s" % (version_3_numbers))
-
+    
+    try:
+        major_version_int = int(major_version)
+        if (major_version_int >= 115):
+            return info
+    except:
+        pass
+        
     chromedriver_url_latest_release_current_version="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_%s" % (version_3_numbers)
+    print("chromedriver_url_latest_release_current_version=%s" % (chromedriver_url_latest_release_current_version))
 
     f = urllib.request.urlopen(chromedriver_url_latest_release_current_version)
     chrome_driver_version = f.read(100).decode('utf-8')
@@ -1798,7 +1843,6 @@ def remove_span_tag(text):
 def selenium_chrome_deepl_log_in():
     global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
     
-    
     deepl_account_email_key = ['deepl', 'account', 'email']
     deepl_account_email = get_nested_value_from_json_array(json_configuration_array, deepl_account_email_key)
     
@@ -1897,6 +1941,52 @@ def selenium_chrome_deepl_log_in():
         print(var)
         print("Failed to login into Deepl, continuing without being logged on.")
         return False
+
+
+def selenium_chrome_deepl_log_off():
+    global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
+        
+    driver.set_window_size(1000, 800)
+
+    try:
+        driver.get("https://www.deepl.com/")
+        
+        try:
+            
+            # Open account menu by clicking the account button
+            deepl_login_menu_element = ".dl_header_menu_v2__buttons__opener"
+            deepl_login_menu_button = WebDriverWait(driver, 9).until(
+                lambda driver: driver.find_element_by_css_selector(deepl_login_menu_element))
+            deepl_login_menu_button.click()
+            
+            try:
+                # Open account menu by clicking the account button
+                deepl_logout_menu_element = "//button[contains(.,'Log out')]"
+                deepl_logout_menu_button = WebDriverWait(driver, 1).until(
+                    lambda driver: driver.find_element_by_xpath(deepl_logout_menu_element))
+                deepl_logout_menu_button.click()
+                print("\nRobot is now logged off Deepl account.")
+                
+            except:
+                # Just ignore if this plugin dialog does not appear
+                print("Unable to log off from Deepl, this can be ignored.")
+                pass
+                
+            return True
+            
+        except:
+            var = traceback.format_exc()
+            print(var)
+            print("Failed of Deepl, this can be ignored")
+            return False
+
+    except:
+        var = traceback.format_exc()
+        print(var)
+        print("Failed of Deepl, this can be ignored")
+        return False
+
+
 
 
 def selenium_chrome_deepl_translate(to_translate, retry_count):
@@ -2430,7 +2520,7 @@ def tokenize_text_to_array(text, lang_code):
 def divide_array(words_array, dest_lang, width):
     dest_lang = dest_lang.lower()
 
-    print("Divide into max %d size lines" % (width))
+    #print("Divide into max %d size lines" % (width))
     count = len(words_array)
     offsets = [0]
     for w in words_array:
@@ -3603,8 +3693,8 @@ def document_split_phrases():
             docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
             docxfile_table_number_of_characters = docxfile_table_number_of_characters + len(from_text_by_phrase_separator_table[i])
             phrase_number_of_words = len(from_text_by_phrase_separator_table[i].strip().split(" "))
-            print("Phrase: %s" % (from_text_by_phrase_separator_table[i]))
-            print("number of words: %d" % (phrase_number_of_words))
+            #print("Phrase to split: %s" % (from_text_by_phrase_separator_table[i]))
+            #print("number of words: %d" % (phrase_number_of_words))
             docxfile_table_number_of_words = docxfile_table_number_of_words + phrase_number_of_words
             try:
                 current_line = to_text_by_phrase_separator_table[i]
@@ -3623,7 +3713,7 @@ def document_split_phrases():
                         else:
                             str_line_average = 0
                             str_phrase_stats = "[%d/%d=%d] " % (str_translation_len, str_nb_lines, str_line_average)
-                        print("str_phrase_stats=%s" % (str_phrase_stats))
+                        #print("str_phrase_stats=%s" % (str_phrase_stats))
                 except Exception:
                     var = traceback.format_exc()
                     print("  ERROR:%s<br>" % (var))
@@ -3639,7 +3729,7 @@ def document_split_phrases():
                 divide_max_try = MAX_LINE_SIZE
                 while (number_lines > str_nb_lines) and (divide_max_try > 0):
                     str_line_average += 1
-                    print("Too many lines in split : %d, max %d ..... increasing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
+                    #print("Too many lines in split : %d, max %d ..... increasing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
                     lines_divided_attempt = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
                     lines_divided = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
                     number_lines = len(lines_divided_attempt)
@@ -3651,14 +3741,14 @@ def document_split_phrases():
                 divide_max_try = MAX_LINE_SIZE
                 while (number_lines < str_nb_lines) and (number_lines > 1) and (divide_max_try > 0):
                     str_line_average = str_line_average - 1
-                    print("Too few lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
+                    #print("Too few lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
                     lines_divided_attempt = divide_array(current_line, dest_lang, str_line_average + 4)
                     number_lines = len(lines_divided_attempt)
                     if number_lines <= str_nb_lines:
                         lines_divided = lines_divided_attempt
                     divide_max_try = divide_max_try - 1
 
-                print("number_lines=%d  ; str_nb_lines=%d  ; divide_max_try=%d" % (number_lines, str_nb_lines, divide_max_try))
+                #print("number_lines=%d  ; str_nb_lines=%d  ; divide_max_try=%d" % (number_lines, str_nb_lines, divide_max_try))
                 number_lines = len(lines_divided)
                 translation_result_phrase_array[i] = lines_divided
                 for line_no in range (0, number_lines):
@@ -3670,7 +3760,7 @@ def document_split_phrases():
                 number_lines = len(lines_divided)
 
                 try:
-                    print("%s (%d): %d " % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
+                    print("Splitting phrase : %s (%d) = %d lines" % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
                 except Exception:
                     try:
                         print("%s (%d): %d " % (to_text_by_phrase_separator_table[i].encode("utf-8"), i, str_nb_lines + 0))
@@ -4390,32 +4480,20 @@ def get_robot_usage_comment():
                     lambda driver: driver.find_element_by_xpath(submited_div_element))
                 # print("statistics updated")
             except:
-                print("\n-----------------------------------------------------------------------------")
-                print("Warning failed to get available updates status, the URL may have been denied.")
-                print("Your firewall or antivirus might be blocking URL or the server may be down: \n\n%s\n" % (javascript_json_version_checker_url))
-                print("You may add this URL to your trusted URL for reading latest version available if this error appears everytime.")
-                print("-----------------------------------------------------------------------------\n")
+                print("Warning failed to get available updates status, you can ignore this.")
                 # pass
 
         except:
             var = traceback.format_exc()
             #print(var)
-            print("\n-----------------------------------------------------------------------------")
-            print("Warning failed to get available updates status, the URL may have been denied.")
-            print("Your firewall or antivirus might be blocking URL or the server may be down: \n\n%s\n" % (javascript_json_version_checker_url))
-            print("You may add this URL to your trusted URL for reading latest version available if this error appears everytime.")
-            print("-----------------------------------------------------------------------------\n")
+            print("Warning failed to get available updates status, you can ignore this.")
 
         # time.sleep(10)
 
     except:
         var = traceback.format_exc()
         #print(var)
-        print("\n-----------------------------------------------------------------------------")
-        print("Warning failed to get available updates status, the URL may have been denied.")
-        print("Your firewall or antivirus might be blocking URL or the server may be down: \n\n%s\n" % (javascript_json_version_checker_url))
-        print("You may add this URL to your trusted URL for reading latest version available if this error appears everytim e.")
-        print("-----------------------------------------------------------------------------\n")
+        print("Warning failed to get available updates status, you can ignore this.")
 
 def save_docx_file():
     global docxdoc
@@ -4436,6 +4514,7 @@ def test_thai_tokenizer_save_html():
 
 def main() -> int:
     global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl
+    global logged_into_deepl
     translation_succeded = False
 
     set_translation_function()
@@ -4446,9 +4525,12 @@ def main() -> int:
     create_webdriver()
     
     if translation_engine == 'deepl':
-        selenium_chrome_deepl_log_in()
+        logged_into_deepl = selenium_chrome_deepl_log_in()
 
     translation_succeded = translate_docx()
+    
+    if logged_into_deepl:
+        selenium_chrome_deepl_log_off()
 
     if translation_succeded == False and translation_engine == 'deepl' and engine_method == 'phrasesblock':
         engine_method = 'singlephrase'

@@ -69,10 +69,6 @@ class xlsx_translation_memory():
             search_end_word_boundary = r'.+\b$'
             re_end_word_boundary = re.compile(search_end_word_boundary)
 
-            sheet_name = 'keep_on_same_line'
-            if not bool(self.worksheets_search_and_replace_dictionary.get(sheet_name)):
-                print("Sheet '%s' not found in excel file '%s'" % (sheet_name, self.xlsx_path))
-
             for s in range(len(self.wb.sheetnames)):
                 self.wb.active = s
                 self.ws = self.wb.active
@@ -182,6 +178,10 @@ class xlsx_translation_memory():
                     
                     self.worksheets_search_and_replace_dictionary[sheet_name] = search_and_replace_list
                     
+            sheet_name = 'keep_on_same_line'
+            if not bool(self.worksheets_search_and_replace_dictionary.get(sheet_name)):
+                print("Sheet '%s' not found in excel file '%s'" % (sheet_name, self.xlsx_path))
+
         except Exception:
             print ("Error reading excel translation memory file.")
             var = traceback.format_exc()
