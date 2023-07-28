@@ -10,5 +10,5 @@ https://drive.google.com/file/d/1dneRiBFC3glr6-nyxHCZCQsd6-hkdhkt/view?usp=shari
 ## Mac version
 Download the binaries for macos here:
 
-https://drive.google.com/file/d/1l-Tw-eJ9XMl4911ZLY8ooIKFTwJKMOPi/view?usp=sharing
+https://drive.google.com/file/d/1PWO7NJ598w9FaNQ1ty8PNflqVfuEwKNI/view?usp=drive_link
 
