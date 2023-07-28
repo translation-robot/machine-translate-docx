@@ -1,0 +1,145 @@
+<html lang="en">
+<head>
+	<title>Translation Robot Version Checker</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+</head>
+<body>
+<script>
+    function check_versions() {
+	
+deepl_language_names_by_code = {};
+deepl_language_names_by_code['BG'] = 'Bulgarian';
+deepl_language_names_by_code['CS'] = 'Czech';
+deepl_language_names_by_code['DA'] = 'Danish';
+deepl_language_names_by_code['DE'] = 'German';
+deepl_language_names_by_code['EL'] = 'Greek';
+deepl_language_names_by_code['EN'] = 'English (unspecified variant for backward compatibility; please select EN-GB or EN-US instead)';
+deepl_language_names_by_code['EN-GB'] = 'English (British)';
+deepl_language_names_by_code['EN-US'] = 'English (American)';
+deepl_language_names_by_code['ES'] = 'Spanish';
+deepl_language_names_by_code['ET'] = 'Estonian';
+deepl_language_names_by_code['FI'] = 'Finnish';
+deepl_language_names_by_code['FR'] = 'French';
+deepl_language_names_by_code['HU'] = 'Hungarian';
+deepl_language_names_by_code['ID'] = 'Indonesian';
+deepl_language_names_by_code['IT'] = 'Italian';
+deepl_language_names_by_code['JA'] = 'Japanese';
+deepl_language_names_by_code['KO'] = 'Korean';
+deepl_language_names_by_code['LT'] = 'Lithuanian';
+deepl_language_names_by_code['LV'] = 'Latvian';
+deepl_language_names_by_code['NB'] = 'Norwegian (Bokmål)';
+deepl_language_names_by_code['NL'] = 'Dutch';
+deepl_language_names_by_code['PL'] = 'Polish';
+deepl_language_names_by_code['PT'] = 'Portuguese (unspecified variant for backward compatibility; please select PT-BR or PT-PT instead)';
+deepl_language_names_by_code['PT-BR'] = 'Portuguese (Brazilian)';
+deepl_language_names_by_code['PT-PT'] = 'Portuguese (all Portuguese varieties excluding Brazilian Portuguese)';
+deepl_language_names_by_code['RO'] = 'Romanian';
+deepl_language_names_by_code['RU'] = 'Russian';
+deepl_language_names_by_code['SK'] = 'Slovak';
+deepl_language_names_by_code['SL'] = 'Slovenian';
+deepl_language_names_by_code['SV'] = 'Swedish';
+deepl_language_names_by_code['TR'] = 'Turkish';
+deepl_language_names_by_code['UK'] = 'Ukrainian';
+deepl_language_names_by_code['ZH'] = 'Chinese (simplified)';
+		
+		json_robot_str = document.getElementsByName('json_robot')[0].value
+		//alert(json_robot_str);
+		json_robot = JSON.parse(json_robot_str);
+		program_version = json_robot['program_version'];
+		docxfile = json_robot['docxfile'];
+		action = json_robot['action'];
+		destlang_code = json_robot['destlang_code'];
+		destlang_name = json_robot['destlang_name'];
+		docxfile_table_number_of_lines = json_robot['docxfile_table_number_of_lines'];
+		docxfile_table_number_of_phrases = json_robot['docxfile_table_number_of_phrases'];
+		docxfile_table_number_of_words = json_robot['docxfile_table_number_of_words'];
+		docxfile_table_number_of_characters = json_robot['docxfile_table_number_of_characters'];
+		engine = json_robot['engine'];
+		engine_method = json_robot['engine_method'];
+		xlsxreplacefile = json_robot['xlsxreplacefile'];
+		splitonly = json_robot['splitonly'];
+		split_translation = json_robot['split_translation'];
+		showbrowser = json_robot['showbrowser'];
+		start_time = json_robot['start_time'];
+		end_time = json_robot['end_time'];
+		elapsed_time = json_robot['elapsed_time'];
+		docxfile_size = json_robot['docxfile_size'];
+		replacebeforelistsize = json_robot['replacebeforelistsize'];
+		replacebeforelistreplaced = json_robot['replacebeforelistreplaced'];
+		replaceafterlistsize = json_robot['replaceafterlistsize'];
+		replaceafterlistreplaced = json_robot['replaceafterlistreplaced'];
+		donotsplitlistsize = json_robot['donotsplitlistsize'];
+		donotsplitfound = json_robot['donotsplitfound'];
+		platform_system = json_robot['platform_system'];
+		platform_node = json_robot['platform_node'];
+		platform_release = json_robot['platform_release'];
+		platform_version = json_robot['platform_version'];
+		platform_machine = json_robot['platform_machine'];
+		platform_processor = json_robot['platform_processor'];
+		cpu_count = json_robot['cpu_count'];
+		mem_total = json_robot['mem_total'];
+		docxfile_page_count = json_robot['docxfile_page_count'];
+		//alert(program_version)
+		//alert(destlang_code)
+			
+	    var message_text = ""
+		var message_html = ""
+		  
+		switch (program_version) {
+			  case '2023-07-28':
+				message_text = "You are using the latest version 2023-07-28."
+				break;
+			  default:
+				message_text = "You are not using the latest version, please download the latest version 2023-07-28 here :\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
+		}
+
+		if((deepl_language_names_by_code[destlang_code.toUpperCase()] != null) 
+			&& (engine.toLowerCase() == 'google')){
+			message_text = message_text + "\n\n* * * * * * * * *  PLEASE READ * * * * * * * * * \n\n" + deepl_language_names_by_code[destlang_code.toUpperCase()] +
+				" is supported by Deepl, please consider using Deepl for better quality instead of Google for translation." +
+				"\n\nTo install Deepl shortcut, use install-" + deepl_language_names_by_code[destlang_code.toUpperCase()]
+				+ '.bat file to install. If the file is not in SMTVRobot_' + program_version + '.zip, you may request it from smtv.bot@gmail.com.\n\n' +
+				'Once the shortcut is installed, you can use "machine-translate-docx.exe - ' + deepl_language_names_by_code[destlang_code.toUpperCase()] + ' - Deepl" sendto Shortcut. For Mac version, please email smtv.bot@gmail.com to request service shortcut for ' + deepl_language_names_by_code[destlang_code.toUpperCase()] + '.' +
+				"\n\n* * * * * * * * * * * * * * * * * * * * * * * * *"/**/
+		}else{
+			//alert('Value found and not empty in Deepl array:' + deepl_language_names_by_code[destlang_code.toUpperCase()])
+		}
+		
+		//message_text = message_text + "\n\nThank you for supporting translation work. God Bless."
+				
+		/*
+			message_text = message_text + "\n\n" + deepl_language_names_by_code[destlang_code.toUpperCase()] +
+				" is supported by Deepl, please consider using Deepl instead of google."
+		}else{
+			message_text = message_text + "\n\nYour are using language" + deepl_language_names_by_code[destlang_code.toUpperCase()]
+		}*/
+		  
+		document.getElementById("message_text").innerHTML = message_text;
+		document.getElementById("message_html").innerHTML = message_text;
+		return false;
+		
+	 
+		
+	  return false
+    }
+</script>
+	<h1 lang="en" translate="no">Translation Robot Version Checker</h1>
+
+<span translate="no">
+
+			
+			<form onsubmit="return check_versions(this)" action = "" >
+			<table>
+			
+			<tr><td>json_robot:<td><textarea rows="5" cols="33" name="json_robot" id="json_robot"></textarea>
+			
+            <tr><td><input type="hidden" name="form_submitted" value="1" />
+			<td><div id="divSubmit" styleold="display: none;"><input type="submit" id="submit"></div>
+            </form>
+			</table>
+			<div id="message_text"></div>
+			<div id="message_html"></div>
+</span>
+</body> 
+</html>
