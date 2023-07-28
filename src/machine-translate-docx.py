@@ -96,8 +96,6 @@ from bs4 import BeautifulSoup
 
 # pip install pycryptodome
 # used for passwords (deepl, etc)
-#from Crypto.PublicKey import RSA
-#from Crypto.Cipher import PKCS1_OAEP
 
 # Load configuration from a json file on internet (github for example)
 
@@ -110,12 +108,22 @@ from docx.oxml import parse_xml
 # The first json object containing the key value is returned or default_when_none value.
 def validate_json_string(json_string):
     try:
+        print("type of json_string : %s" % (type(json_string)))
+        if type(json_string) is str:
+            print("Found bytes type")
+            json_string = bytes(json_string)
+        elif type(json_string) is bytes:
+            print("Found bytes type")
+        else:
+            return False
         json_obj = json.loads(json_string)
         if json_obj is None:
             return False
         return True
         
-    except json.JSONDecodeError:
+    except:
+        var = traceback.format_exc()
+        print(var)
         return False
 
 # Get key value from an array of json strings, ['deepl','account','email'] key for example
@@ -197,10 +205,14 @@ elif __file__:
 configuration_file_full_path = os.path.join(application_path, local_configuration_json_path)
 
 try:
-    with open(configuration_file_full_path) as configuration_file:
-      local_json_contents = configuration_file.read()
+    if os.path.isfile(configuration_file_full_path):
+        with open(configuration_file_full_path) as configuration_file:
+          local_json_contents = configuration_file.read()
+    else:
+        #print(f"Optional local json configuration file not found at {configuration_file_full_path}, ignoring")
+        local_json_contents = b"{}"
 except:
-    local_json_contents = None
+    local_json_contents = b"{}"
           
 json_configuration_array = [local_json_contents,json_online_configuration,DefaultJsonConfiguration]
 
@@ -554,6 +566,7 @@ print("Python programming language %s\n" % (platform.python_version()))
 
 valid_online_json = validate_json_string(json_online_configuration)
 if not valid_online_json == True:
+    print(f"json_online_configuration={json_online_configuration}")
     print(f"Warning: Json file at {json_configuration_url} is not valid. Ignoring this configuration file.")
 else:
     #print(f"Json file at {configuration_file_full_path} is OK")
