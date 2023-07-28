@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-07-24"
+PROGRAM_VERSION="2023-07-28"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -33,7 +33,12 @@ import zipfile
 import xml.dom.minidom
 
 # This library automatically downloads chrome driver
-import pyderman
+# pyderman was replaced with webdriver_manager
+#import pyderman
+# For selenium 3
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.driver_cache import DriverCacheManager
 
 from screeninfo import get_monitors
 
@@ -108,12 +113,10 @@ from docx.oxml import parse_xml
 # The first json object containing the key value is returned or default_when_none value.
 def validate_json_string(json_string):
     try:
-        print("type of json_string : %s" % (type(json_string)))
         if type(json_string) is str:
-            print("Found bytes type")
-            json_string = bytes(json_string)
+            json_string
         elif type(json_string) is bytes:
-            print("Found bytes type")
+            pass # OK
         else:
             return False
         json_obj = json.loads(json_string)
@@ -210,9 +213,9 @@ try:
           local_json_contents = configuration_file.read()
     else:
         #print(f"Optional local json configuration file not found at {configuration_file_full_path}, ignoring")
-        local_json_contents = b"{}"
+        local_json_contents = None
 except:
-    local_json_contents = b"{}"
+    local_json_contents = None
           
 json_configuration_array = [local_json_contents,json_online_configuration,DefaultJsonConfiguration]
 
@@ -569,15 +572,15 @@ if not valid_online_json == True:
     print(f"json_online_configuration={json_online_configuration}")
     print(f"Warning: Json file at {json_configuration_url} is not valid. Ignoring this configuration file.")
 else:
-    #print(f"Json file at {configuration_file_full_path} is OK")
+    #print(f"Using JSON configuration file at {json_configuration_url} : OK")
     pass
     
 valid_local_json = validate_json_string(local_json_contents)
-if not valid_local_json == True:
-    print(f"Warning: Json file at {configuration_file_full_path} is not valid. Ignoring this configuration file.")
-else:
-    #print(f"Json file at {configuration_file_full_path} is OK")
-    pass
+if os.path.isfile(configuration_file_full_path):
+    if not valid_local_json == True:
+        print(f"Warning: Json file at {configuration_file_full_path} is not valid. Ignoring this configuration file.")
+    else:
+        print(f"Using JSON configuration file at {configuration_file_full_path}")
 
 print("")
 
@@ -755,6 +758,16 @@ def get_chrome_driver_version_mac():
     print("\nChrome version      : %s" % (info))
 
     re1 = re.compile('^([0-9]+\.[0-9]+\.[0-9]+)')
+    major_version_re = re.compile('^([0-9]+)\.')
+
+    m = re1.search(info)
+    m_major = major_version_re.search(info)
+
+    if ( len(m.groups()) == 1):
+        version_3_numbers=m.group(1)
+    
+    if ( len(m_major.groups()) == 1):
+        major_version=m_major.group(1)
 
     m = re1.search(info)
 
@@ -768,6 +781,7 @@ def get_chrome_driver_version_mac():
         if (major_version_int >= 115):
             return info
     except:
+        print(f"major :{major_version_int}")
         pass
 
     chromedriver_url_latest_release_current_version="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_%s" % (version_3_numbers)
@@ -825,7 +839,7 @@ def get_chrome_driver_version_win():
         pass
         
     chromedriver_url_latest_release_current_version="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_%s" % (version_3_numbers)
-    print("chromedriver_url_latest_release_current_version=%s" % (chromedriver_url_latest_release_current_version))
+    #print("chromedriver_url_latest_release_current_version=%s" % (chromedriver_url_latest_release_current_version))
 
     f = urllib.request.urlopen(chromedriver_url_latest_release_current_version)
     chrome_driver_version = f.read(100).decode('utf-8')
@@ -843,7 +857,18 @@ if not splitonly or True:
         chrome_driver_version = get_chrome_driver_version_mac()
     else:
         chrome_driver_version = get_chrome_driver_version_unix()
-    chromedriverpath = pyderman.install(browser=pyderman.chrome, version=chrome_driver_version)
+    
+    #chromedriverpath = pyderman.install(browser=pyderman.chrome, version=chrome_driver_version)
+    custom_driver_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib")
+    #print(f"custom_driver_path :{custom_driver_path}")
+    
+    # Set folder to download drivers
+    
+    chromedriverpath = ChromeDriverManager(chrome_driver_version, cache_manager=DriverCacheManager(custom_driver_path)).install()
+    
+    assert os.path.exists(custom_driver_path)
+    assert custom_driver_path in chromedriverpath
+    
     print('Installed chromedriver to path: %s\n' % chromedriverpath)
 
 if not os.path.exists(word_file_to_translate) :
@@ -3112,23 +3137,25 @@ def read_and_parse_docx_document():
 
 
 def create_webdriver():
-    global driver
+    global driver, chromedriverpath
     if not splitonly:
         print("\nStarting translation using engine : %s" % (translation_engine.title()))
 
 
     if use_api == False and not splitonly:
         print("Starting Chrome browser\n")
-
+        
+        if(platform.system() == "Darwin"):
+            chrome_options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
         driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
 
         #input("driver loaded and running")
         #driver.set_window_position(0, 350)
         if translation_engine == 'yandex' or translation_engine == 'deepl':
             driver.set_window_position(0, 100)
-            driver.set_window_size(1400, 1000)
+            driver.set_window_size(1000, 800)
         else:
-            driver.set_window_size(1400, 1000)
+            driver.set_window_size(1000, 800)
             #driver.set_window_size(400, 650)
 
 
@@ -3215,7 +3242,20 @@ window.onload = function(){
 ''' % (src_lang, src_lang, dest_lang,dest_lang,dest_lang)
     #print (html_to_translate)
     try:
-        html_file_path = os.path.abspath(os.path.expanduser(os.path.expandvars(word_file_to_translate))) + '.' + str(os.getpid()) + '.' + dest_lang + '.html'
+        if(platform.system() == "Darwin"):
+            # Write to TMPDIR or /tmp folder
+            try:
+                tmpdir = os.environ['TMPDIR']
+                if(tmpdir is None or tmpdir == ""):
+                    tmpdir = '/tmp/'
+            except:
+                tmpdir = '/tmp/'
+            html_file_path = tmpdir + docx_file_name + '.' + str(os.getpid()) + '.' + dest_lang + '.html'
+        else:
+            # Windows, write to file at the same location
+            html_file_path = os.path.abspath(os.path.expanduser(os.path.expandvars(word_file_to_translate))) + '.' + str(os.getpid()) + '.' + dest_lang + '.html'
+        
+        print(f"Writing temporary html file to : {html_file_path}")
         html_file_to_translate = open(html_file_path, 'w', encoding='utf-8')
         html_file_to_translate.write(html_to_translate)
         html_file_to_translate.close()
@@ -3602,7 +3642,7 @@ def get_translation_and_replace_after():
                                 print("Starting Chrome browser\n")
                                 driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
                                 driver.set_window_position(0, 350)
-                                driver.set_window_size(1400, 1000)
+                                driver.set_window_size(1000, 800)
                                 #driver.set_window_size(400, 650)
 
                             print("phrase_no=%d" % phrase_no)
@@ -3621,11 +3661,11 @@ def get_translation_and_replace_after():
 
                         if translation_engine == 'yandex' and driver is not None:
                             driver.set_window_position(100, 100)
-                            driver.set_window_size(1400, 1000)
+                            driver.set_window_size(1000, 800)
 
                         if translation_engine == 'deepl' and driver is not None:
                             driver.set_window_position(100, 100)
-                            driver.set_window_size(1400, 1000)
+                            driver.set_window_size(1000, 800)
 
                         print("phrase_no = %d" % phrase_no)
                         web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
