@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-07-28"
+PROGRAM_VERSION="2023-07-29"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -31,6 +31,9 @@ import datetime
 
 import zipfile
 import xml.dom.minidom
+# used to get elements in XML, shading in docx for example
+from xml.etree import ElementTree
+from lxml import etree
 
 # This library automatically downloads chrome driver
 # pyderman was replaced with webdriver_manager
@@ -516,6 +519,10 @@ eol_array = ['\. {0,}$', '\! {0,}$', '\? {0,}$',  '[\.\!\?\'] ?["”\'\)] {0,}$'
              ]
 eol_conditional_array = ['\" {0,}$', u'\u201D {0,}$']
 bol_array = ['^[A-Z]']
+
+# Colors : grey and pink backgroud to ignore
+# https://learn.microsoft.com/en-us/office/vba/api/word.wdcolor
+shading_color_ignore_text = ['FFD320', 'D9D9D9', 'BFBFBF', 'A6A6A6', '808080', 'FF00FF', 'FF0000']
 
 html_file_path = ''
 
@@ -2421,6 +2428,53 @@ def is_greyed_line(cell):
     #time.sleep(4)
     return cell_is_gray
 
+def get_paragraph_shading_color(xml_paragraph_str):
+    paragraph_xml = etree.fromstring(xml_paragraph_str)
+    attrib_fill = None
+    
+    namespaces = {'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+    try:
+        namespaces = {paragraph_xml.prefix : paragraph_xml.nsmap[paragraph_xml.prefix]}
+    except:
+        #print("Could not determine namespace")
+        pass
+    attrib_fill = None
+    
+    for e in paragraph_xml.findall('.//w:pPr/w:shd', namespaces):
+        #print("e:", etree.tostring(e, pretty_print=True))
+        try:
+            attrib_val = e.attrib.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val')
+            attrib_color = e.attrib.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}color')
+            attrib_fill = e.attrib.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}fill')
+            #print(f"attrib_color : {attrib_color}")
+            #print(f"attrib_fill : {attrib_fill}")
+            #print(f"attrib_val : {attrib_val}")
+        except:
+            pass
+    return attrib_fill
+
+
+def get_run_shading_color(xml_run_str):
+    run_xml = etree.fromstring(xml_run_str)
+    
+    namespaces = {'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+    try:
+        namespaces = {run_xml.prefix : run_xml.nsmap[run_xml.prefix]}
+    except:
+        #print("Could not determine namespace")
+        pass
+    attrib_fill = None
+    
+    for e in run_xml.findall('.//w:rPr/w:shd', namespaces):
+        #print("e:", etree.tostring(e, pretty_print=True))
+        try:
+            attrib_val = e.attrib.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val')
+            attrib_color = e.attrib.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}color')
+            attrib_fill = e.attrib.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}fill')
+        except:
+            pass
+    return attrib_fill
+
 # Return cell_non_greyed_text (string), cell_is_gray (integer for boolean)
 def get_cell_data(cell,row_n):
     global from_text_nb_lines_in_cell
@@ -2430,19 +2484,52 @@ def get_cell_data(cell,row_n):
     
     re_enter = re.compile('enter')
     re_newline = re.compile('\n')
-
-    #print("cell has %d runs," % (len(paragraph[0].runs) ))
+    
     n_paragraph = 0
     n_cell_lines = 1
+    
+    
     for paragraph in cell.paragraphs:
         paragraphs_text = ""
         n_paragraph = n_paragraph + 1
+        
+        #print("paragraph:", paragraph._p.xml)
+            
+        root = etree.fromstring(paragraph._p.xml)
+        p_shading_color = get_paragraph_shading_color(paragraph._p.xml)
+        
+        p_text = paragraph.text
+        nb_pause = len(re.findall('(?i)(<pause>)', p_text))
+        nb_enter = len(re.findall('(?i)(<enter>)', p_text))
+            
+        n_cell_lines = n_cell_lines + nb_pause + nb_enter
+        
+        if p_shading_color is not None:
+            #print(paragraph.text)
+            #input("Found a shaded paragraph")
+            if p_shading_color in shading_color_ignore_text:
+                continue
+        
         #if n_paragraph > 1:
         #    print("paragraph %d" % (n_paragraph))
         previous_run_text = ""
         for run in paragraph.runs:
             current_run_text = run.text
-            paragraphs_text = paragraphs_text + current_run_text
+            
+            
+            #print("cell row %d has %d runs," % (row_n, len(paragraph.runs) ))
+            #print(f"current_run_text : '{current_run_text
+            
+            root = etree.fromstring(run.element.xml)
+            run_shading_color = get_run_shading_color(run.element.xml)
+            
+            if run_shading_color is not None:
+                #print(f"run.element.xml : {run.element.xml}")
+                #print(f"current_run_text : {current_run_text}")
+                #input(f"Found a shaded run {run_shading_color}")
+                if run_shading_color in shading_color_ignore_text:
+                    #print(f"Color {run_shading_color} in the list of colors to ignore text")
+                    pass
             
             # if re_enter.match(current_run_text):
                 # print("found enter")
@@ -2458,38 +2545,29 @@ def get_cell_data(cell,row_n):
                         cell_is_red = cell_is_red * 0
                 
             if run.font.highlight_color == WD_COLOR_INDEX.RED :
-                #print("Found RED")
-                #input("enter to continue")
                 pass
 
-            #if current_run_text == "the bricks, the trees, ":
-            #    print("Found shaded text")
-            #    print(paragraph._p.xml)
-            #   input(pause)
-
-            if run.font.highlight_color == WD_COLOR_INDEX.GRAY_25 or run.font.strike or run.font.double_strike or run.font.highlight_color == WD_COLOR_INDEX.PINK or run.font.highlight_color == WD_COLOR_INDEX.RED:
+            if run.font.highlight_color == WD_COLOR_INDEX.GRAY_25 or run.font.strike or run.font.double_strike or run.font.highlight_color == WD_COLOR_INDEX.PINK or run.font.highlight_color == WD_COLOR_INDEX.RED or run_shading_color in shading_color_ignore_text:
                 #print("Found GRAY_25")
                 cell_non_greyed_text = cell_non_greyed_text + ' '
                 if cell_is_gray == None:
                     cell_is_gray = 1
+                
             else:
                 #print("Not gray")
                 if current_run_text != "":
-                    if (paragraphs_text.upper() == '<ENTER>' or (previous_run_text == "\n" and (current_run_text.upper() == '<ENTER>'))):
-                        #print("Cell has multiple lines")
-                        n_cell_lines = n_cell_lines + 1
-                        #input("press enter")
+                    cell_non_greyed_text = cell_non_greyed_text + current_run_text
+                    if cell_is_gray == None:
+                        cell_is_gray = 0
                     else:
-                        cell_non_greyed_text = cell_non_greyed_text + current_run_text
-                        if cell_is_gray == None:
-                            cell_is_gray = 0
-                        else:
-                            cell_is_gray = cell_is_gray * 0
+                        cell_is_gray = cell_is_gray * 0
                     #return cell_is_gray
             previous_run_text = current_run_text
         #if (paragraphs_text.upper() == '<ENTER>' or paragraphs_text.upper() == '<PAUSE>'):
         #    print("Found <ENTER> or <PAUSE>")
         #    #input("press enter")
+        
+    
     from_text_nb_lines_in_cell[row_n-1] = n_cell_lines
     #if n_cell_lines > 1:
     #    print("%d lines" % (n_cell_lines))
@@ -2500,6 +2578,7 @@ def get_cell_data(cell,row_n):
     cell_non_greyed_text = cell_non_greyed_text.replace("\r", " ")
     cell_non_greyed_text = re.sub(' +', ' ', cell_non_greyed_text)
     cell_non_greyed_text = cell_non_greyed_text.strip()
+    
 
     #if cell_is_gray == 1:
     #    print("FOUND A GRAY CELL")
@@ -2985,7 +3064,6 @@ def read_and_parse_docx_document():
                     #print(from_text_is_greyed_table)
                     #print(from_text_is_red_color_table)
                     #print("row_n=%d" % (row_n))
-                    get_cell_data(cell, row_n)
                     cellvalue, from_text_is_greyed_table[i], from_text_is_red_color_table[i] = get_cell_data(cell,row_n)
                     p_remove_pause
                     cellvalue = p_remove_pause.sub(' ', cellvalue)
