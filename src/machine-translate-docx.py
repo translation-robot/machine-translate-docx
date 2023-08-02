@@ -36,11 +36,15 @@ from lxml import etree
 
 # This library automatically downloads chrome driver
 # pyderman was replaced with webdriver_manager
+# then selenium 4.11.2 managed downloading the drivers
 #import pyderman
 # For selenium 3
 from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.driver_cache import DriverCacheManager
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.remote.remote_connection import LOGGER
 
 from screeninfo import get_monitors
 
@@ -700,183 +704,6 @@ def print_os_info():
     platform.mac_ver(),
     ))
 
-#print_os_info()
-
-def get_chrome_driver_version_unix():
-    res = None
-    unix_chrome_command = 'google-chrome'
-    unix_chrome_version = ''
-    try:
-        chrome_version_output = subprocess.check_output([unix_chrome_command, '--product-version'])
-        unix_chrome_version = chrome_version_output.decode("utf-8").split("\n")[0]
-    except :
-        var = traceback.format_exc()
-        print(var)
-        print("\n%s is not installed on this computer, please install and rerun the program. Exiting.\n" % (unix_chrome_command))
-
-    info = unix_chrome_version
-
-    if info == 'No Version Information Available':
-        info = None
-
-    print("\nChrome version      : %s" % (info))
-
-    re1 = re.compile('^([0-9]+\.[0-9]+\.[0-9]+)')
-
-    m = re1.search(info)
-
-    if ( len(m.groups()) == 1):
-        version_3_numbers=m.group(1)
-
-    #print("version_3_numbers=%s" % (version_3_numbers))
-    try:
-        major_version_int = int(major_version)
-        if (major_version_int >= 115):
-            return info
-    except:
-        pass
-
-    chromedriver_url_latest_release_current_version="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_%s" % (version_3_numbers)
-
-    f = urllib.request.urlopen(chromedriver_url_latest_release_current_version)
-    chrome_driver_version = f.read(100).decode('utf-8')
-
-    print("Chrome driver to use: %s" % (chrome_driver_version))
-    return chrome_driver_version
-
-def get_chrome_driver_version_mac():
-    res = None
-    mac_chrome_command = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    mac_chrome_version = ''
-    try:
-        chrome_version_output = subprocess.check_output([mac_chrome_command, '--version'])
-        mac_chrome_version = chrome_version_output.decode("utf-8").split("\n")[0].replace('Google Chrome ','')
-    except :
-        var = traceback.format_exc()
-        print(var)
-        print("\n%s is not installed on this computer, please install and rerun the program. Exiting.\n" % (unix_chrome_command))
-
-    info = mac_chrome_version
-
-    if info == 'No Version Information Available':
-        info = None
-
-    print("\nChrome version      : %s" % (info))
-
-    re1 = re.compile('^([0-9]+\.[0-9]+\.[0-9]+)')
-    major_version_re = re.compile('^([0-9]+)\.')
-
-    m = re1.search(info)
-    m_major = major_version_re.search(info)
-
-    if ( len(m.groups()) == 1):
-        version_3_numbers=m.group(1)
-    
-    if ( len(m_major.groups()) == 1):
-        major_version=m_major.group(1)
-
-    m = re1.search(info)
-
-    if ( len(m.groups()) == 1):
-        version_3_numbers=m.group(1)
-
-    #print("version_3_numbers=%s" % (version_3_numbers))
-    
-    try:
-        major_version_int = int(major_version)
-        if (major_version_int >= 115):
-            return info
-    except:
-        print(f"major :{major_version_int}")
-        pass
-
-    chromedriver_url_latest_release_current_version="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_%s" % (version_3_numbers)
-
-    f = urllib.request.urlopen(chromedriver_url_latest_release_current_version)
-    chrome_driver_version = f.read(100).decode('utf-8')
-
-    print("Chrome driver to use: %s" % (chrome_driver_version))
-    return chrome_driver_version
-
-
-def get_chrome_driver_version_win():
-
-    path=''
-    if os.path.exists('C:\Program Files (x86)\Google\Chrome\Application\Chrome.exe'):
-        path = 'C:\Program Files (x86)\Google\Chrome\Application\Chrome.exe'
-    
-    if os.path.exists('C:\Program Files\Google\Chrome\Application\Chrome.exe'):
-        path = 'C:\Program Files\Google\Chrome\Application\Chrome.exe'
-
-    if path == '':
-        print("Error, Chrome not found on this computer")
-        os._exit(1)
-     
-    chrome_path = path
-
-    ver_parser = Dispatch('Scripting.FileSystemObject')
-    info = ver_parser.GetFileVersion(chrome_path)
-
-    if info == 'No Version Information Available':
-        info = None
-
-    print("\nChrome version      : %s" % (info))
-
-    re1 = re.compile('^([0-9]+\.[0-9]+\.[0-9]+)')
-    major_version_re = re.compile('^([0-9]+)\.')
-
-    m = re1.search(info)
-    m_major = major_version_re.search(info)
-
-    if ( len(m.groups()) == 1):
-        version_3_numbers=m.group(1)
-    
-    if ( len(m_major.groups()) == 1):
-        major_version=m_major.group(1)
-
-    #print("major_version=%s" % (major_version))
-    #print("version_3_numbers=%s" % (version_3_numbers))
-    
-    try:
-        major_version_int = int(major_version)
-        if (major_version_int >= 115):
-            return info
-    except:
-        pass
-        
-    chromedriver_url_latest_release_current_version="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_%s" % (version_3_numbers)
-    #print("chromedriver_url_latest_release_current_version=%s" % (chromedriver_url_latest_release_current_version))
-
-    f = urllib.request.urlopen(chromedriver_url_latest_release_current_version)
-    chrome_driver_version = f.read(100).decode('utf-8')
-
-    print("Chrome driver to use: %s" % (chrome_driver_version))
-    return chrome_driver_version
-
-geckodriverpath = ''
-chromedriverpath = ''
-if not splitonly or True:
-    process_platform = platform.system()
-    if platform.system() == 'Windows':
-        chrome_driver_version = get_chrome_driver_version_win()
-    elif platform.system() == 'Darwin':
-        chrome_driver_version = get_chrome_driver_version_mac()
-    else:
-        chrome_driver_version = get_chrome_driver_version_unix()
-    
-    #chromedriverpath = pyderman.install(browser=pyderman.chrome, version=chrome_driver_version)
-    custom_driver_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib")
-    #print(f"custom_driver_path :{custom_driver_path}")
-    
-    # Set folder to download drivers
-    
-    chromedriverpath = ChromeDriverManager(chrome_driver_version, cache_manager=DriverCacheManager(custom_driver_path)).install()
-    
-    assert os.path.exists(custom_driver_path)
-    assert custom_driver_path in chromedriverpath
-    
-    print('Installed chromedriver to path: %s\n' % chromedriverpath)
-
 if not os.path.exists(word_file_to_translate) :
     print("ERROR: File not found: %s" % (word_file_to_translate))
     os._exit(1)
@@ -1071,8 +898,8 @@ def selenium_chrome_google_translate(to_translate):
         input_element = "//textarea[@id='source']"
         input_element = "//textarea"
         
-        #input_button = WebDriverWait(driver, 30).until(lambda driver: driver.find_element_by_xpath(input_element))
-        #driver.find_element_by_xpath(input_element).clear()
+        #input_button = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, input_element)))))
+        #driver.find_element(By.XPATH, input_element).clear()
         #to_translate_utf8 = to_translate.decode('utf-8')
         to_translate_utf8 = to_translate
         #input_button.send_keys (to_translate_utf8)
@@ -1085,13 +912,13 @@ def selenium_chrome_google_translate(to_translate):
             copy_translation_element = "//div[4]/div[4]/div"
             copy_translation_element = "//i[contains(.,'content_copy')]"
             
-            copy_translation_button = WebDriverWait(driver, 15).until(lambda driver: driver.find_element_by_xpath(copy_translation_element))
+            copy_translation_button = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, copy_translation_element)))
         except :
             var = traceback.format_exc()
             print(var)
             
         # EditTranslationElement = "xpath=//button/div[2]"
-        # EditTranslationButton = WebDriverWait(driver, 30).until(lambda driver: driver.find_element_by_xpath(EditTranslationElement))
+        # EditTranslationButton = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, EditTranslationElement)))))
         
         # driver.execute_script("scrollBy(0,-1000);")
         # actions.move_to_element(EditTranslationButton).perform()
@@ -1109,7 +936,7 @@ def selenium_chrome_google_translate(to_translate):
             try:
                 #res_element_xpath = "//c-wiz/div/div[2]/c-wiz/div[2]/c-wiz/div[1]/div[2]/div[2]/c-wiz[2]/div[5]/div/div[3]/div[1]/div/div[1]/div[1]/textarea"
                 
-                result_element = WebDriverWait(driver, 10).until(lambda driver: driver.find_element_by_xpath(res_element_xpath))
+                result_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, res_element_xpath)))
                 translation = result_element.get_attribute('innerHTML')
                 #translation = html.unescape(translation)
             except :
@@ -1121,7 +948,7 @@ def selenium_chrome_google_translate(to_translate):
                 #res_element_xpath = "xpath=//div[6]/div/div/span/span/span"
                 #res_element_xpath = "//textarea[@lang='%s']" % (dest_lang)
                 
-                result_element = WebDriverWait(driver, 10).until(lambda driver: driver.find_element_by_xpath(res_element_xpath))
+                result_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, res_element_xpath)))
                 translation = result_element.get_attribute('innerHTML')
                 #translation = html.unescape(translation)
                 
@@ -1152,8 +979,8 @@ def selenium_chrome_google_translate(to_translate):
                 print("")
                 time.sleep(1)
                 try:
-                    #result_element = WebDriverWait(driver, 10).until(lambda driver: driver.find_element_by_css_selector(".result"))
-                    result_element = WebDriverWait(driver, 10).until(lambda driver: driver.find_element_by_xpath(res_element_xpath))
+                    #result_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".result"))))
+                    result_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, res_element_xpath)))
                     
                     translation = result_element.get_attribute('innerHTML')
                     #translation = html.unescape(translation)
@@ -1317,7 +1144,7 @@ def selenium_chrome_google_click_cookies_consent_button():
         if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
             print("Waiting for cookies consent button...")
             try:
-                browse_file_element = WebDriverWait(driver, 0.1).until(lambda driver: driver.find_element_by_xpath(browse_file_element_xpath))  
+                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
                 found_google_cookies_consent_button = True
             except:
                 pass
@@ -1325,9 +1152,9 @@ def selenium_chrome_google_click_cookies_consent_button():
         if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
             consent_cookies_element = "//form/div/div/button/span"
             try:
-                consent_cookies_button = WebDriverWait(driver, 2).until(lambda driver: driver.find_element_by_xpath(consent_cookies_element))
+                consent_cookies_button = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, consent_cookies_element)))
                 consent_cookies_button.click()
-                browse_file_element = WebDriverWait(driver, 0.1).until(lambda driver: driver.find_element_by_xpath(browse_file_element_xpath))  
+                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
                 found_google_cookies_consent_button = True
                 
             except:
@@ -1336,9 +1163,9 @@ def selenium_chrome_google_click_cookies_consent_button():
         if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
             consent_cookies_element = "//button/span"
             try:
-                consent_cookies_button = WebDriverWait(driver, 2).until(lambda driver: driver.find_element_by_xpath(consent_cookies_element))
+                consent_cookies_button = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, consent_cookies_element)))
                 consent_cookies_button.click()
-                browse_file_element = WebDriverWait(driver, 0.1).until(lambda driver: driver.find_element_by_xpath(browse_file_element_xpath))  
+                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
                 found_google_cookies_consent_button = True
                 
             except:
@@ -1347,9 +1174,9 @@ def selenium_chrome_google_click_cookies_consent_button():
         if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
             consent_cookies_element = "//button/div[2]"
             try:
-                consent_cookies_button = WebDriverWait(driver, 2).until(lambda driver: driver.find_element_by_xpath(consent_cookies_element))
+                consent_cookies_button = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, consent_cookies_element)))
                 consent_cookies_button.click()
-                browse_file_element = WebDriverWait(driver, 0.1).until(lambda driver: driver.find_element_by_xpath(browse_file_element_xpath))  
+                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
                 found_google_cookies_consent_button = True
                 
             except:
@@ -1357,7 +1184,7 @@ def selenium_chrome_google_click_cookies_consent_button():
         
         if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
             try:
-                browse_file_element = WebDriverWait(driver, 0.1).until(lambda driver: driver.find_element_by_xpath(browse_file_element_xpath))  
+                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
                 found_google_cookies_consent_button = True
             except:
                 pass
@@ -1382,7 +1209,7 @@ def selenium_chrome_google_click_cookies_consent_button():
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 driver.switch_to.window(driver.current_window_handle)
                 print('\nCLICK ON I Agree TO CONTINUE\n')
-                browse_file_element = WebDriverWait(driver, 500).until(lambda driver: driver.find_element_by_xpath(browse_file_element_xpath))  
+                browse_file_element = WebDriverWait(driver, 500).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
             except:
                 pass      
             
@@ -1409,7 +1236,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
         
         browse_file_element_xpath = "//label[contains(.,'Browse your computer')]"
         
-        #browse_file_element = WebDriverWait(driver, 25).until(lambda driver: driver.find_element_by_xpath(browse_file_element_xpath))
+        #browse_file_element = WebDriverWait(driver, 25).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))))
         
         #browse_file_element.click()
         
@@ -1419,7 +1246,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
         text_file_element_xpath = "//input[@name='file']"
         text_file_element_xpath = "//input[@id='i37']"
         text_file_element_xpath = "//div[3]/input"
-        text_file_element = WebDriverWait(driver, 925).until(lambda driver: driver.find_element_by_xpath(text_file_element_xpath))
+        text_file_element = WebDriverWait(driver, 925).until(EC.presence_of_element_located((By.XPATH, text_file_element_xpath)))
         
         text_file_element.send_keys(text_file_path)
 
@@ -1430,7 +1257,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
        
         
         
-        text_file_translate_button = WebDriverWait(driver, 60).until(lambda driver: driver.find_element_by_xpath(text_file_translate_button_xpath))
+        text_file_translate_button = WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.XPATH, text_file_translate_button_xpath)))
         
         print("Clicking on Translate button...")
         text_file_translate_button.click()
@@ -1444,7 +1271,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
             loop_wait_translation_count = loop_wait_translation_count - 1
         
         #Wait for page status loaded to be complete
-        WebDriverWait(driver, 10).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(driver.execute_script('return document.readyState') == 'complete'))
         
         print("Translation received.")
         
@@ -1637,7 +1464,7 @@ def get_last_downloaded_file_path():
         print("len dld_file_paths=%d" % (len(dld_file_paths)))
         print("res dld_file_paths=%s" % (dld_file_paths))
         #input("Opened download status page")
-        #WebDriverWait(driver, 120, 1).until(chrome_downloads) # returns list of downloaded file paths
+        #WebDriverWait(driver, 120, 1).until(chrome_downloads) # returns list of downloaded file paths)
     # Close the current tab (chrome downloads)
     if "chrome://downloads" in driver.current_url:
         driver.close()
@@ -1675,7 +1502,7 @@ def selenium_chrome_google_translate_xlsx_file(xlsx_file_path):
         
         browse_file_element_xpath = "//label[contains(.,'Browse your computer')]"
         
-        #browse_file_element = WebDriverWait(driver, 25).until(lambda driver: driver.find_element_by_xpath(browse_file_element_xpath))
+        #browse_file_element = WebDriverWait(driver, 25).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))))
         
         #browse_file_element.click()
         
@@ -1687,7 +1514,7 @@ def selenium_chrome_google_translate_xlsx_file(xlsx_file_path):
         #xlsx_file_element_xpath = "//span[contains(.,'Browse your computer')]"
         #xlsx_file_element_xpath = '//button[normalize-space()="Browse your computer"]'
         xlsx_file_element_xpath = "//div[3]/input"
-        xlsx_file_element = WebDriverWait(driver, 925).until(lambda driver: driver.find_element_by_xpath(xlsx_file_element_xpath))
+        xlsx_file_element = WebDriverWait(driver, 925).until(EC.presence_of_element_located((By.XPATH, xlsx_file_element_xpath)))
         
         xlsx_file_element.send_keys(xlsx_file_path)
         #input(" HERE : xlsx_file_path")
@@ -1695,7 +1522,7 @@ def selenium_chrome_google_translate_xlsx_file(xlsx_file_path):
         #xlsx_file_translate_button_xpath = "//div[2]/div[2]/button/span"
         xlsx_file_translate_button_xpath = "//div[2]/div/button/span"
         
-        xlsx_file_translate_button = WebDriverWait(driver, 60).until(lambda driver: driver.find_element_by_xpath(xlsx_file_translate_button_xpath))
+        xlsx_file_translate_button = WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.XPATH, xlsx_file_translate_button_xpath)))
         
         print("Clicking on Translate button...")
         #input("BEFORE : xlsx_file_translate_button")
@@ -1722,7 +1549,7 @@ def selenium_chrome_google_translate_xlsx_file(xlsx_file_path):
             
             
             try:
-                download_button = WebDriverWait(driver, 0.1).until(lambda driver: driver.find_element_by_xpath(download_button_xpath))
+                download_button = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, download_button_xpath)))
                 download_button.click()
                 print("We found a download button")
                 print("Waiting for download to finish")
@@ -1742,7 +1569,7 @@ def selenium_chrome_google_translate_xlsx_file(xlsx_file_path):
         
         #input("After download button")
         #Wait for page status loaded to be complete
-        WebDriverWait(driver, 10).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(driver.execute_script('return document.readyState') == 'complete'))
         
         print("Translation received.")
         #input("HERE AGAIN .")
@@ -1818,12 +1645,12 @@ def selenium_chrome_yandex_translate(to_translate):
             alert_captcha = True
 
         input_element = "#textarea"
-        input_button = WebDriverWait(driver, 60).until(lambda driver: driver.find_element_by_css_selector("#fakeArea"))
+        input_button = WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fakeArea")))
 
         input_button.send_keys (to_translate)
 
         copy_translation_element = "//span[@id='copyButton']"
-        copy_translation_button = WebDriverWait(driver, 30).until(lambda driver: driver.find_element_by_xpath(copy_translation_element))
+        copy_translation_button = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, copy_translation_element)))
 
         copy_translation_button_class_attribute = copy_translation_button.get_attribute("class")
         #print("val class=%s" % (copy_translation_button_class_attribute))
@@ -1845,7 +1672,7 @@ def selenium_chrome_yandex_translate(to_translate):
         sleep(0.1)
 
         translation_result_element = "translation"
-        translation_result_box = WebDriverWait(driver, 60).until(lambda driver: driver.find_element_by_id(translation_result_element))
+        translation_result_box = WebDriverWait(driver, 60).until(EC.presence_of_element_located((translation_result_element)))
         translation = translation_result_box.text
         res = translation
 
@@ -1906,11 +1733,12 @@ def selenium_chrome_deepl_log_in():
             try:
                 # Accept cookies
                 deepl_accept_cookies_element = "//button[contains(.,'Accept all cookies')]"
-                deepl_accept_cookies_button = WebDriverWait(driver, 1).until(
-                    lambda driver: driver.find_element_by_xpath(deepl_accept_cookies_element))
+                deepl_accept_cookies_button = WebDriverWait(driver, 4).until(
+                    EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
                 deepl_accept_cookies_button.click()
             except:
-                print("No cookies accept button. Continuing.")
+                var = traceback.format_exc()
+                print(var)
         
             # End function if no email or password are provided
             if (deepl_account_email is None) or (deepl_account_email is None):
@@ -1921,13 +1749,13 @@ def selenium_chrome_deepl_log_in():
             # Fill username 
             deepl_login_email_element = "//input[@name='email']"
             deepl_login_email_field = WebDriverWait(driver, 1).until(
-                lambda driver: driver.find_element_by_xpath(deepl_login_email_element))
+                EC.presence_of_element_located((By.XPATH, deepl_login_email_element)))
             deepl_login_email_field.send_keys(deepl_account_email)
             
             # Fill password
             deepl_login_password_element = "//input[@name='password']"
             deepl_login_password_field = WebDriverWait(driver, 1).until(
-                lambda driver: driver.find_element_by_xpath(deepl_login_password_element))
+                EC.presence_of_element_located((By.XPATH, deepl_login_password_element)))
             deepl_login_password_field.send_keys(deepl_account_password)
             sleep(1)
             
@@ -1936,7 +1764,7 @@ def selenium_chrome_deepl_log_in():
             deepl_login_submit_element = "//input[@name='submit']"
             deepl_login_submit_element = "//button[contains(.,'Log in')]"
             deepl_login_submit_button = WebDriverWait(driver, 3).until(
-                lambda driver: driver.find_element_by_xpath(deepl_login_submit_element))
+                EC.presence_of_element_located((By.XPATH, deepl_login_submit_element)))
             sleep(1.5)
             try:
                 deepl_login_submit_button.click()
@@ -1946,7 +1774,7 @@ def selenium_chrome_deepl_log_in():
             # Check account button exist
             deepl_login_menu_element = ".dl_header_menu_v2__buttons__opener"
             deepl_login_menu_button = WebDriverWait(driver, 9).until(
-                lambda driver: driver.find_element_by_css_selector(deepl_login_menu_element))
+                EC.presence_of_element_located((By.CSS_SELECTOR, deepl_login_menu_element)))
             deepl_login_menu_button.click()
             # Close the opener dialog, not required but cleaner
             sleep(0.1)
@@ -1956,7 +1784,7 @@ def selenium_chrome_deepl_log_in():
                 # Close the annoying plugin for deepl if displayed - bug : it does not find this element
                 deepl_plugin_dialog_element = ".w-6 path"
                 deepl_plugin_dialog_button = WebDriverWait(driver, 0.3).until(
-                    lambda driver: driver.find_element_by_css_selector(deepl_plugin_dialog_element))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, deepl_plugin_dialog_element)))
                 deepl_plugin_dialog_button.click()
             except:
                 # Just ignore if this plugin dialog does not appear
@@ -2000,14 +1828,14 @@ def selenium_chrome_deepl_log_off():
             # Open account menu by clicking the account button
             deepl_login_menu_element = ".dl_header_menu_v2__buttons__opener"
             deepl_login_menu_button = WebDriverWait(driver, 9).until(
-                lambda driver: driver.find_element_by_css_selector(deepl_login_menu_element))
+                EC.presence_of_element_located((By.CSS_SELECTOR, deepl_login_menu_element)))
             deepl_login_menu_button.click()
             
             try:
                 # Open account menu by clicking the account button
                 deepl_logout_menu_element = "//button[contains(.,'Log out')]"
                 deepl_logout_menu_button = WebDriverWait(driver, 1).until(
-                    lambda driver: driver.find_element_by_xpath(deepl_logout_menu_element))
+                    EC.presence_of_element_located((By.XPATH, deepl_logout_menu_element)))
                 deepl_logout_menu_button.click()
                 print("\nRobot is now logged off Deepl account.")
                 
@@ -2075,7 +1903,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             (driver.page_source).encode('utf-8')
             input_element = ".lmt__source_textarea"
             input_button = WebDriverWait(driver, 1).until(
-                lambda driver: driver.find_element_by_css_selector(input_element))
+                EC.presence_of_element_located((By.CSS_SELECTOR, input_element)))
         except:
             # print("Waiting for the input_element...")
             var = traceback.format_exc()
@@ -2087,7 +1915,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         try:
             accept_all_cookies_element = ".dl_cookieBanner--buttonAll"
             accept_all_cookies_button = WebDriverWait(driver, 0.05).until(
-                lambda driver: driver.find_element_by_css_selector(accept_all_cookies_element))
+                EC.presence_of_element_located((By.CSS_SELECTOR, accept_all_cookies_element)))
             accept_all_cookies_button.click()
         except:
             pass
@@ -2105,19 +1933,19 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             # Added on version 2022-05-31
             copy_translation_element = "div:nth-child(5)"
             copy_translation_button = WebDriverWait(driver, 6).until(
-                lambda driver: driver.find_element_by_css_selector(copy_translation_element))
+                EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
 
         except:
             try:
                 # Version 2022-03-09
                 copy_translation_element = ".lmt__target_toolbar_right > span path:nth-child(2)"
                 copy_translation_button = WebDriverWait(driver, 1).until(
-                    lambda driver: driver.find_element_by_css_selector(copy_translation_element))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
             except:
                 # Version 2022-03-30
                 copy_translation_element = ".lmt__target_toolbar_right > div > span svg"
                 copy_translation_button = WebDriverWait(driver, 5).until(
-                    lambda driver: driver.find_element_by_css_selector(copy_translation_element))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
 
         busy_element = ".lmt__textarea_separator__border_inner"
         # busy_element = "//div[@id='dl_translator']/div/div/div[5]"
@@ -2126,7 +1954,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         busybox_innerhtml = ""
         timeout_busy_translating = 50
         try:
-            busybox = WebDriverWait(driver, 0.3).until(lambda driver: driver.find_element_by_css_selector(busy_element))
+            busybox = WebDriverWait(driver, 0.3).until(EC.presence_of_element_located((By.CSS_SELECTOR, busy_element)))
             attrs = driver.execute_script(
                 'var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;',
                 busybox)
@@ -2134,7 +1962,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             while busybox_innerhtml != "" and timeout_busy_translating > 0:
                 sleep(0.3)
                 busybox = WebDriverWait(driver, 15).until(
-                    lambda driver: driver.find_element_by_css_selector(busy_element))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, busy_element)))
                 busybox_innerhtml = busybox.get_attribute('innerHTML')
                 attrs = driver.execute_script(
                     'var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;',
@@ -2144,7 +1972,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 deepl_usage_limit_reached_element = "//button[contains(.,'Back to Translator')]"
                 try:
                     deepl_usage_limit_reached_button = WebDriverWait(driver, 0.05).until(
-                        lambda driver: driver.find_element_by_xpath(deepl_usage_limit_reached_element))
+                        EC.presence_of_element_located((By.XPATH, deepl_usage_limit_reached_element)))
                     deepl_usage_limit_reached_button.click()
                     return False, ""
                 except:
@@ -2156,7 +1984,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             deepl_usage_limit_reached_element = "//button[contains(.,'Back to Translator')]"
             try:
                 deepl_usage_limit_reached_button = WebDriverWait(driver, 0.05).until(
-                    lambda driver: driver.find_element_by_xpath(deepl_usage_limit_reached_element))
+                    EC.presence_of_element_located((By.XPATH, deepl_usage_limit_reached_element)))
                 print("Error : deepl usage limit reached")
                 deepl_usage_limit_reached_button.click()
                 return False, ""
@@ -2239,15 +2067,15 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     # Try to get the translation from the innerhtml of translation button
                     button_translation_element = "//button[@class='lmt__translations_as_text__text_btn']"
                     ButtonTranslationElement = WebDriverWait(driver, 1).until(
-                        lambda driver: driver.find_element_by_xpath(button_translation_element))
+                        EC.presence_of_element_located((By.XPATH, button_translation_element)))
                     translation_from_button = ButtonTranslationElement.get_attribute('innerHTML')
                     res = translation_from_button
-                    # print(translation_from_button)
-                    # input ("wait after translation_from_button")
                 except:
                     # if we cannot find translation button with translation the use the copy button
                     # previous_clipbboard = clipboard.paste()
                     # previous_clipbboard = pyperclip.paste()
+                    #var = traceback.format_exc()
+                    #print(var)
                     copy_translation_button.click()
                     copy_button_clicked = True
                     res = clipboard.paste()
@@ -3224,10 +3052,9 @@ def create_webdriver():
 
     if use_api == False and not splitonly:
         print("Starting Chrome browser\n")
+        service = Service()
         
-        if(platform.system() == "Darwin"):
-            chrome_options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-        driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
 
         #input("driver loaded and running")
         #driver.set_window_position(0, 350)
@@ -3720,7 +3547,10 @@ def get_translation_and_replace_after():
 
                             if translation_engine != 'yandex' and driver is not None:
                                 print("Starting Chrome browser\n")
-                                driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+                                
+                                service = Service()                                
+                                driver = webdriver.Chrome(service=service, options=chrome_options)
+                                
                                 driver.set_window_position(0, 350)
                                 driver.set_window_size(1000, 800)
                                 #driver.set_window_size(400, 650)
@@ -3733,7 +3563,9 @@ def get_translation_and_replace_after():
 
                         if driver is not None:
                             print("Starting Chrome browser\n")
-                            driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+                            
+                            service = Service()                                
+                            driver = webdriver.Chrome(service=service, options=chrome_options)
 
                         if translation_engine == 'google' and driver is not None:
                             driver.set_window_position(0, 350)
@@ -4190,7 +4022,9 @@ def run_statistics():
         docxfile_table_number_of_lines = numrows
         if use_api or splitonly:
             print("\nCreating a new browser for stats")
-            driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+            
+            service = Service()                                
+            driver = webdriver.Chrome(service=service, options=chrome_options)
         
         query_params = {
             "program_version" : PROGRAM_VERSION,
@@ -4245,19 +4079,19 @@ def run_statistics():
         
         submit_stats_element = "//input[@value='Submit']"
         try:
-            submit_stats_button = WebDriverWait(driver, 1).until(lambda driver: driver.find_element_by_xpath(submit_stats_element))
+            submit_stats_button = WebDriverWait(driver, 1).until(EC.presence_of_element_located((By.XPATH, submit_stats_element)))
             submit_stats_button.submit()
             #time.sleep(1)
             submited_div_element = "//div[@id='form_post_submitted']"
-            submited_div = WebDriverWait(driver, 5).until(lambda driver: driver.find_element_by_xpath(submited_div_element))
+            submited_div = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, submited_div_element)))
             #print("statistics updated")
         except:
             print("Warning failed to update stats, you can ignore this.")
             #pass
 
     except:
-        var = traceback.format_exc()
-        print(var)
+        #var = traceback.format_exc()
+        #print(var)
         print("Warning failed to update stats, you can ignore this...")
     
     #time.sleep(10)
@@ -4265,7 +4099,7 @@ def run_statistics():
 
 def browser_fill_form_field_value(field_css_id, field_value):
     try:
-        input_field = WebDriverWait(driver, 1).until(lambda driver: driver.find_element_by_css_selector(field_css_id))
+        input_field = WebDriverWait(driver, 1).until(EC.presence_of_element_located((By.CSS_SELECTOR, field_css_id)))
         input_field.send_keys (field_value)
     except:
         var = traceback.format_exc()
@@ -4422,10 +4256,12 @@ def get_robot_usage_comment():
             print("Checking for program updates...")
             print("-------------------------------\n")
 
-            element_json_robot = driver.find_element_by_id("json_robot")
+            element_json_robot = WebDriverWait(driver, 1).until(
+                    EC.presence_of_element_located((By.ID, "json_robot")))
             driver.execute_script("arguments[0].innerText = arguments[1]", element_json_robot, json.dumps(json_obj))
 
-            element_submit = driver.find_element_by_id("submit")
+            element_submit = WebDriverWait(driver, 1).until(
+                    EC.presence_of_element_located((By.ID, "submit")))
             element_submit.click()
 
             html_translation = driver.page_source
@@ -4550,7 +4386,9 @@ def get_robot_usage_comment():
             docxfile_table_number_of_lines = numrows
             if use_api or splitonly:
                 print("\nCreating a new browser for stats")
-                driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+                
+                service = Service()                                
+                driver = webdriver.Chrome(service=service, options=chrome_options)
 
             query_params = {
                 "program_version": PROGRAM_VERSION,
@@ -4605,19 +4443,21 @@ def get_robot_usage_comment():
             submit_stats_element = "//input[@value='Submit']"
             try:
                 submit_stats_button = WebDriverWait(driver, 1).until(
-                    lambda driver: driver.find_element_by_xpath(submit_stats_element))
+                    EC.presence_of_element_located((By.XPATH, submit_stats_element)))
                 submit_stats_button.submit()
                 # time.sleep(1)
                 submited_div_element = "//div[@id='form_post_submitted']"
                 submited_div = WebDriverWait(driver, 5).until(
-                    lambda driver: driver.find_element_by_xpath(submited_div_element))
-                # print("statistics updated")
+                    EC.presence_of_element_located((By.XPATH, submited_div_element)))
+                print("statistics updated")
             except:
+                #var = traceback.format_exc()
+                #print(var)
                 print("Warning failed to get available updates status, you can ignore this.")
                 # pass
 
         except:
-            var = traceback.format_exc()
+            #var = traceback.format_exc()
             #print(var)
             print("Warning failed to get available updates status, you can ignore this.")
 
