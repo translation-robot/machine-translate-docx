@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-07-29"
+PROGRAM_VERSION="2023-08-02"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -32,7 +32,6 @@ import datetime
 import zipfile
 import xml.dom.minidom
 # used to get elements in XML, shading in docx for example
-from xml.etree import ElementTree
 from lxml import etree
 
 # This library automatically downloads chrome driver
@@ -522,7 +521,7 @@ bol_array = ['^[A-Z]']
 
 # Colors : grey and pink backgroud to ignore
 # https://learn.microsoft.com/en-us/office/vba/api/word.wdcolor
-shading_color_ignore_text = ['FFD320', 'D9D9D9', 'BFBFBF', 'A6A6A6', '808080', 'FF00FF', 'FF0000']
+shading_color_ignore_text = ['FFD320', 'D9D9D9', 'BFBFBF', 'A6A6A6', '808080', 'FF00FF', 'FF0000', 'F3F3F3', 'E6E6E6', 'E0E0E0', 'CCCCCC', 'C0C0C0', 'B3B3B3', 'A0A0A0', '999999', '8C8C8C',  '737373', '666666', '606060', '595959', '4C4C4C', '404040', '333333', '262626', '202020', '191919', '0C0C0C']
 
 html_file_path = ''
 
@@ -2516,7 +2515,6 @@ def get_cell_data(cell,row_n):
         for run in paragraph.runs:
             current_run_text = run.text
             
-            
             #print("cell row %d has %d runs," % (row_n, len(paragraph.runs) ))
             #print(f"current_run_text : '{current_run_text
             
@@ -2576,6 +2574,10 @@ def get_cell_data(cell,row_n):
     cell_non_greyed_text = cell_non_greyed_text.replace('’', "'")
     cell_non_greyed_text = cell_non_greyed_text.replace("\n", " ")
     cell_non_greyed_text = cell_non_greyed_text.replace("\r", " ")
+    
+    cell_non_greyed_text = re.sub("(?i)<pause>", "", cell_non_greyed_text) #'remove <pause> case insensitive
+    cell_non_greyed_text = re.sub("(?i)<enter>", "", cell_non_greyed_text) #'remove <pause> case insensitive
+    
     cell_non_greyed_text = re.sub(' +', ' ', cell_non_greyed_text)
     cell_non_greyed_text = cell_non_greyed_text.strip()
     
