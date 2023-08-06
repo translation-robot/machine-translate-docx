@@ -115,6 +115,8 @@ import json
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 
+import glob
+
 # Get key value from an array of json strings, ['deepl','account','email'] for example
 # The first json object containing the key value is returned or default_when_none value.
 def validate_json_string(json_string):
@@ -2224,37 +2226,6 @@ def is_empty_line(line):
         return 1
     return 0
 
-# Deprecated
-def is_greyed_line(cell):
-    cell_is_gray = 0
-
-    #print("cell has %d runs," % (len(paragraph[0].runs) ))
-    for paragraph in cell.paragraphs:
-        for run in paragraph.runs:
-            
-            print ("HERE !!!!!!!!!!!!!!!!!!!!!!!!!!")
-            #print ("shading text with color %s : %s" % (run.text, run.font.shading.fore_color.rgb))
-                
-            if run.font.highlight_color == WD_COLOR_INDEX.GRAY_25:
-                #print("Found GRAY_25")
-                cell_is_gray = 1
-            elif run.font.shading:
-                print ("Found shading text with color %s : %s" % (run.text, run.font.shading.fore_color.rgb))
-                input("Press enter to continue")
-                #run.font.shading.fore_color.rgb == '808080':  # Change '808080' to the desired gray shading color
-                #text_runs_with_gray_shading.append(run.text)
-                
-            else:
-                #print("Not gray")
-                if run.text.strip() != "":
-                    cell_is_gray = 0
-                    return cell_is_gray
-
-    #if cell_is_gray == 1:
-    #    print("FOUND A GRAY CELL")
-    #time.sleep(4)
-    return cell_is_gray
-
 def get_paragraph_shading_color(xml_paragraph_str):
     paragraph_xml = etree.fromstring(xml_paragraph_str)
     attrib_fill = None
@@ -2652,38 +2623,6 @@ def generate_tmx_file():
 
 
 
-# Needed for google translate
-#translator = Translator()
-
-#translations = translator.translate(['The quick brown fox', 'jumps over', 'the lazy dog'], src='en', dest='fr')
-
-
-
-#for translation in translations:
-#    print(translation.origin, ' -> ', translation.text)
-
-#google_translation = translator.translate('veritas lux mea', src='la', dest='fr')
-#print(translation.origin, ' -> ', translation.text)
-
-
-
-#word = win32.Dispatch("Word.Application")
-#word.Visible = 1
-#word.Application.ScreenUpdating = 1
-#X:/download/httpd-2.4.35-win64-VC15/Apache24/htdocs/htdocs/
-#curdoc = word.Documents.Open("X:\download\httpd-2.4.35-win64-VC15\Apache24\cgi-bin\PE 398 (Genetically Modified... AUL) - table.doc")
-
-#docxdoc = Document(word_file_to_translate)
-#curdoc = word.Documents.Open(word_file_to_translate)
-#word.Documents.Open("X:\download\httpd-2.4.35-win64-VC15\Apache24\cgi-bin\MACRO_WORD_TRADUCTION.docx")
-#doc = word.ActiveDocument
-
-
-
-
-#curdoc = word.Documents.Open(word_file_to_translate)
-
-
 def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
     global table_cells
     paragraph_no = 0
@@ -3042,7 +2981,40 @@ def read_and_parse_docx_document():
             print(var)
             numerrors = numerrors + 1
 
-
+def clean_up_previous_selenium_drivers(current_driver_full_path):
+    try:
+        #print("Cleaning up old chrome driver files")
+        list_driver_path = []
+        
+        if platform.system() == 'Windows':
+            userprofile_path = os.environ.get('USERPROFILE')
+            selenium_cache_folder = f"{userprofile_path}\\.cache\\selenium"
+            list_driver_path = glob.glob(f"{selenium_cache_folder}\\**\\chromedriver.exe", recursive=True)
+        else:
+            home_path = os.environ.get('HOME')
+            selenium_cache_folder = f"{home_path}/.cache/selenium"
+            list_driver_path = glob.glob(f"{selenium_cache_folder}/**/chromedriver", recursive=True)
+            
+        for driver_path in list_driver_path:
+            if driver_path == current_driver_full_path:
+                pass # Latest version of the driver, keep the file
+            else:
+                if os.path.exists(driver_path):
+                    try:
+                        print(f"Cleaning up previous chrome driver at {driver_path}")
+                        os.remove(driver_path)
+                    except:
+                        print(f"Unable to cleanup chrome driver at {driver_path}")
+        if len(list_driver_path) < 2:
+            #print("No old chrome drivers to cleanup.")
+            pass
+        else:
+            print(f"Keeping current chrome driver at {current_driver_full_path}")
+                
+    except:
+        var = traceback.format_exc()
+        print(var)
+        
 
 def create_webdriver():
     global driver, chromedriverpath
@@ -3055,6 +3027,8 @@ def create_webdriver():
         service = Service()
         
         driver = webdriver.Chrome(service=service, options=chrome_options)
+        
+        print("\nChrome started using driver at %s\n" % (driver.service.path))
 
         #input("driver loaded and running")
         #driver.set_window_position(0, 350)
@@ -3076,9 +3050,10 @@ def reverse_string(s):
 
 def generate_html_file_from_phrases_for_google_translate_javascript():
     #input("Here")
-    global dest_lang_name
-    global html_file_path
+    global dest_lang_name, html_file_path, docxfile_table_number_of_phrases
     print("Generating html page.")
+
+    docxfile_table_number_of_phrases = 0
     html_to_translate = '''<html lang=%s >
 <head>
   <meta charset="UTF-8">
@@ -3110,6 +3085,7 @@ def generate_html_file_from_phrases_for_google_translate_javascript():
         item_html_escaped = html.escape(item_searched_and_replaced_before.strip())  
         
         if item_searched_and_replaced_before != '':
+            docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
             html_to_translate = html_to_translate + '''
 <tr>
     <td>%s</td>
@@ -3649,13 +3625,12 @@ def minimize_browser():
         driver.minimize_window()
 
 
-
 def document_split_phrases():
     # Split phrases into multiple lines to match source language number of lines
     global docxfile_table_number_of_phrases, docxfile_table_number_of_characters, phrase_number_of_words, docxfile_table_number_of_words
     for i, line in enumerate(from_text_table):
         if to_text_by_phrase_separator_table[i] != '':
-            docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
+            #docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
             docxfile_table_number_of_characters = docxfile_table_number_of_characters + len(from_text_by_phrase_separator_table[i])
             phrase_number_of_words = len(from_text_by_phrase_separator_table[i].strip().split(" "))
             #print("Phrase to split: %s" % (from_text_by_phrase_separator_table[i]))
@@ -4552,6 +4527,9 @@ def main() -> int:
         driver.close()
         driver_after_close_time = datetime.datetime.now()
         driver.quit()
+        
+        clean_up_previous_selenium_drivers(driver.service.path)
+        
         driver_after_quit_time = datetime.datetime.now()
 
         driver_close_time = driver_after_close_time - driver_before_close_time
