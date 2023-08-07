@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-08-02"
+PROGRAM_VERSION="2023-08-07"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -2981,12 +2981,13 @@ def read_and_parse_docx_document():
             print(var)
             numerrors = numerrors + 1
 
-def clean_up_previous_selenium_drivers(current_driver_full_path):
+def clean_up_previous_chrome_selenium_drivers(current_driver_full_path):
+    found_previous_chrome_driver = False
+    
     try:
-        #print("Cleaning up old chrome driver files")
         list_driver_path = []
         
-        if platform.system() == 'Windows':
+        if platform.system().lower() == 'windows':
             userprofile_path = os.environ.get('USERPROFILE')
             selenium_cache_folder = f"{userprofile_path}\\.cache\\selenium"
             list_driver_path = glob.glob(f"{selenium_cache_folder}\\**\\chromedriver.exe", recursive=True)
@@ -3001,14 +3002,15 @@ def clean_up_previous_selenium_drivers(current_driver_full_path):
             else:
                 if os.path.exists(driver_path):
                     try:
-                        print(f"Cleaning up previous chrome driver at {driver_path}")
+                        if found_previous_chrome_driver == False:
+                            print("\nCleaning up old chrome driver files")
+                            found_previous_chrome_driver = True
+                        print(f"Removing previous chrome driver at {driver_path}")
                         os.remove(driver_path)
                     except:
                         print(f"Unable to cleanup chrome driver at {driver_path}")
-        if len(list_driver_path) < 2:
-            #print("No old chrome drivers to cleanup.")
-            pass
-        else:
+                        
+        if len(list_driver_path) >= 2:
             print(f"Keeping current chrome driver at {current_driver_full_path}")
                 
     except:
@@ -4058,7 +4060,7 @@ def run_statistics():
             submit_stats_button.submit()
             #time.sleep(1)
             submited_div_element = "//div[@id='form_post_submitted']"
-            submited_div = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, submited_div_element)))
+            submited_div = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, submited_div_element)))
             #print("statistics updated")
         except:
             print("Warning failed to update stats, you can ignore this.")
@@ -4079,7 +4081,6 @@ def browser_fill_form_field_value(field_css_id, field_value):
     except:
         var = traceback.format_exc()
         print(var)
-        print("Warning failed to update stats, you can ignore this...")
 
 
 def get_robot_usage_comment():
@@ -4516,8 +4517,11 @@ def main() -> int:
         xtm.print_replaced_items_number_of_replacements('after')
         xtm.print_do_not_split_number_of_matches('keep_on_same_line')
 
+    if driver is not None:
+        clean_up_previous_chrome_selenium_drivers(driver.service.path)
+        
     print("\nTranslation ended, file saved. Elasped time: %s (h:mm:ss.mmm)" % (elapsed_time))
-
+    
     get_robot_usage_comment()
 
     try:
@@ -4527,8 +4531,6 @@ def main() -> int:
         driver.close()
         driver_after_close_time = datetime.datetime.now()
         driver.quit()
-        
-        clean_up_previous_selenium_drivers(driver.service.path)
         
         driver_after_quit_time = datetime.datetime.now()
 
