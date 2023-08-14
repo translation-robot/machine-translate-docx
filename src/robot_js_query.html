@@ -91,7 +91,13 @@ deepl_language_names_by_code['ZH'] = 'Chinese (simplified)';
 				message_text = "You are using the latest version 2023-07-28."
 				break;
 			  default:
-				message_text = "You are not using the latest version, please download the latest version 2023-07-28 here :\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
+				if(program_version > '2023-07-28'){
+					message_text = "You are using a developer preview version : " + program_version + "." +
+					" This version is ahead of the main version."
+				}else{
+					message_text = "You are not using the latest version, please download the latest version 2023-07-28 here :\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
+				}
+			
 		}
 
 		if((deepl_language_names_by_code[destlang_code.toUpperCase()] != null) 
