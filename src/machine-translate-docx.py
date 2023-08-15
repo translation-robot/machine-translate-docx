@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-08-07"
+PROGRAM_VERSION="2023-08-15"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -193,7 +193,7 @@ DefaultJsonConfiguration = """{
 		}
 	},
 	"version_checker": {
-	  "javascript_json_version_checker_url": "http://translationbot.42web.io/version_checker_js1.0.html"
+	  "javascript_json_version_checker_url": "https://translation-robot.github.io/machine-translate-docx/src/robot_js_query.html"
 	}
 }"""
 
@@ -306,6 +306,7 @@ parser.add_argument('--useapi', required = False, help="Use api to get translati
 parser.add_argument('--split', required = False, help="Split web translation into cells", action='store_true')
 parser.add_argument('--splitonly', required = False, help="Split translation into lines only, do not translate.", action='store_true')
 parser.add_argument('--showbrowser', required = False, help="Show browser", action='store_true')
+parser.add_argument('--exitonsuccess', required = False, help="Exit progream on success", action='store_true')
 parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
 #parser.add_argument('--destination-file', required = True, help="Output file name")
 #args = parser.parse_args()
@@ -554,6 +555,7 @@ use_api = args.useapi
 #use_browser = args.useapi
 
 showbrowser = args.showbrowser
+exitonsuccess = args.exitonsuccess
 splitonly = args.splitonly
 if splitonly:
     split_translation = True
@@ -721,7 +723,16 @@ if splitted_filename_size > 1:
     word_file_to_translate_extension = splitted_filename[splitted_filename_size-1].lower()
 
 if word_file_to_translate_extension == ".docx":
-    docxdoc = docx.Document(word_file_to_translate)
+    try:
+        docxdoc = docx.Document(word_file_to_translate)
+    except:
+        print(f"Error, file {word_file_to_translate} does not appear to be a valid Microsoft Word docx file.")
+        print("Please check that the file is a valid document and rerun on a valid Microsoft docx document.\n")
+        
+        print("\nDeveloper: %s" % (E_mail_str))
+        print("Program version: %s\n" % (PROGRAM_VERSION))
+        input("Enter to close program")
+        sys.exit(1)
     styles = docxdoc.styles
     
     if dest_lang_tag != '':
@@ -1929,26 +1940,38 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         # Wait for copy translation button
         # Removed on 2022-05-25
         try:
-            # Added on version 2022-05-25
-            # copy_translation_element = "div:nth-child(5) > .shared_module_contents__d48c9809 .button--2IZ9p"
+            # Added on 2023-08-14
+            copy_translation_element = "#dl_translator"
 
-            # Added on version 2022-05-31
-            copy_translation_element = "div:nth-child(5)"
-            copy_translation_button = WebDriverWait(driver, 6).until(
+            copy_translation_button = WebDriverWait(driver, 1).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+            
+            # This also works
+            # xpath=//main[@id='dl_translator']
+            #prinxt(f"Found {copy_translation_element} element, translation block is completed.")
 
         except:
-            try:
-                # Version 2022-03-09
-                copy_translation_element = ".lmt__target_toolbar_right > span path:nth-child(2)"
-                copy_translation_button = WebDriverWait(driver, 1).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
-            except:
-                # Version 2022-03-30
-                copy_translation_element = ".lmt__target_toolbar_right > div > span svg"
-                copy_translation_button = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+             try:
+                # Added on version 2022-05-25
+                # copy_translation_element = "div:nth-child(5) > .shared_module_contents__d48c9809 .button--2IZ9p"
 
+                # Added on version 2022-05-31
+                copy_translation_element = "div:nth-child(5)"
+                copy_translation_button = WebDriverWait(driver, 6).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+                
+             except:
+                 try:
+                     # Version 2022-03-09
+                     copy_translation_element = ".lmt__target_toolbar_right > span path:nth-child(2)"
+                     copy_translation_button = WebDriverWait(driver, 1).until(
+                         EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+                 except:
+                     # Version 2022-03-30
+                     copy_translation_element = ".lmt__target_toolbar_right > div > span svg"
+                     copy_translation_button = WebDriverWait(driver, 5).until(
+                         EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+        
         busy_element = ".lmt__textarea_separator__border_inner"
         # busy_element = "//div[@id='dl_translator']/div/div/div[5]"
         sleep(deepl_sleep_wait_translation_seconds)
@@ -2076,8 +2099,8 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     # if we cannot find translation button with translation the use the copy button
                     # previous_clipbboard = clipboard.paste()
                     # previous_clipbboard = pyperclip.paste()
-                    #var = traceback.format_exc()
-                    #print(var)
+                    var = traceback.format_exc()
+                    print(var)
                     copy_translation_button.click()
                     copy_button_clicked = True
                     res = clipboard.paste()
@@ -2994,7 +3017,7 @@ def clean_up_previous_chrome_selenium_drivers(current_driver_full_path):
         else:
             home_path = os.environ.get('HOME')
             selenium_cache_folder = f"{home_path}/.cache/selenium"
-            list_driver_path = glob.glob(f"{selenium_cache_folder}/**/chromedriver", recursive=True)
+            list_driver_path = glob.glob(f"{selenium_cache_folder}/*/**/chromedriver", recursive=True)
             
         for driver_path in list_driver_path:
             if driver_path == current_driver_full_path:
@@ -3529,7 +3552,7 @@ def get_translation_and_replace_after():
                                 service = Service()                                
                                 driver = webdriver.Chrome(service=service, options=chrome_options)
                                 
-                                driver.set_window_position(0, 350)
+                                driver.set_window_position(100, 100)
                                 driver.set_window_size(1000, 800)
                                 #driver.set_window_size(400, 650)
 
@@ -3546,8 +3569,8 @@ def get_translation_and_replace_after():
                             driver = webdriver.Chrome(service=service, options=chrome_options)
 
                         if translation_engine == 'google' and driver is not None:
-                            driver.set_window_position(0, 350)
-                            driver.set_window_size(400, 650)
+                            driver.set_window_position(100, 100)
+                            driver.set_window_size(1000, 800)
 
                         if translation_engine == 'yandex' and driver is not None:
                             driver.set_window_position(100, 100)
@@ -4554,7 +4577,8 @@ def main() -> int:
 
     print("\nDeveloper: %s" % (E_mail_str))
     print("Program version: %s\n" % (PROGRAM_VERSION))
-    input("Enter to close program")
+    if not exitonsuccess:
+        input("Enter to close program")
     return 0
 
 if __name__ == '__main__':
