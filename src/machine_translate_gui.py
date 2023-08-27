@@ -6,16 +6,25 @@ import platform
 import webbrowser
 import argparse
 import traceback
+import sys
+if platform.system() == 'Windows':
+    from win32com import client
+    from comtypes.client import CreateObject
+import re
 
 class MachineTranslationApp:
-    def __init__(self, root, docxfile_path="", bin_path=None):
+    def __init__(self, root, docxfile_path="", bin_path="."):
         self.root = root
         self.root.title("Word Docx Document Translator")
-        
+            
         try:
-            self.root.iconbitmap("app.ico")
+            if platform.system() == 'Windows':
+                self.root.iconbitmap(f"{bin_path}\\app.ico")
+            else:
+                self.root.iconbitmap(f"{bin_path}/app.ico")
         except:
-            pass
+            var = traceback.format_exc()
+            print(var)
         
         self.google_translate_lang_codes = {
             'Afrikaans': 'af',
@@ -262,13 +271,24 @@ class MachineTranslationApp:
         self.open_file_after_translation_checkbox = tk.Checkbutton(root, text="Open file after translation", variable=self.open_file_after_translation_var, state="normal")
         self.open_file_after_translation_checkbox.grid(row=9, column=0, sticky=tk.W)
 
+        # Generate shortcut
+        generate_shortcut_button_text = ""
+        if platform.system() == 'Windows':
+            generate_shortcut_button_text = "Create shortcut"
+            self.generate_shortcut_button = tk.Button(root, text=generate_shortcut_button_text, command=self.create_windows_shortcut_wrapper)
+        elif platform.system() == 'Darwin':
+            generate_shortcut_button_text = "Create Mac finder service"
+            self.generate_shortcut_button = tk.Button(root, text=generate_shortcut_button_text, command=self.create_mac_shortcut_wrapper)
+        
+        self.generate_shortcut_button.grid(row=10, column=0)
+
         # Translate button
         self.translate_button = tk.Button(root, text="Translate", command=self.translate)
-        self.translate_button.grid(row=9, column=1)
+        self.translate_button.grid(row=10, column=1)
         
         # Create a status bar
         self.status_bar = tk.Label(root, text="Status bar", bd=1, relief=tk.SUNKEN, anchor=tk.W)
-        self.status_bar.grid(row=10, columnspan=3, sticky=tk.W+tk.E)
+        self.status_bar.grid(row=11, columnspan=3, sticky=tk.W+tk.E)
         
         # Configure rows and columns to resize with window
         # self.root.rowconfigure(0, weight=1)
@@ -292,6 +312,9 @@ class MachineTranslationApp:
         # Automatically select Deepl for certain languages
         self.target_language.trace("w", self.auto_select_engine)
         
+        # Automatically select target font
+        self.target_language.trace("w", self.auto_select_font)
+        
         # Connect target language selection to set xlsx_file_entry
         self.target_language.trace("w", self.auto_set_xlsx_entry)        
         
@@ -311,7 +334,11 @@ class MachineTranslationApp:
             self.bin_path = bin_path
         else:
             self.bin_path = '.'
-            
+
+        # Add tooltip for some widgets
+        self.create_tooltip(self.generate_shortcut_button, "Generate a SendTo shortcut for Windows Explorer")
+        self.create_tooltip(self.split_checkbox, "Split the translation into multiple cells or single cell.")
+
         
     def show_about_dialog(self):
         about_message = (
@@ -332,7 +359,12 @@ class MachineTranslationApp:
             
     def auto_set_xlsx_entry(self, *args):
         target_language = self.target_language.get().lower()
-        xlsx_filename = f"C:\\SMTVRobot\\{target_language}.xlsx"
+        
+        if platform.system() == 'Windows':
+            xlsx_filename = f"C:\\SMTVRobot\\{target_language}.xlsx"
+        else:
+            home_folder = os.environ['HOME']
+            xlsx_filename = f"{home_folder}/SMTVRobot/{target_language}.xlsx"
 
         self.xlsx_file_entry.delete(0, tk.END)
         
@@ -341,7 +373,9 @@ class MachineTranslationApp:
     
     def populate_fonts(self):
         system_fonts = font.families()
+        # Add emtpy entry for no font
         self.font_combo['menu'].delete(0, 'end')
+        self.font_combo['menu'].add_command(label="", command=tk._setit(self.font_var, ""))
         for font_name in system_fonts:
             self.font_combo['menu'].add_command(label=font_name, command=tk._setit(self.font_var, font_name))
 
@@ -428,6 +462,15 @@ class MachineTranslationApp:
             self.engine.set("Google")
             self.show_browser_var.set(False)
             self.show_browser_checkbox.config(state="normal")
+    
+    def auto_select_font(self, *args):
+        # List of font for the selected language
+
+        if self.target_language.get().lower() in ['hindi','punjabi']:
+            self.font_var.set("Mangal")
+        else:
+            #self.font_var.set("Times New Roman")
+            self.font_var.set("")
             
     def update_show_browser(self, *args):
         if self.engine.get() == "Deepl":
@@ -444,6 +487,149 @@ class MachineTranslationApp:
             result = messagebox.askokcancel("Browser Interaction Notice", message)
             if not result:
                 self.show_browser_var.set(False)
+
+    # Source https://www.programcreek.com/python/?CodeExample=create+shortcut
+    def create_windows_shortcut(self, lnk_out_path, target, parameters, working_dir, description, icon=None, run_as_admin=False, minimized=False):
+        shell = client.Dispatch('WScript.Shell')
+        shortcut = shell.CreateShortCut(lnk_out_path)
+        shortcut.Targetpath = target
+        shortcut.Arguments = '{}'.format(parameters)
+        shortcut.Description = description
+        shortcut.WorkingDirectory = working_dir
+        if not icon is None:
+            shortcut.IconLocation = icon
+        if minimized:# 7 - Minimized, 3 - Maximized, 1 - Normal
+            shortcut.WindowStyle = 7
+        else:
+            shortcut.WindowStyle = 1
+        shortcut.save()
+        
+        if run_as_admin:
+            with open(lnk_out_path, "r+b") as f:
+                with contextlib.closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)) as m:
+                    m[0x15] = m[0x15] | 0x20 # Enable 6th bit = Responsible for Run As Admin
+                    #m.flush()
+                    
+    def create_windows_shortcut_wrapper(self):
+        docx_file_path = self.docx_file_entry.get()
+        if platform.system() == 'Windows':
+            docx_file_path = docx_file_path.replace('/', '\\')
+        
+        engine = self.engine.get().lower()
+        src_lang_name = self.source_language.get()
+        dest_lang_name = self.target_language.get()
+        
+        xlsx_file_path = self.xlsx_file_entry.get()
+        if platform.system() == 'Windows':
+            xlsx_file_path = xlsx_file_path.replace('/', '\\')
+        
+        font_value = self.font_var.get()
+        
+        if self.split_var.get():
+            split_param = " --split "
+        else:
+            split_param = " "
+        
+        if self.show_browser_var.get():
+            show_browser_param = " --showbrowser "
+        else:
+            show_browser_param = " "
+        
+        src_lang_code = 'en'
+        if engine == 'deepl':
+            src_lang_code = self.deepl_translate_lang_codes[src_lang_name]
+            dest_lang_code = self.deepl_translate_lang_codes[dest_lang_name]
+            # Show brower is ignored when using Deepl and always true
+            show_browser_param = ""
+        else:
+            src_lang_code = self.google_translate_lang_codes[src_lang_name]
+            dest_lang_code = self.google_translate_lang_codes[dest_lang_name]
+            
+        xlsx_replace_param = " "
+        if xlsx_file_path is not None and xlsx_file_path != "":
+            if platform.system() == 'Windows':
+                xlsx_replace_param = f" --xlsxreplacefile \"{xlsx_file_path}\""
+            else:
+                xlsx_replace_param = f" --xlsxreplacefile \\\"{xlsx_file_path}\\\""
+       
+        dest_font_param = " "
+        if font_value is not None and font_value != "":
+            if platform.system() == 'Windows':
+                dest_font_param = f" --destfont \"{font_value}\""
+            else:
+                dest_font_param = f" --destfont \\\"{font_value}\\\""
+        
+        exitonsuccess_param = ""
+        if self.open_file_after_translation_var.get():
+            exitonsuccess_param = "  --exitonsuccess "
+            
+        if self.target_language.get() == self.source_language.get():
+            message = (
+                "Please select a target translation language different than the source language."
+            )
+            messagebox.showinfo("Select a target translation language", message)
+            return
+            
+        bin_launcher_path = ""
+        target = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe"
+        
+        try:
+            target = os.path.abspath(target)
+        except:
+            print("Error, could not find target path")
+        console_arguments = ""
+        arguments = ""
+        if platform.system() == 'Windows':
+            console_arguments = f"-ct -font \"Lucida Console\" -size 16 -run "
+        else:
+            bin_launcher_path = f"osascript -e 'tell app \"Terminal\" to do script \"{self.bin_path}/machine-translate-docx "
+            
+        if platform.system() == 'Windows':
+            arguments = f"{console_arguments} {self.bin_path}\\machine-translate-docx.exe --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile "
+        else:
+            command = f"{bin_launcher_path} {self.bin_path}\\machine-translate-docx.exe --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile "
+        
+        # Replace multiple spaces into a single space
+        arguments = re.sub('\s+',' ',arguments)
+        #print("arguments:")
+        #print(arguments)
+        
+        shortcut_icon_path = os.path.join(bin_path, "app.ico")
+        if not os.path.exists(shortcut_icon_path):
+            shortcut_icon_path = None
+        #print("target:")
+        #print(target)
+        
+        engine = self.engine.get()
+        split_string=""
+        if not self.split_var.get():
+            split_string = " - no split"
+        
+        # Get Sendto Folder location
+        appdata_folder = os.environ['APPDATA']
+        shortcut_path = os.path.join(appdata_folder,
+            "Microsoft\\Windows\\SendTo",
+            f'machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}.lnk')
+            
+        if os.path.exists(shortcut_path):
+            confirm_overwrite_message = (
+                f"Sendto shortcut:\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}\"\n\nalready exist."
+                "\n\nOvewrite this shortcut ?"
+            )
+            overwrite_shortcut = messagebox.askokcancel("Ovewrite shortcut ?", confirm_overwrite_message)
+            if not overwrite_shortcut:
+                return
+        
+        self.create_windows_shortcut(shortcut_path, target, arguments, bin_path, 'Run console shortcut', icon=shortcut_icon_path)
+        
+        if os.path.exists(shortcut_path):
+            message = f"Sendto shortcut created"
+            messagebox.showinfo(message, f"Sendto shortcut is now created:\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}\".\n\nThis needs to be done only once unless you want to change the settings for that language.")
+        else:
+            messagebox.showerror("Error, shortcut was not created", f"Error : Sendto shortcut was not created :\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}.lnk\".\n\nYou may report this error to smtv.bot@gmail.com")
+            
+    def create_mac_shortcut_wrapper(self):
+        pass
 
     def translate(self):
         self.save_target_language()
@@ -494,12 +680,12 @@ class MachineTranslationApp:
         dest_font_param = " "
         if font_value is not None and font_value != "":
             if platform.system() == 'Windows':
-                xlsx_replace_param = f" --destfont \"{font_value}\""
+                dest_font_param = f" --destfont \"{font_value}\""
             else:
-                xlsx_replace_param = f" --destfont \\\"{font_value}\\\""
+                dest_font_param = f" --destfont \\\"{font_value}\\\""
         
         exitonsuccess_param = ""
-        if self.open_file_after_translation_var.get():
+        if self.open_file_after_translation_var.get() or platform.system() == 'Darwin':
             exitonsuccess_param = "  --exitonsuccess "
 
         if not os.path.exists(docx_file_path):
@@ -519,11 +705,18 @@ class MachineTranslationApp:
             bin_launcher_path = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe -ct -font \"Lucida Console\" -size 16 -run {self.bin_path}\\machine-translate-docx.exe "
         else:
             bin_launcher_path = f"osascript -e 'tell app \"Terminal\" to do script \"{self.bin_path}/machine-translate-docx "
-            
+        
+        open_word_and_command = ""
+        if self.open_file_after_translation_var.get():
+            if platform.system() == 'Windows':
+                open_word_and_command = f"&& start \"\" \"{docx_file_path}\""
+            else:
+                open_word_and_command = f"open \\\"{docx_file_path}\\\";exit 0;"
+                
         if platform.system() == 'Windows':
-            command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile \"{docx_file_path}\""
+            command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile \"{docx_file_path}\" {open_word_and_command}"
         else:
-            command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile \\\"{docx_file_path}\\\";open \\\"{docx_file_path}\\\";exit 0;\"'"
+            command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile \\\"{docx_file_path}\\\"; {open_word_and_command}\"'"
         
         print("command : %s" % (command))
         
@@ -532,28 +725,39 @@ class MachineTranslationApp:
         # If we want to force the program to wait
         if self.open_file_after_translation_var.get():
             # Force window to redraw with status bar
-            self.status_bar.config(text="Translating %s... please wait." % (os.path.basename(docx_file_path)))
-            self.root.update()
+            #self.status_bar.config(text="Translating %s... please wait." % (os.path.basename(docx_file_path)))
+            #self.root.update()
             
-            proc_translate.communicate()
-            proc_translate.wait()
+            #proc_translate.communicate()
+            #proc_translate.wait()
             
             # Force window to redraw with status bar
-            self.status_bar.config(text=f"Status bar")
-            self.root.update()
-            
+            #self.status_bar.config(text=f"Status bar")
+            #self.root.update()
             
             # Open the DOCX file in Windows
-            
             try:
                 if platform.system() == 'Windows':
-                    subprocess.Popen(["start", "", rf"{docx_file_path}"], shell=True)
+                    pass
+                    #subprocess.Popen(["start", "", rf"{docx_file_path}"], shell=True)
                 elif platform.system() ==  "Darwin":
-                    subprocess.Popen(["open", rf"{docx_file_path}"])
+                    pass
+                    #subprocess.Popen(["open", rf"{docx_file_path}"])
             except Exception as e:
                 print("Error:", e)
-            
+    
+    def create_tooltip(self, widget, text):
+        tool_tip = tk.Label(self.root, text=text, background="#ffffe0", relief="solid")
+        tool_tip.place_forget()
 
+        def show_tooltip(event):
+            tool_tip.place(x=event.x_root - self.root.winfo_rootx() - 10, y=event.y_root - self.root.winfo_rooty() - 30)
+        
+        def hide_tooltip(event):
+            tool_tip.place_forget()
+
+        widget.bind("<Enter>", show_tooltip)
+        widget.bind("<Leave>", hide_tooltip)
 
 if __name__ == "__main__":
     # Parse parameters
@@ -604,8 +808,6 @@ if __name__ == "__main__":
             bin_path = os.path.dirname(sys.executable)
         elif __file__:
             bin_path = os.path.dirname(__file__)
-    
-    print(f"bin_path = {bin_path}")
     
     root = tk.Tk()
     app = MachineTranslationApp(root, docxfile_path=docxfile_path, bin_path=bin_path)

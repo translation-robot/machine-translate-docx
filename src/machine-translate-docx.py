@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-08-15"
+PROGRAM_VERSION="2023-08-27"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -307,6 +307,7 @@ parser.add_argument('--split', required = False, help="Split web translation int
 parser.add_argument('--splitonly', required = False, help="Split translation into lines only, do not translate.", action='store_true')
 parser.add_argument('--showbrowser', required = False, help="Show browser", action='store_true')
 parser.add_argument('--exitonsuccess', required = False, help="Exit progream on success", action='store_true')
+parser.add_argument('--silent', required = False, help="Silent, do not ask question and exit silently", action='store_true')
 parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
 #parser.add_argument('--destination-file', required = True, help="Output file name")
 #args = parser.parse_args()
@@ -325,14 +326,18 @@ if show_version:
 
     print("\nDeveloper: %s\n" %(E_mail_str))
     print("Program version: %s\n" % (PROGRAM_VERSION))
-    input("\nEnter to close program")
+    if not silent:
+        input("\nEnter to close program")
     sys.exit(1)
 
 if args.docxfile is None:
     parser.print_help()
     print("\nDeveloper: smtv.bot@gmail.com\n")
     print("Program version: %s\n" % (PROGRAM_VERSION))
-    input("\nEnter to close program")
+    if not silent:
+        input("\nEnter to close program")
+    else:
+        print("Program ended with errors")
     sys.exit(1)
 
 use_html = False
@@ -556,6 +561,7 @@ use_api = args.useapi
 
 showbrowser = args.showbrowser
 exitonsuccess = args.exitonsuccess
+silent = args.silent
 splitonly = args.splitonly
 if splitonly:
     split_translation = True
@@ -710,7 +716,7 @@ def print_os_info():
 
 if not os.path.exists(word_file_to_translate) :
     print("ERROR: File not found: %s" % (word_file_to_translate))
-    os._exit(1)
+    sys.exit(1)
 
 splitted_filename = os.path.splitext(os.path.basename(word_file_to_translate))
 
@@ -731,7 +737,10 @@ if word_file_to_translate_extension == ".docx":
         
         print("\nDeveloper: %s" % (E_mail_str))
         print("Program version: %s\n" % (PROGRAM_VERSION))
-        input("Enter to close program")
+        if not silent:
+            input("Enter to close program")
+        else:
+            print("Program ended with errors")
         sys.exit(1)
     styles = docxdoc.styles
     
@@ -780,7 +789,10 @@ if not os.path.exists(word_file_to_translate):
 
 if word_file_to_translate_extension != ".docx":
     print("ERROR: not a docx file. Please convert to docx first then run on docx file. Exiting.")
-    input("Enter to close program")
+    if not silent:
+        input("Enter to close program")
+    else:
+        print("Program ended with errors")
     os._exit(1)
 
 print("")
@@ -1054,7 +1066,7 @@ def selenium_chrome_translate_maxchar_blocks():
             print("Translating block %d/%d, %d characters..." % (current_block_no + 1, blocks_nchar_max_to_translate_array_len, current_block_str_len))
             translation = ""
             translation_try_count = 1
-            max_try_count = 15
+            max_try_count = 2
             #print("--index-- : %d" % index)
             #to_translate_str = str(to_translate)
             to_translate = current_block_str
@@ -1131,7 +1143,6 @@ def selenium_chrome_translate_maxchar_blocks():
         print(var)
         sys.exit(0)
     return translation_succeded, translation_array
-
 
 def selenium_chrome_google_click_cookies_consent_button():
     global found_google_cookies_consent_button
@@ -1284,7 +1295,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
             loop_wait_translation_count = loop_wait_translation_count - 1
         
         #Wait for page status loaded to be complete
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located(driver.execute_script('return document.readyState') == 'complete'))
+        WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
         
         print("Translation received.")
         
@@ -1571,7 +1582,6 @@ def selenium_chrome_google_translate_xlsx_file(xlsx_file_path):
                 if len(downloaded_xlsx_translation_path) > 0:
                     print("downloaded_xlsx_translation_path=%s" %(downloaded_xlsx_translation_path))
                     res_downloaded_xlsx_translation = True
-                input("Press enter")
                 
             except:
                 pass
@@ -1727,6 +1737,7 @@ def remove_span_tag(text):
 def selenium_chrome_deepl_log_in():
     global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
     
+    
     deepl_account_email_key = ['deepl', 'account', 'email']
     deepl_account_email = get_nested_value_from_json_array(json_configuration_array, deepl_account_email_key)
     
@@ -1746,12 +1757,21 @@ def selenium_chrome_deepl_log_in():
             try:
                 # Accept cookies
                 deepl_accept_cookies_element = "//button[contains(.,'Accept all cookies')]"
-                deepl_accept_cookies_button = WebDriverWait(driver, 4).until(
+                deepl_accept_cookies_button = WebDriverWait(driver, 2).until(
                     EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
                 deepl_accept_cookies_button.click()
             except:
-                var = traceback.format_exc()
-                print(var)
+                pass
+                
+            try:
+                # close install extension message
+                driver.get("https://www.deepl.com/translator")
+                deepl_close_deepl_extension_element = ".w-6 > .flex"
+                deepl_close_deepl_extension_button = WebDriverWait(driver, 0.05).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, deepl_close_deepl_extension_element)))
+                deepl_close_deepl_extension_button.click()
+            except:
+                pass
         
             # End function if no email or password are provided
             if (deepl_account_email is None) or (deepl_account_email is None):
@@ -1796,7 +1816,7 @@ def selenium_chrome_deepl_log_in():
             try:
                 # Close the annoying plugin for deepl if displayed - bug : it does not find this element
                 deepl_plugin_dialog_element = ".w-6 path"
-                deepl_plugin_dialog_button = WebDriverWait(driver, 0.3).until(
+                deepl_plugin_dialog_button = WebDriverWait(driver, 0.05).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, deepl_plugin_dialog_element)))
                 deepl_plugin_dialog_button.click()
             except:
@@ -1879,18 +1899,28 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
     Translated = False
     # Progress bar to show only when deepl also shows it on the browser
     bar = None
+    global closed_cookies_accept_message_bool, close_install_extension_message_bool
+    
+    # Set variable to false if they are not globally defined
+    try:
+        tmp_var = closed_cookies_accept_message_bool
+        tmp_var = close_install_extension_message_bool
+    except:
+        closed_cookies_accept_message_bool = False
+        close_install_extension_message_bool = False
 
     to_translate_phrases_array = to_translate.split("\n")
     to_translate_phrases_array_len = len(to_translate_phrases_array)
-    # print("to_translate_phrases_array_len=%d" % (to_translate_phrases_array_len))
-    # input("HASDOKJADSLKJ")
 
     driver.set_window_size(1000, 800)
 
     try:
-        translation_page_openeing_loop_count = 20
+        translation_page_openeing_loop_count = 4
         translation_page_opened = False
+        
+        # Open Deepl translation page
         while translation_page_opened == False and translation_page_openeing_loop_count > 0:
+            #print(f"{translation_page_openeing_loop_count} trying left")
             try:
                 # driver.get("https://www.deepl.com/translator#%s/%s/%s" % (src_lang,dest_lang, to_translate))
                 # Deepl has a bug for / in text to be translated
@@ -1905,50 +1935,48 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             translation_page_openeing_loop_count = translation_page_openeing_loop_count - 1
             # driver.get("https://www.deepl.com/translator#%s/%s/Hello" % (src_lang,dest_lang))
 
-        # wait_time = 0
-        # while driver.execute_script('return document.readyState;') != 'complete' and wait_time < 10:
-        # Scroll down to bottom to load contents, unnecessary for everyone
-        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        # wait_time += 0.1
-        # time.sleep(0.1)
-
+        # Wait for page to be loaded
         try:
             (driver.page_source).encode('utf-8')
-            input_element = ".lmt__source_textarea"
-            input_button = WebDriverWait(driver, 1).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, input_element)))
+            WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+            #print("Page loaded completed")
         except:
             # print("Waiting for the input_element...")
             var = traceback.format_exc()
             print(var)
-            # input ("Type enter to continue")
-        #
-        #    input_button.send_keys (to_translate) input_button.send_keys (to_translate)
 
+        # Close the cookies message box if it is there
         try:
-            accept_all_cookies_element = ".dl_cookieBanner--buttonAll"
-            accept_all_cookies_button = WebDriverWait(driver, 0.05).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, accept_all_cookies_element)))
-            accept_all_cookies_button.click()
+            if closed_cookies_accept_message_bool == False:
+                # Accept cookies
+                deepl_accept_cookies_element = "//button[contains(.,'Accept all cookies')]"
+                deepl_accept_cookies_button = WebDriverWait(driver, 0.02).until(
+                    EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
+                deepl_accept_cookies_button.click()
+                closed_cookies_accept_message_bool = True
         except:
             pass
-
-        # copy_translation_element = ".lmt__target_toolbar__copy path:nth-child(2)"
-
-        # copy_translation_element = "span:nth-child(2) path:nth-child(2)"
-
+        
+        # Close the install extension message box if it is there
+        try:
+            # close install extension message
+            if close_install_extension_message_bool == False:
+                deepl_close_deepl_extension_element = ".w-6 > .flex"
+                deepl_close_deepl_extension_button = WebDriverWait(driver, 0.02).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, deepl_close_deepl_extension_element)))
+                deepl_close_deepl_extension_button.click()
+                close_install_extension_message_bool = False
+        except:
+            pass
+                
         # Wait for copy translation button
         # Removed on 2022-05-25
         try:
             # Added on 2023-08-14
             copy_translation_element = "#dl_translator"
 
-            copy_translation_button = WebDriverWait(driver, 1).until(
+            copy_translation_button = WebDriverWait(driver, 3).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
-            
-            # This also works
-            # xpath=//main[@id='dl_translator']
-            #prinxt(f"Found {copy_translation_element} element, translation block is completed.")
 
         except:
              try:
@@ -2025,10 +2053,15 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         driver.execute_script("arguments[0].scrollIntoView();", copy_translation_button)
 
         copy_button_clicked = False
-        copy_button_clicked_loop_count = 20
+        copy_button_clicked_loop_count = 5
         res = ""
         still_translating_html_str = 'div class="lmt__progress_popup lmt__progress_popup--visible lmt__progress_popup--visible_2" dl-test="translator-progress-popup"'
+        
+        # When failing to get translation from HTML, use button copy and clipboard and warn user.
+        warned_using_clipboard = False
+        
         while copy_button_clicked_loop_count > 0 and (res == "" or res is None):
+            #print(f"copy_button_clicked_loop_count : {copy_button_clicked_loop_count}")
             try:
                 driver.execute_script("scrollBy(0,-1000);")
                 # clipboard.copy('')
@@ -2047,7 +2080,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 block_translation_percent_done = 0
                 while page_source_str.find(still_translating_html_str) > 0 and wait_translation_finish_try > 0:
                     sleep(0.3)
-                    # print("Still translating...")
+                    print("Still translating...")
                     page_source_str = driver.page_source
                     # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
                     # print(driver.page_source)
@@ -2099,33 +2132,57 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     # if we cannot find translation button with translation the use the copy button
                     # previous_clipbboard = clipboard.paste()
                     # previous_clipbboard = pyperclip.paste()
-                    var = traceback.format_exc()
-                    print(var)
-                    copy_translation_button.click()
-                    copy_button_clicked = True
-                    res = clipboard.paste()
+                    page_source_str = driver.page_source
+                    #with open('deepl_page_source.html', 'w', encoding="utf-8") as f:
+                    #    f.write(page_source_str)
+                    #    f.close()
+                    res = ""
+                    try:
+                        # Added on version 2022-05-31
+                        copy_translation_element = '//*[@id="headlessui-tabs-panel-7"]/div/div[1]/section/div/div[2]/div[3]/section/div[2]/div[3]/span[2]/span/span/button'
+                        copy_translation_button = WebDriverWait(driver, 6).until(
+                            EC.presence_of_element_located((By.XPATH, copy_translation_element)))
+                        if not warned_using_clipboard:
+                            print("Warning: Failed to get translation from html, copying from clipboard")
+                            warned_using_clipboard = True
+                            
+                        if warned_using_clipboard and (res == "" or res == None):
+                            return False, None
+                        clipboard.copy('')
+                        copy_translation_button.click()
+                        copy_button_clicked = True
+                        res = clipboard.paste()
+                        if len(res) == 0 or res == None:
+                            print("Error : failed to get translation from Deepl.")
+                            return False, ""
+                    except:
+                        #var = traceback.format_exc()
+                        #print(var)
+                        #print("res : %s" %(res))
+                        pass
+                    #return False, None
                     # res = pyperclip.paste()
                     # print(res)
-                    # input("check html")
-                    # clipboard.copy("")
-                    # pyperclip.copy("")
 
                 # id="target-dummydiv"
                 # contains the translation
                 res = res.replace("\r", "")
                 res = remove_span_tag(res)
+                
+                input_nb_lines = len(to_translate.replace("\r", "").split("\n"))
 
                 translated_phrases_array = res.split("\n")
                 translated_phrases_array_len = len(translated_phrases_array)
-                # print("translated_phrases_array_len=%d" % (translated_phrases_array_len))
-
+                
+                translated_phrases_array = translated_phrases_array[:input_nb_lines]
+                
                 # for pos_remove in range(0,translated_phrases_array_len - to_translate_phrases_array_len):
-                #    #print("Remove line")
-                #    #translated_phrases_array.remove()
-                if translated_phrases_array_len > to_translate_phrases_array_len:
-                    translated_phrases_array = translated_phrases_array[
-                                               :to_translate_phrases_array_len - translated_phrases_array_len]
-
+                if translated_phrases_array_len >= to_translate_phrases_array_len:
+                    translated_phrases_array = translated_phrases_array[:input_nb_lines]
+                    #print("input_nb_lines: %s" % (input_nb_lines))
+                    #print("array: %s" % (translated_phrases_array))
+                    res = "\n".join(translated_phrases_array)
+                    
                 if translated_phrases_array_len < to_translate_phrases_array_len:
                     res = ""
 
@@ -2799,8 +2856,10 @@ def read_and_parse_docx_document():
 
         print("\nDeveloper: %s" %(E_mail_str))
         print("Program version: %s\n" % (PROGRAM_VERSION))
-        input("Enter to close program")
-
+        if not silent:
+            input("Enter to close program")
+        else:
+            print("Program ended with errors")
         sys.exit(1)
 
     rownum = 0
@@ -3051,7 +3110,19 @@ def create_webdriver():
         print("Starting Chrome browser\n")
         service = Service()
         
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        try:
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+        except:
+            print("An error occured during launching chrome. This may happen during google chrome automatic updates.")
+            print("You may start google chrome and open the menu Help -> About google chrome to see if there is an update running and retry machine translation after the update.")
+            print("Exiting, please retry.")
+            
+            print("\nDeveloper: %s" % (E_mail_str))
+            print("Program version: %s\n" % (PROGRAM_VERSION))
+            if not exitonsuccess:
+                input("Enter to close program")
+            
+            sys.exit(1)
         
         print("\nChrome started using driver at %s\n" % (driver.service.path))
 
@@ -3279,6 +3350,10 @@ def generate_xlsx_file_from_phrases(xlsx_file_path):
         print("ERROR: %s" % (var))
         self.wb = None
         self.ws = None
+        if not silent:
+            input("Enter to close program")
+        else:
+            print("Program ended with errors")
         sys.exit(1)
     
     index_current_row = 1
@@ -3647,7 +3722,10 @@ def minimize_browser():
     if not use_api and not splitonly:
         # Minimize browser
         #print("Minimizing browser...")
-        driver.minimize_window()
+        try:
+            driver.minimize_window()
+        except:
+            pass
 
 
 def document_split_phrases():
@@ -4577,8 +4655,10 @@ def main() -> int:
 
     print("\nDeveloper: %s" % (E_mail_str))
     print("Program version: %s\n" % (PROGRAM_VERSION))
-    if not exitonsuccess:
+    if not exitonsuccess and not silent:
         input("Enter to close program")
+    else:
+        print("Program ended")
     return 0
 
 if __name__ == '__main__':
