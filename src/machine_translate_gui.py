@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, font
 import subprocess
 import os
+import shutil
 import platform
 import webbrowser
 import argparse
@@ -11,6 +12,7 @@ if platform.system() == 'Windows':
     from win32com import client
     from comtypes.client import CreateObject
 import re
+import pkgutil
 
 class MachineTranslationApp:
     def __init__(self, root, docxfile_path="", bin_path="."):
@@ -18,10 +20,11 @@ class MachineTranslationApp:
         self.root.title("Word Docx Document Translator")
             
         try:
-            if platform.system() == 'Windows':
-                self.root.iconbitmap(f"{bin_path}\\app.ico")
-            else:
-                self.root.iconbitmap(f"{bin_path}/app.ico")
+            self.parent_folder_path = f"{bin_path}"
+            self.parent_folder_path = self.get_parent_folder_path()
+            self.icon_path = os.path.join (os.path.join(self.parent_folder_path, 'img'), 'app.ico')
+            
+            self.root.iconbitmap(self.icon_path )
         except:
             var = traceback.format_exc()
             print(var)
@@ -169,7 +172,12 @@ class MachineTranslationApp:
         self.google_languages = self.google_translate_lang_codes.keys()
         
         # Load stored target language value
-        self.target_language_file = "target_language.txt"
+        
+        self.conf_folder_path = self.get_app_subfolder_path('conf')
+
+        # Construct the full path to target_language.txt within the 'conf' folder
+        
+        self.target_language_file = os.path.join(self.conf_folder_path, 'target_language.txt')
         
         
         self.menu_bar = tk.Menu(root)
@@ -338,8 +346,50 @@ class MachineTranslationApp:
         # Add tooltip for some widgets
         self.create_tooltip(self.generate_shortcut_button, "Generate a SendTo shortcut for Windows Explorer")
         self.create_tooltip(self.split_checkbox, "Split the translation into multiple cells or single cell.")
-
         
+    def get_parent_folder_path(self):
+        if getattr(sys, 'frozen', False):
+            # If the program is frozen, get the directory containing the executable
+            program_dir = os.path.dirname(sys.executable)
+        else:
+            # If the program is a script, get the current script's directory
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            program_dir = os.path.dirname(current_dir)
+        
+        return program_dir
+        
+    def get_app_subfolder_path(self, foldername):
+        # Check if the program is running as a PyInstaller executable
+        if getattr(sys, 'frozen', False):
+            # Get the executable's directory
+            executable_dir = os.path.dirname(sys.executable)
+
+            # Create the 'conf' folder path within the executable's directory
+            app_subfolder_path = os.path.join(executable_dir, foldername)
+        else:
+            # Get the current directory of the script
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+
+            # Go up one level to the parent directory
+            parent_dir = os.path.dirname(current_dir)
+
+            # Create the 'conf' folder path
+            app_subfolder_path = os.path.join(parent_dir, foldername)
+
+        # Ensure the 'conf' folder exists, create it if not
+        try:
+            if not os.path.exists(app_subfolder_path):
+                os.makedirs(app_subfolder_path)
+        except Exception as e:
+            if getattr(sys, 'frozen', False):
+                # If creation fails and the program is frozen, use the executable's directory
+                app_subfolder_path = os.path.dirname(sys.executable)
+            else:
+                # If creation fails and the program is not frozen, use the program's directory
+                app_subfolder_path = os.path.dirname(os.path.abspath(__file__))
+
+        return app_subfolder_path
+    
     def show_about_dialog(self):
         about_message = (
             "Would like to visit the home page :\n"
@@ -573,6 +623,12 @@ class MachineTranslationApp:
         bin_launcher_path = ""
         target = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe"
         
+        open_word_param = ""
+        viewdocx_label = ""
+        if self.open_file_after_translation_var.get():
+            open_word_param = "-l"
+            viewdocx_label = " - open translated file"
+        
         try:
             target = os.path.abspath(target)
         except:
@@ -580,14 +636,14 @@ class MachineTranslationApp:
         console_arguments = ""
         arguments = ""
         if platform.system() == 'Windows':
-            console_arguments = f"-ct -font \"Lucida Console\" -size 16 -run "
+            console_arguments = f"-ct -font \"Courier New\" -size 16 -run "
         else:
             bin_launcher_path = f"osascript -e 'tell app \"Terminal\" to do script \"{self.bin_path}/machine-translate-docx "
             
         if platform.system() == 'Windows':
-            arguments = f"{console_arguments} {self.bin_path}\\machine-translate-docx.exe --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile "
+            arguments = f"{console_arguments} {self.bin_path}\\machine-translate-docx.exe --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {open_word_param} {exitonsuccess_param} --docxfile "
         else:
-            command = f"{bin_launcher_path} {self.bin_path}\\machine-translate-docx.exe --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile "
+            command = f"{bin_launcher_path} {self.bin_path}\\machine-translate-docx.exe --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {open_word_param} {exitonsuccess_param} --docxfile "
         
         # Replace multiple spaces into a single space
         arguments = re.sub('\s+',' ',arguments)
@@ -609,11 +665,11 @@ class MachineTranslationApp:
         appdata_folder = os.environ['APPDATA']
         shortcut_path = os.path.join(appdata_folder,
             "Microsoft\\Windows\\SendTo",
-            f'machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}.lnk')
+            f'machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}{viewdocx_label}.lnk')
             
         if os.path.exists(shortcut_path):
             confirm_overwrite_message = (
-                f"Sendto shortcut:\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}\"\n\nalready exist."
+                f"Sendto shortcut:\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}{viewdocx_label}\"\n\nalready exist."
                 "\n\nOvewrite this shortcut ?"
             )
             overwrite_shortcut = messagebox.askokcancel("Ovewrite shortcut ?", confirm_overwrite_message)
@@ -624,14 +680,118 @@ class MachineTranslationApp:
         
         if os.path.exists(shortcut_path):
             message = f"Sendto shortcut created"
-            messagebox.showinfo(message, f"Sendto shortcut is now created:\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}\".\n\nThis needs to be done only once unless you want to change the settings for that language.")
+            messagebox.showinfo(message, f"Sendto shortcut is now created:\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}{viewdocx_label}\".\n\nThis needs to be done only once unless you want to change the settings for that language.")
         else:
-            messagebox.showerror("Error, shortcut was not created", f"Error : Sendto shortcut was not created :\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}.lnk\".\n\nYou may report this error to smtv.bot@gmail.com")
+            messagebox.showerror("Error, shortcut was not created", f"Error : Sendto shortcut was not created :\n\n\"machine-translate-docx.exe - {dest_lang_name} - {engine}{split_string}{viewdocx_label}.lnk\".\n\nYou may report this error to smtv.bot@gmail.com")
             
-    def create_mac_shortcut_wrapper(self):
-        pass
+    def resource_path(self, relative_path):
+        """ Get absolute path to resource, works for dev and for PyInstaller """
+        try:
+            # PyInstaller creates a temp folder and stores path in _MEIPASS
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
 
-    def translate(self):
+        return os.path.join(base_path, relative_path)
+    
+    def create_mac_shortcut_wrapper(self):
+        info_plist_file_path = self.resource_path("mac_service_template/machine-translate-docx_template.workflow/Contents/Info.plist")
+        document_wflow_file_path = self.resource_path("mac_service_template/machine-translate-docx_template.workflow/Contents/document.wflow")
+        
+        engine = self.engine.get()
+        
+        split_string=""
+        if not self.split_var.get():
+            split_string = " - no split"
+            
+        dest_lang_name = self.target_language.get()
+        
+        service_name = f"machine-translate-docx - {dest_lang_name} - {engine}{split_string}"
+        
+        #open text file in read mode
+        info_plist_file = open(info_plist_file_path, "r")
+        document_wflow_file = open(document_wflow_file_path, "r")
+        
+        command = self.make_translate_command(for_service_template=True)
+        print("command:\n{command}")
+         
+        #read whole file to a string
+        info_plist_content = info_plist_file.read().replace('{service_name}', service_name)
+        
+        dest_lang_code = self.deepl_translate_lang_codes[dest_lang_name]
+        command = f"~/SMTVRobot/machine-translate-docx --engine deepl --destlang {dest_lang_code} --split --xlsxreplacefile ~/SMTVRobot/french.xlsx --docxfile \" &amp; thisItemsPathname &amp; \" --silent;sleep 1; exit 0"
+        command = f"/Users/sysprobs/SMTVRobot/bin/machine-translate-docx  --srclang en --destlang pl --engine deepl    --split   --xlsxreplacefile \\\"/Users/sysprobs/SMTVRobot/polish.xlsx\\\"  --showbrowser    --exitonsuccess  --docxfile \" &amp; thisItemsPathname &amp; \"; ; exit 0;"
+        document_wflow_content = document_wflow_file.read().replace('{run_command}', command)
+         
+        #close file
+        info_plist_file.close()
+         
+        #print(info_plist_content)
+        #print("")
+        #print(document_wflow_content)
+
+        path = 'Info.plist'  # always use slash
+        message = f"Creating mac service"
+        #messagebox.showinfo(message, info_plist_content)
+        #messagebox.showinfo(message, document_wflow_content)
+        
+        # Create service folder
+        # Write to TMPDIR or /tmp folder
+        tmpdir = ""
+        try:
+            tmpdir = os.environ['TMPDIR']
+            print(f"tmpdir : {tmpdir}")
+            if tmpdir == "" or tmpdir is None:
+                tmpdir = '/tmp/'
+        except:
+            tmpdir = '/tmp/'
+            
+        service_folder_path = os.path.join(tmpdir, f"{service_name}.workflow")
+        
+        # Detele the folder and all it's content if it already exists
+        if os.path.exists(service_folder_path):
+            try:
+                shutil.rmtree(service_folder_path)
+                print(f"Folder deleted at {service_folder_path}")
+            except OSError as e:
+                print(f"Error deleting folder: {e}")
+                
+        # Create the service workflow folder
+        try:
+            os.mkdir(service_folder_path)
+            print(f"Folder created at {service_folder_path}")
+        except OSError as e:
+            print(f"Error creating folder: {e}")
+            
+        # Create the Contents folder
+        contents_folder_path = os.path.join(service_folder_path, "Contents")
+        try:
+            os.mkdir(contents_folder_path)
+            print(f"Folder created at {contents_folder_path}")
+        except OSError as e:
+            print(f"Error creating folder: {e}")
+            
+        # Create the Info.plist file
+        info_plist_file_path = os.path.join(contents_folder_path, "Info.plist")
+        try:
+            with open(info_plist_file_path, 'w') as file:
+                file.write(info_plist_content)
+            print(f"Content written to '{info_plist_file_path}' successfully.")
+        except Exception as e:
+            print(f"Error writing to file: {e}")
+            
+        # Create the document.wflow file
+        document_wflow_file_path = os.path.join(contents_folder_path, "document.wflow")
+        try:
+            with open(document_wflow_file_path, 'w') as file:
+                file.write(document_wflow_content)
+            print(f"Content written to '{document_wflow_file_path}' successfully.")
+        except Exception as e:
+            print(f"Error writing to file: {e}")
+            
+        subprocess.Popen(["open", rf"{service_folder_path}"])
+
+    def make_translate_command(self, for_service_template=False):
         self.save_target_language()
         
         docx_file_path = self.docx_file_entry.get()
@@ -665,8 +825,12 @@ class MachineTranslationApp:
         else:
             src_lang_code = self.google_translate_lang_codes[src_lang_name]
             dest_lang_code = self.google_translate_lang_codes[dest_lang_name]
+            
+        split_string=""
+        if not self.split_var.get():
+            split_string = " - no split"
         
-        if not docx_file_path:
+        if not docx_file_path and not for_service_template:
             messagebox.showerror("Error", "Please select a Word document file.")
             return
             
@@ -688,7 +852,7 @@ class MachineTranslationApp:
         if self.open_file_after_translation_var.get() or platform.system() == 'Darwin':
             exitonsuccess_param = "  --exitonsuccess "
 
-        if not os.path.exists(docx_file_path):
+        if not os.path.exists(docx_file_path) and not for_service_template:
             messagebox.showerror("Error", "Selected Word document file does not exist.")
             return
             
@@ -702,21 +866,32 @@ class MachineTranslationApp:
         print(f"{self.bin_path}\\..")
         bin_launcher_path = ""
         if platform.system() == 'Windows':
-            bin_launcher_path = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe -ct -font \"Lucida Console\" -size 16 -run {self.bin_path}\\machine-translate-docx.exe "
+            bin_launcher_path = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe -ct -font \"Courier New\" -size 16 -run {self.bin_path}\\machine-translate-docx.exe "
         else:
-            bin_launcher_path = f"osascript -e 'tell app \"Terminal\" to do script \"{self.bin_path}/machine-translate-docx "
-        
-        open_word_and_command = ""
-        if self.open_file_after_translation_var.get():
-            if platform.system() == 'Windows':
-                open_word_and_command = f"&& start \"\" \"{docx_file_path}\""
+            if for_service_template:
+                bin_launcher_path = f"{self.bin_path}/machine-translate-docx "
             else:
-                open_word_and_command = f"open \\\"{docx_file_path}\\\";exit 0;"
+                bin_launcher_path = f"osascript -e 'tell app \"Terminal\" to do script \"{self.bin_path}/machine-translate-docx "
+        
+        open_word_param = ""
+        if self.open_file_after_translation_var.get():
+            open_word_param = "-l"
                 
         if platform.system() == 'Windows':
-            command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile \"{docx_file_path}\" {open_word_and_command}"
+            command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \"{docx_file_path}\""
         else:
-            command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} --docxfile \\\"{docx_file_path}\\\"; {open_word_and_command}\"'"
+            if for_service_template:
+                command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \" &amp; thisItemsPathname &amp; \";'"
+            else:
+                command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \\\"{docx_file_path}\\\"; \"'"
+        
+        print("command : %s" % (command))
+        
+        return command
+
+    def translate(self):
+        
+        command = self.make_translate_command(for_service_template=False)
         
         print("command : %s" % (command))
         

@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-08-27"
+PROGRAM_VERSION="2023-09-04"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -117,6 +117,15 @@ from docx.oxml import parse_xml
 
 import glob
 
+from langcodes import *
+
+
+print("*********************************************************")
+print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
+print("*********************************************************")
+
+print("Python programming language %s\n" % (platform.python_version()))
+
 # Get key value from an array of json strings, ['deepl','account','email'] for example
 # The first json object containing the key value is returned or default_when_none value.
 def validate_json_string(json_string):
@@ -197,10 +206,29 @@ DefaultJsonConfiguration = """{
 	}
 }"""
 
+def test_internet(host="8.8.8.8", port=53, timeout=3):
+    """
+    Host: 8.8.8.8 (google-public-dns-a.google.com)
+    OpenPort: 53/tcp
+    Service: domain (DNS/TCP)
+    """
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except socket.error as ex:
+        print(ex)
+        return False
 
-#defaultConfigurationDict = json.loads(DefaultJsonConfiguration)
-
-json_online_configuration = requests.get(json_configuration_url).content
+try:
+    json_online_configuration = requests.get(json_configuration_url).content
+except:
+    print("Warning, unable to get configuration from internet at {json_configuration_url}")
+    if not test_internet():
+        print("Warning, internet connection seems to be down, google name servers don't respond")
+        time.sleep(1)
+        
+    json_online_configuration = "{}"
 
 
 # Find default configuration file name from other configuration files
@@ -295,20 +323,21 @@ parser = argparse.ArgumentParser()
 
 #parser = argparse.ArgumentParser(description = "Translate everything!")
 #parser.add_argument('--source-language', required = True, choices = Languages, help="Specify the source language!")
-parser.add_argument('--srclang', required = False, help="Specify the default source language, en is default (hi,ja,ru,de,ru,hi,ja,in, etc)", default='en')
-parser.add_argument('--destlang', required = False, help="Specify the destination language with 2 letter code (hi,ja,ru,de,ru,hi,ja,in, etc)")
-parser.add_argument('--engine', required = False, help="Specify the translation engine (google, deepl, yandex)")
-parser.add_argument('--enginemethod', required = False, help="Specify the method (javascript, phrasesblock, singlephrase, xlsxfile, textfile )")
-parser.add_argument('--docxfile', required = False, help="Input file name")
-parser.add_argument('--xlsxreplacefile', required = False, help="Excel xlsx search and replace file")
-parser.add_argument('--destfont', required = False, help="Destination font name")
-parser.add_argument('--useapi', required = False, help="Use api to get translation, lower quality but faster", action='store_true')
-parser.add_argument('--split', required = False, help="Split web translation into cells", action='store_true')
+parser.add_argument('--srclang', '-sl', required = False, help="Specify the default source language, en is default (hi,ja,ru,de,ru,hi,ja,in, etc)", default='en')
+parser.add_argument('--destlang', '--dl', required = False, help="Specify the destination language with 2 letter code (hi,ja,ru,de,ru,hi,ja,in, etc)")
+parser.add_argument('--engine', '-e', required = False, help="Specify the translation engine (google, deepl, yandex)")
+parser.add_argument('--enginemethod', '-m', required = False, help="Specify the method (javascript, phrasesblock, singlephrase, xlsxfile, textfile )")
+parser.add_argument('--docxfile', '-d', required = False, help="Input file name")
+parser.add_argument('--xlsxreplacefile', '-x', required = False, help="Excel xlsx search and replace file")
+parser.add_argument('--destfont', '-f', required = False, help="Destination font name")
+parser.add_argument('--useapi', '-a', required = False, help="Use api to get translation, lower quality but faster", action='store_true')
+parser.add_argument('--split', '-s', required = False, help="Split web translation into cells", action='store_true')
 parser.add_argument('--splitonly', required = False, help="Split translation into lines only, do not translate.", action='store_true')
-parser.add_argument('--showbrowser', required = False, help="Show browser", action='store_true')
-parser.add_argument('--exitonsuccess', required = False, help="Exit progream on success", action='store_true')
-parser.add_argument('--silent', required = False, help="Silent, do not ask question and exit silently", action='store_true')
-parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
+parser.add_argument('--showbrowser', '-b', required = False, help="Show browser", action='store_true')
+parser.add_argument('--exitonsuccess', '-t', required = False, help="Exit progream on success", action='store_true')
+parser.add_argument('--viewdocx', '-l', required = False, help="Open the docx file with the default application after completion.", action='store_true')
+parser.add_argument('--silent', '-q', required = False, help="Silent, do not ask question and exit silently", action='store_true')
+parser.add_argument("--verbose", '-v', help="increase output verbosity", action="store_true")
 #parser.add_argument('--destination-file', required = True, help="Output file name")
 #args = parser.parse_args()
 parser.add_argument('--version', required = False, help="Show program version", action='store_true')
@@ -450,6 +479,38 @@ google_translate_lang_codes = {
     'zu': 'Zulu'
     }
 
+deepl_translate_lang_codes = {
+    'bg': 'Bulgarian',
+    'cs': 'Czech',
+    'da': 'Danish',
+    'de': 'German',
+    'el': 'Greek',
+    'en': 'English',
+    'es': 'Spanish',
+    'et': 'Estonian',
+    'fi': 'Finnish',
+    'fr': 'French',
+    'hu': 'Hungarian',
+    'id': 'Indonesian',
+    'it': 'Italian',
+    'ja': 'Japanese',
+    'ko': 'Korean',
+    'lt': 'Lithuanian',
+    'lv': 'Latvian',
+    'nb': 'Norwegian',
+    'nl': 'Dutch',
+    'pl': 'Polish',
+    'pt': 'Portuguese',
+    'ro': 'Romanian',
+    'ru': 'Russian',
+    'sk': 'Slovak',
+    'sl': 'Slovenian',
+    'sv': 'Swedish',
+    'tr': 'Turkish',
+    'uk': 'Ukrainian',
+    'zh': 'Chinese (Simplified)',
+}
+
 # This is to set docx document language for spelling
 office_language_tags = {
     'ar': 'ar-SA',
@@ -525,9 +586,124 @@ line_separator_regex_str = ' ?\(\) ?'
 # ... = \u2026 Horizontal ellipsis
 # ”  = \u201D Right double quotation mark
 eol_array = ['\. {0,}$', '\! {0,}$', '\? {0,}$',  '[\.\!\?\'] ?["”\'\)] {0,}$', u'\u2026 {0,}$',
-             '। {0,}$', # Hindi period
-             '。 {0,}$', '？ {0,}$', '！ {0,}$'# Chinese and Japanese period
-             ]
+    '। {0,}$', # Hindi period
+    '。 {0,}$', '？ {0,}$', '！ {0,}$', # Chinese and Japanese period
+    '։ {0,}$', #ARMENIAN FULL STOP	U+0589	ARMENIAN FULL STOP	
+    '։ {0,}$', #full stop, georgian	U+0589	ARMENIAN FULL STOP	
+    '։ {0,}$', #FULL STOP, ARMENIAN	U+0589	ARMENIAN FULL STOP	
+    '։ {0,}$', #georgian full stop	U+0589	ARMENIAN FULL STOP	
+    '۔ {0,}$', #ARABIC FULL STOP	U+06D4	ARABIC FULL STOP	
+    '۔ {0,}$', #FULL STOP, ARABIC	U+06D4	ARABIC FULL STOP	
+    '܁ {0,}$', #SYRIAC SUPRALINEAR FULL STOP	U+0701	SYRIAC SUPRALINEAR FULL STOP	
+    '܂ {0,}$', #SYRIAC SUBLINEAR FULL STOP	U+0702	SYRIAC SUBLINEAR FULL STOP	
+    '። {0,}$', #ETHIOPIC FULL STOP	U+1362	ETHIOPIC FULL STOP	
+    '። {0,}$', #FULL STOP, ETHIOPIC	U+1362	ETHIOPIC FULL STOP	
+    '᙮ {0,}$', #CANADIAN SYLLABICS FULL STOP	U+166E	CANADIAN SYLLABICS FULL STOP	
+    '᙮ {0,}$', #FULL STOP, CANADIAN SYLLABICS	U+166E	CANADIAN SYLLABICS FULL STOP	
+    '᙮ {0,}$', #SYLLABICS FULL STOP, CANADIAN	U+166E	CANADIAN SYLLABICS FULL STOP	
+    '᠃ {0,}$', #MONGOLIAN FULL STOP	U+1803	MONGOLIAN FULL STOP	
+    '᠃ {0,}$', #FULL STOP, MONGOLIAN	U+1803	MONGOLIAN FULL STOP	
+    '᠉ {0,}$', #MONGOLIAN MANCHU FULL STOP	U+1809	MONGOLIAN MANCHU FULL STOP	
+    '᠉ {0,}$', #FULL STOP, MONGOLIAN MANCHU	U+1809	MONGOLIAN MANCHU FULL STOP	
+    '᠉ {0,}$', #MANCHU FULL STOP, MONGOLIAN	U+1809	MONGOLIAN MANCHU FULL STOP	
+    '⒈ {0,}$', #DIGIT ONE FULL STOP	U+2488	DIGIT ONE FULL STOP	
+    '⒉ {0,}$', #DIGIT TWO FULL STOP	U+2489	DIGIT TWO FULL STOP	
+    '⒊ {0,}$', #DIGIT THREE FULL STOP	U+248A	DIGIT THREE FULL STOP	
+    '⒋ {0,}$', #DIGIT FOUR FULL STOP	U+248B	DIGIT FOUR FULL STOP	
+    '⒌ {0,}$', #DIGIT FIVE FULL STOP	U+248C	DIGIT FIVE FULL STOP	
+    '⒍ {0,}$', #DIGIT SIX FULL STOP	U+248D	DIGIT SIX FULL STOP	
+    '⒎ {0,}$', #DIGIT SEVEN FULL STOP	U+248E	DIGIT SEVEN FULL STOP	
+    '⒏ {0,}$', #DIGIT EIGHT FULL STOP	U+248F	DIGIT EIGHT FULL STOP	
+    '⒐ {0,}$', #DIGIT NINE FULL STOP	U+2490	DIGIT NINE FULL STOP	
+    '⒑ {0,}$', #NUMBER TEN FULL STOP	U+2491	NUMBER TEN FULL STOP	
+    '⒒ {0,}$', #NUMBER ELEVEN FULL STOP	U+2492	NUMBER ELEVEN FULL STOP	
+    '⒓ {0,}$', #NUMBER TWELVE FULL STOP	U+2493	NUMBER TWELVE FULL STOP	
+    '⒔ {0,}$', #NUMBER THIRTEEN FULL STOP	U+2494	NUMBER THIRTEEN FULL STOP	
+    '⒕ {0,}$', #NUMBER FOURTEEN FULL STOP	U+2495	NUMBER FOURTEEN FULL STOP	
+    '⒖ {0,}$', #NUMBER FIFTEEN FULL STOP	U+2496	NUMBER FIFTEEN FULL STOP	
+    '⒗ {0,}$', #NUMBER SIXTEEN FULL STOP	U+2497	NUMBER SIXTEEN FULL STOP	
+    '⒘ {0,}$', #NUMBER SEVENTEEN FULL STOP	U+2498	NUMBER SEVENTEEN FULL STOP	
+    '⒙ {0,}$', #NUMBER EIGHTEEN FULL STOP	U+2499	NUMBER EIGHTEEN FULL STOP	
+    '⒚ {0,}$', #NUMBER NINETEEN FULL STOP	U+249A	NUMBER NINETEEN FULL STOP	
+    '⒛ {0,}$', #NUMBER TWENTY FULL STOP	U+249B	NUMBER TWENTY FULL STOP	
+    '⳹ {0,}$', #COPTIC OLD NUBIAN FULL STOP	U+2CF9	COPTIC OLD NUBIAN FULL STOP	
+    '⳾ {0,}$', #COPTIC FULL STOP	U+2CFE	COPTIC FULL STOP	
+    '⸼ {0,}$', #STENOGRAPHIC FULL STOP	U+2E3C	STENOGRAPHIC FULL STOP	
+    '。 {0,}$', #IDEOGRAPHIC FULL STOP	U+3002	IDEOGRAPHIC FULL STOP	
+    '。 {0,}$', #FULL STOP, IDEOGRAPHIC	U+3002	IDEOGRAPHIC FULL STOP	
+    '꓿ {0,}$', #LISU PUNCTUATION FULL STOP	U+A4FF	LISU PUNCTUATION FULL STOP	
+    '꘎ {0,}$', #VAI FULL STOP	U+A60E	VAI FULL STOP	
+    '꛳ {0,}$', #BAMUM FULL STOP	U+A6F3	BAMUM FULL STOP	
+    '︒ {0,}$', #PRESENTATION FORM FOR VERTICAL IDEOGRAPHIC FULL STOP	U+FE12	PRESENTATION FORM FOR VERTICAL IDEOGRAPHIC FULL STOP	
+    '﹒ {0,}$', #SMALL FULL STOP	U+FE52	SMALL FULL STOP	
+    '． {0,}$', #FULLWIDTH FULL STOP	U+FF0E	FULLWIDTH FULL STOP	
+    '｡ {0,}$', #HALFWIDTH IDEOGRAPHIC FULL STOP	U+FF61	HALFWIDTH IDEOGRAPHIC FULL STOP	
+    '! {0,}$', #EXCLAMATION MARK	U+0021	EXCLAMATION MARK	
+    '¡ {0,}$', #INVERTED EXCLAMATION MARK	U+00A1	INVERTED EXCLAMATION MARK	
+    '¡ {0,}$', #EXCLAMATION MARK, INVERTED	U+00A1	INVERTED EXCLAMATION MARK	
+    'ǃ {0,}$', #latin letter exclamation mark	U+01C3	LATIN LETTER RETROFLEX CLICK	
+    'ǃ {0,}$', #exclamation mark, latin letter	U+01C3	LATIN LETTER RETROFLEX CLICK	
+    'ǃ {0,}$', #LATIN LETTER EXCLAMATION MARK	U+01C3	LATIN LETTER RETROFLEX CLICK	
+    '՜ {0,}$', #ARMENIAN EXCLAMATION MARK	U+055C	ARMENIAN EXCLAMATION MARK	
+    '՜ {0,}$', #EXCLAMATION MARK, ARMENIAN	U+055C	ARMENIAN EXCLAMATION MARK	
+    '߹ {0,}$', #NKO EXCLAMATION MARK	U+07F9	NKO EXCLAMATION MARK	
+    '᥄ {0,}$', #LIMBU EXCLAMATION MARK	U+1944	LIMBU EXCLAMATION MARK	
+    '᥄ {0,}$', #EXCLAMATION MARK, LIMBU	U+1944	LIMBU EXCLAMATION MARK	
+    '‼ {0,}$', #DOUBLE EXCLAMATION MARK	U+203C	DOUBLE EXCLAMATION MARK	
+    '‼ {0,}$', #EXCLAMATION MARK, DOUBLE	U+203C	DOUBLE EXCLAMATION MARK	
+    '⁈ {0,}$', #QUESTION EXCLAMATION MARK	U+2048	QUESTION EXCLAMATION MARK	
+    '⁈ {0,}$', #EXCLAMATION MARK, QUESTION	U+2048	QUESTION EXCLAMATION MARK	
+    '❕ {0,}$', #WHITE EXCLAMATION MARK ORNAMENT	U+2755	WHITE EXCLAMATION MARK ORNAMENT	
+    '❕ {0,}$', #EXCLAMATION MARK ORNAMENT, WHITE	U+2755	WHITE EXCLAMATION MARK ORNAMENT	
+    '❗ {0,}$', #HEAVY EXCLAMATION MARK SYMBOL	U+2757	HEAVY EXCLAMATION MARK SYMBOL	
+    '❢ {0,}$', #HEAVY EXCLAMATION MARK ORNAMENT	U+2762	HEAVY EXCLAMATION MARK ORNAMENT	
+    '❢ {0,}$', #EXCLAMATION MARK ORNAMENT, HEAVY	U+2762	HEAVY EXCLAMATION MARK ORNAMENT	
+    '❣ {0,}$', #HEAVY HEART EXCLAMATION MARK ORNAMENT	U+2763	HEAVY HEART EXCLAMATION MARK ORNAMENT	
+    '⹓ {0,}$', #MEDIEVAL EXCLAMATION MARK	U+2E53	MEDIEVAL EXCLAMATION MARK	
+    'ꜝ {0,}$', #MODIFIER LETTER RAISED EXCLAMATION MARK	U+A71D	MODIFIER LETTER RAISED EXCLAMATION MARK	
+    'ꜞ {0,}$', #MODIFIER LETTER RAISED INVERTED EXCLAMATION MARK	U+A71E	MODIFIER LETTER RAISED INVERTED EXCLAMATION MARK	
+    'ꜟ {0,}$', #MODIFIER LETTER LOW INVERTED EXCLAMATION MARK	U+A71F	MODIFIER LETTER LOW INVERTED EXCLAMATION MARK	
+    '︕ {0,}$', #PRESENTATION FORM FOR VERTICAL EXCLAMATION MARK	U+FE15	PRESENTATION FORM FOR VERTICAL EXCLAMATION MARK	
+    '﹗ {0,}$', #SMALL EXCLAMATION MARK	U+FE57	SMALL EXCLAMATION MARK	
+    '！ {0,}$', #FULLWIDTH EXCLAMATION MARK	U+FF01	FULLWIDTH EXCLAMATION MARK	
+    '！ {0,}$', #FULLWIDTH EXCLAMATION MARK	U+FF01	FULLWIDTH EXCLAMATION MARK	
+    '; {0,}$', #question mark, greek	U+003B	SEMICOLON	
+    '\; {0,}$', #greek question mark	U+003B	SEMICOLON	
+    '\? {0,}$', #QUESTION MARK	U+003F	QUESTION MARK	
+    '¿ {0,}$', #INVERTED QUESTION MARK	U+00BF	INVERTED QUESTION MARK	
+    '¿ {0,}$', #question mark, turned	U+00BF	INVERTED QUESTION MARK	
+    '¿ {0,}$', #QUESTION MARK, INVERTED	U+00BF	INVERTED QUESTION MARK	
+    '¿ {0,}$', #turned question mark	U+00BF	INVERTED QUESTION MARK	
+    '; {0,}$', #GREEK QUESTION MARK	U+037E	GREEK QUESTION MARK	
+    '; {0,}$', #QUESTION MARK, GREEK	U+037E	GREEK QUESTION MARK	
+    '՞ {0,}$', #ARMENIAN QUESTION MARK	U+055E	ARMENIAN QUESTION MARK	
+    '՞ {0,}$', #QUESTION MARK, ARMENIAN	U+055E	ARMENIAN QUESTION MARK	
+    '؟ {0,}$', #ARABIC QUESTION MARK	U+061F	ARABIC QUESTION MARK	
+    '؟ {0,}$', #QUESTION MARK, ARABIC	U+061F	ARABIC QUESTION MARK	
+    '፧ {0,}$', #ETHIOPIC QUESTION MARK	U+1367	ETHIOPIC QUESTION MARK	
+    '፧ {0,}$', #QUESTION MARK, ETHIOPIC	U+1367	ETHIOPIC QUESTION MARK	
+    '᥅ {0,}$', #LIMBU QUESTION MARK	U+1945	LIMBU QUESTION MARK	
+    '᥅ {0,}$', #QUESTION MARK, LIMBU	U+1945	LIMBU QUESTION MARK	
+    '⁇ {0,}$', #DOUBLE QUESTION MARK	U+2047	DOUBLE QUESTION MARK	
+    '⁇ {0,}$', #QUESTION MARK, DOUBLE	U+2047	DOUBLE QUESTION MARK	
+    '⁉ {0,}$', #EXCLAMATION QUESTION MARK	U+2049	EXCLAMATION QUESTION MARK	
+    '⁉ {0,}$', #QUESTION MARK, EXCLAMATION	U+2049	EXCLAMATION QUESTION MARK	
+    '❓ {0,}$', #BLACK QUESTION MARK ORNAMENT	U+2753	BLACK QUESTION MARK ORNAMENT	
+    '❓ {0,}$', #QUESTION MARK ORNAMENT, BLACK	U+2753	BLACK QUESTION MARK ORNAMENT
+    '❔ {0,}$', #WHITE QUESTION MARK ORNAMENT	U+2754	WHITE QUESTION MARK ORNAMENT	
+    '❔ {0,}$', #QUESTION MARK ORNAMENT, WHITE	U+2754	WHITE QUESTION MARK ORNAMENT	
+    '⩻ {0,}$', #LESS-THAN WITH QUESTION MARK ABOVE	U+2A7B	LESS-THAN WITH QUESTION MARK ABOVE	
+    '⩼ {0,}$', #GREATER-THAN WITH QUESTION MARK ABOVE	U+2A7C	GREATER-THAN WITH QUESTION MARK ABOVE	
+    '⳺ {0,}$', #COPTIC OLD NUBIAN DIRECT QUESTION MARK	U+2CFA	COPTIC OLD NUBIAN DIRECT QUESTION MARK	
+    '⳻ {0,}$', #COPTIC OLD NUBIAN INDIRECT QUESTION MARK	U+2CFB	COPTIC OLD NUBIAN INDIRECT QUESTION MARK	
+    '⸮ {0,}$', #REVERSED QUESTION MARK	U+2E2E	REVERSED QUESTION MARK	
+    '⹔ {0,}$', #MEDIEVAL QUESTION MARK	U+2E54	MEDIEVAL QUESTION MARK	
+    '꘏ {0,}$', #VAI QUESTION MARK	U+A60F	VAI QUESTION MARK	
+    '꛷ {0,}$', #BAMUM QUESTION MARK	U+A6F7	BAMUM QUESTION MARK	
+    '︖ {0,}$', #PRESENTATION FORM FOR VERTICAL QUESTION MARK	U+FE16	PRESENTATION FORM FOR VERTICAL QUESTION MARK	
+    '﹖ {0,}$', #SMALL QUESTION MARK	U+FE56	SMALL QUESTION MARK	
+    '？ {0,}$', #FULLWIDTH QUESTION MARK	U+FF1F	FULLWIDTH QUESTION MARK	
+]
 eol_conditional_array = ['\" {0,}$', u'\u201D {0,}$']
 bol_array = ['^[A-Z]']
 
@@ -552,6 +728,8 @@ deepl_sleep_wait_translation_seconds = 0.1
 translation_errors_count = 0
 
 word_file_to_translate = args.docxfile
+
+viewdocx = args.viewdocx
 
 xlsxreplacefile = args.xlsxreplacefile
 dest_font = args.destfont
@@ -581,11 +759,6 @@ if dest_lang == 'zh-cn':
     dest_lang = 'zh-CN'
 if dest_lang == 'zh-tw':
     dest_lang = 'zh-TW'
-print("*********************************************************")
-print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
-print("*********************************************************")
-
-print("Python programming language %s\n" % (platform.python_version()))
 
 valid_online_json = validate_json_string(json_online_configuration)
 if not valid_online_json == True:
@@ -613,8 +786,9 @@ else:
     print("Source language name for '%s' : %s" % (src_lang, src_lang_name))
 
 dest_lang_name = (google_translate_lang_codes.get(dest_lang))
+
 if dest_lang_name is None:
-    dest_lang_name = ""
+    dest_lang_name = deepl_translate_lang_codes.get(dest_lang)
     if not splitonly:
         print("Target language name for %s not found. Continuing as it is." % (dest_lang))
 else:
@@ -948,7 +1122,7 @@ def selenium_chrome_google_translate(to_translate):
         # driver.execute_script("scrollBy(0,-1000);")
         # actions.move_to_element(EditTranslationButton).perform()
         # sleep(0.1)
-        #driver.set_window_size(1000, 800)
+        #driver.set_window_size(800, 700)
         # EditTranslationButton.click()
         
         res_element_xpath = "//textarea[@lang='%s']" % (dest_lang)
@@ -1333,7 +1507,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
     
     
 def selenium_chrome_google_translate_html_javascript_file(html_file_path):
-    sleep_time_page_down = 2
+    sleep_time_page_down = 1.2
     #html_file_path_escaped = urllib.parse.quote_plus(html_file_path).replace('%5C','\\')
     #html_file_path_escaped = html_file_path.replace('%5C','\\')
     #html_file_path_escaped = urllib.parse.quote(html_file_path)
@@ -1688,7 +1862,7 @@ def selenium_chrome_yandex_translate(to_translate):
             timeout_copybutton_disabled -=1
 
         actions = ActionChains(driver)
-        driver.set_window_size(1000, 800)
+        driver.set_window_size(800, 700)
         actions.move_to_element(copy_translation_button).perform()
         actions.move_to_element(copy_translation_button).perform()
 
@@ -1746,20 +1920,35 @@ def selenium_chrome_deepl_log_in():
         
     deepl_account_enabled_key = ['deepl', 'account', 'enabled']
     deepl_account_enabled = get_nested_value_from_json_array(json_configuration_array, deepl_account_enabled_key)
-        
-    driver.set_window_size(1000, 800)
+    
+    driver.set_window_size(600, 600)
+    #driver.maximize_window()
 
     try:
-        driver.get("https://www.deepl.com/en/login/")
+        driver.get("https://www.deepl.com/translator")
         
         try:
         
             try:
                 # Accept cookies
                 deepl_accept_cookies_element = "//button[contains(.,'Accept all cookies')]"
-                deepl_accept_cookies_button = WebDriverWait(driver, 2).until(
+                deepl_accept_cookies_button = WebDriverWait(driver, 1).until(
                     EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
+                driver.execute_script("arguments[0].scrollIntoView();", deepl_accept_cookies_button)    
                 deepl_accept_cookies_button.click()
+                
+            except:
+                pass
+
+            # Close the cookies message box if it is there
+            try:
+                if closed_cookies_accept_message_bool == False:
+                    # Accept cookies
+                    deepl_accept_cookies_element = "//button[contains(.,'Close')]"
+                    deepl_accept_cookies_button = WebDriverWait(driver, 1).until(
+                        EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
+                    deepl_accept_cookies_button.click()
+                    closed_cookies_accept_message_bool = True
             except:
                 pass
                 
@@ -1778,10 +1967,25 @@ def selenium_chrome_deepl_log_in():
                 return False
             elif deepl_account_enabled == False:
                 return False
+            
+            driver.set_window_position(0, 50)
+            driver.set_window_size(800, 700)
+            driver.get("https://www.deepl.com/en/login/")
+
+            try:
+                # Accept cookies
+                deepl_accept_cookies_element = "//button[contains(.,'Accept all cookies')]"
+                deepl_accept_cookies_button = WebDriverWait(driver, 0.05).until(
+                    EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
+                driver.execute_script("arguments[0].scrollIntoView();", deepl_accept_cookies_button)    
+                deepl_accept_cookies_button.click()
                 
+            except:
+                pass       
+            
             # Fill username 
             deepl_login_email_element = "//input[@name='email']"
-            deepl_login_email_field = WebDriverWait(driver, 1).until(
+            deepl_login_email_field = WebDriverWait(driver, 2).until(
                 EC.presence_of_element_located((By.XPATH, deepl_login_email_element)))
             deepl_login_email_field.send_keys(deepl_account_email)
             
@@ -1791,6 +1995,29 @@ def selenium_chrome_deepl_log_in():
                 EC.presence_of_element_located((By.XPATH, deepl_login_password_element)))
             deepl_login_password_field.send_keys(deepl_account_password)
             sleep(1)
+
+            # Close the cookies message box if it is there
+            try:
+                if closed_cookies_accept_message_bool == False:
+                    # Accept cookies
+                    deepl_accept_cookies_element = "//button[contains(.,'Close')]"
+                    deepl_accept_cookies_button = WebDriverWait(driver, 0.5).until(
+                        EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
+                    deepl_accept_cookies_button.click()
+                    closed_cookies_accept_message_bool = True
+            except:
+                pass
+                
+            try:
+                # Accept cookies
+                deepl_accept_cookies_element = "//button[contains(.,'Accept all cookies')]"
+                deepl_accept_cookies_button = WebDriverWait(driver, 0.05).until(
+                    EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
+                driver.execute_script("arguments[0].scrollIntoView();", deepl_accept_cookies_button)    
+                deepl_accept_cookies_button.click()
+                
+            except:
+                pass       
             
             # Submit login
             deepl_login_submit_element = "//form/button"
@@ -1798,20 +2025,24 @@ def selenium_chrome_deepl_log_in():
             deepl_login_submit_element = "//button[contains(.,'Log in')]"
             deepl_login_submit_button = WebDriverWait(driver, 3).until(
                 EC.presence_of_element_located((By.XPATH, deepl_login_submit_element)))
+            driver.execute_script("arguments[0].scrollIntoView();", deepl_login_submit_button)    
             sleep(1.5)
             try:
                 deepl_login_submit_button.click()
             except:
                 pass
             
-            # Check account button exist
-            deepl_login_menu_element = ".dl_header_menu_v2__buttons__opener"
-            deepl_login_menu_button = WebDriverWait(driver, 9).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, deepl_login_menu_element)))
-            deepl_login_menu_button.click()
-            # Close the opener dialog, not required but cleaner
-            sleep(0.1)
-            deepl_login_menu_button.click()
+            try:
+                # Check account button exist
+                deepl_login_menu_element = ".dl_header_menu_v2__buttons__opener"
+                deepl_login_menu_button = WebDriverWait(driver, 3).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, deepl_login_menu_element)))
+                deepl_login_menu_button.click()
+                # Close the opener dialog, not required but cleaner
+                sleep(0.1)
+                deepl_login_menu_button.click()
+            except:
+                pass
             
             try:
                 # Close the annoying plugin for deepl if displayed - bug : it does not find this element
@@ -1839,19 +2070,21 @@ def selenium_chrome_deepl_log_in():
             var = traceback.format_exc()
             print(var)
             print("Failed to login into Deepl, continuing without being logged on.")
+            driver.set_window_size(800, 700)
             return False
 
     except:
         var = traceback.format_exc()
         print(var)
         print("Failed to login into Deepl, continuing without being logged on.")
+        driver.set_window_size(800, 700)
         return False
 
 
 def selenium_chrome_deepl_log_off():
     global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
         
-    driver.set_window_size(1000, 800)
+    driver.set_window_size(800, 700)
 
     try:
         driver.get("https://www.deepl.com/")
@@ -1912,7 +2145,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
     to_translate_phrases_array = to_translate.split("\n")
     to_translate_phrases_array_len = len(to_translate_phrases_array)
 
-    driver.set_window_size(1000, 800)
+    driver.set_window_size(800, 700)
 
     try:
         translation_page_openeing_loop_count = 4
@@ -1956,6 +2189,20 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 closed_cookies_accept_message_bool = True
         except:
             pass
+            
+
+        # Close the cookies message box if it is there
+        try:
+            if closed_cookies_accept_message_bool == False:
+                # Accept cookies
+                deepl_accept_cookies_element = "//button[contains(.,'Close')]"
+                deepl_accept_cookies_button = WebDriverWait(driver, 0.02).until(
+                    EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
+                deepl_accept_cookies_button.click()
+                closed_cookies_accept_message_bool = True
+        except:
+            pass
+            
         
         # Close the install extension message box if it is there
         try:
@@ -1968,6 +2215,18 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 close_install_extension_message_bool = False
         except:
             pass
+            
+            
+        try:
+            # Close the translate file button
+            deepl_translate_file_dismiss_element = "//button[contains(.,'Dismiss')]"
+            deepl_translate_file_dismiss_button = WebDriverWait(driver, 0.01).until(
+                EC.presence_of_element_located((By.XPATH, deepl_translate_file_dismiss_element)))
+            deepl_translate_file_dismiss_button.click()
+                
+        except:
+            pass       
+            
                 
         # Wait for copy translation button
         # Removed on 2022-05-25
@@ -2070,7 +2329,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 except:
                     pass
                 sleep(0.3)
-                # driver.set_window_size(1000, 800)
+                # driver.set_window_size(800, 700)
                 page_source_str = driver.page_source
                 # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
                 # with open('before.html', 'w', encoding="utf-8") as f:
@@ -2424,7 +2683,7 @@ def get_cell_data(cell,row_n):
             if run.font.highlight_color == WD_COLOR_INDEX.RED :
                 pass
 
-            if run.font.highlight_color == WD_COLOR_INDEX.GRAY_25 or run.font.strike or run.font.double_strike or run.font.highlight_color == WD_COLOR_INDEX.PINK or run.font.highlight_color == WD_COLOR_INDEX.RED or run_shading_color in shading_color_ignore_text:
+            if run.font.highlight_color == WD_COLOR_INDEX.GRAY_25 or run.font.highlight_color == WD_COLOR_INDEX.GRAY_50 or run.font.strike or run.font.double_strike or run.font.highlight_color == WD_COLOR_INDEX.PINK or run.font.highlight_color == WD_COLOR_INDEX.RED or run_shading_color in shading_color_ignore_text:
                 #print("Found GRAY_25")
                 cell_non_greyed_text = cell_non_greyed_text + ' '
                 if cell_is_gray == None:
@@ -2938,6 +3197,9 @@ def read_and_parse_docx_document():
                     if from_text_is_greyed_table[i] == 1:
                         from_text_is_beginning_of_line_table[i] = 0
                         from_text_is_end_of_line_table[i] = 0
+                        
+                    if i == 2 and len(cellvalue) > 0:
+                        from_text_is_beginning_of_line_table[i] = 1
 
                     if i > 1:
                         #Test conditionel de fin de ligne
@@ -3130,9 +3392,9 @@ def create_webdriver():
         #driver.set_window_position(0, 350)
         if translation_engine == 'yandex' or translation_engine == 'deepl':
             driver.set_window_position(0, 100)
-            driver.set_window_size(1000, 800)
+            driver.set_window_size(800, 700)
         else:
-            driver.set_window_size(1000, 800)
+            driver.set_window_size(800, 700)
             #driver.set_window_size(400, 650)
 
 
@@ -3546,7 +3808,7 @@ def translate_from_phrasesblock():
     translation_succeded = True
 
     #input("phrasesblock")
-    print("Starting translation in deepl using phrase blocks or %d characters..." % (MAX_TRANSLATION_BLOCK_SIZE))
+    print("Starting translation in deepl using phrase blocks of %d characters..." % (MAX_TRANSLATION_BLOCK_SIZE))
 
     translation_succeded, translation_array = selenium_chrome_translate_maxchar_blocks()
     try:
@@ -3628,7 +3890,7 @@ def get_translation_and_replace_after():
                                 driver = webdriver.Chrome(service=service, options=chrome_options)
                                 
                                 driver.set_window_position(100, 100)
-                                driver.set_window_size(1000, 800)
+                                driver.set_window_size(800, 700)
                                 #driver.set_window_size(400, 650)
 
                             print("phrase_no=%d" % phrase_no)
@@ -3645,15 +3907,15 @@ def get_translation_and_replace_after():
 
                         if translation_engine == 'google' and driver is not None:
                             driver.set_window_position(100, 100)
-                            driver.set_window_size(1000, 800)
+                            driver.set_window_size(800, 700)
 
                         if translation_engine == 'yandex' and driver is not None:
                             driver.set_window_position(100, 100)
-                            driver.set_window_size(1000, 800)
+                            driver.set_window_size(800, 700)
 
                         if translation_engine == 'deepl' and driver is not None:
                             driver.set_window_position(100, 100)
-                            driver.set_window_size(1000, 800)
+                            driver.set_window_size(800, 700)
 
                         print("phrase_no = %d" % phrase_no)
                         web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
@@ -4545,25 +4807,78 @@ def get_robot_usage_comment():
         #print(var)
         print("Warning failed to get available updates status, you can ignore this.")
 
+
+# Open the default app for the docx file
+def open_app_docx_file():
+    global word_file_to_translate_save_as_path
+    
+    try:
+        if platform.system() == 'Windows':
+            subprocess.Popen(["start", "", word_file_to_translate_save_as_path], shell=True)
+        elif platform.system() ==  "Darwin":
+            subprocess.Popen(["open", word_file_to_translate_save_as_path])
+            
+    except Exception as e:
+        print("Error:", e)
+        print("Warning, unable to open file %s." % (word_file_to_translate_save_as_path))
+
 def save_docx_file():
-    global docxdoc
+    global docxdoc, word_file_to_translate, word_file_to_translate_save_as_path
+    
+    lang_name = ""
+    lang_code = dest_lang
+    
+    # Find valid two letter code (Norwegian is invalid nb, but should be no)
+    try:
+        lang_name = google_translate_lang_codes[lang_code]
+    except:
+        try:
+            lang_name = deepl_translate_lang_codes[lang_code]
+            for google_lang_code in google_translate_lang_codes.keys():
+                try:
+                    if deepl_translate_lang_codes[lang_code].lower() == google_translate_lang_codes[google_lang_code].lower() and lang_code != google_lang_code:
+                        lang_code = google_lang_code
+                except:
+                    pass
+        except:
+            pass
+    
+    language_alpha_extension = None
+    lang_alpha3b_code = None
+        
+    try:
+        lang_alpha3_code = Language.get(lang_code).to_alpha3()
+        lang_alpha3b_code = Language.get(lang_code).to_alpha3(variant='B')
+        pass
+    except:
+        lang_alpha3b_code = None
+
+    word_file_to_translate_save_as_path = word_file_to_translate
+    if lang_alpha3b_code is not None:
+        find_alpha3_code_suffix = f"(?i)_{lang_alpha3b_code}.docx$"
+        if not re.search(find_alpha3_code_suffix, word_file_to_translate):
+            word_file_to_translate_save_as_path = re.sub("(?i)_{lang_alpha3b_code}.docx$", f".docx", word_file_to_translate)
+            lang_alpha3b_code = lang_alpha3b_code.upper()
+            word_file_to_translate_save_as_path = re.sub("(?i).docx$", f"_{lang_alpha3b_code}.docx", word_file_to_translate)
+            print(f"\nAdding file name suffix _{lang_alpha3b_code}.")
 
     local_time_offset()
 
     file_saved = 0
     while file_saved == 0:
         try:
-            docxdoc.save(word_file_to_translate)
+            docxdoc.save(word_file_to_translate_save_as_path)
             file_saved = 1
         except Exception:
             var = traceback.format_exc()
             txt_readline = input(
                 "\n\nERROR: File saving failed. Please close microsoft word or other program and press enter to save the translated document.\n")
+
 def test_thai_tokenizer_save_html():
     return
 
 def main() -> int:
-    global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl
+    global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl, viewdocx, word_file_to_translate_save_as_path
     global logged_into_deepl
     translation_succeded = False
 
@@ -4609,6 +4924,10 @@ def main() -> int:
 
     run_statistics()
     save_docx_file()
+    
+    if viewdocx:
+        print(f"Opening document : {word_file_to_translate_save_as_path}")
+        open_app_docx_file()
     end_time = datetime.datetime.now()
 
     elapsed_time = end_time - start_time
@@ -4622,6 +4941,7 @@ def main() -> int:
         clean_up_previous_chrome_selenium_drivers(driver.service.path)
         
     print("\nTranslation ended, file saved. Elasped time: %s (h:mm:ss.mmm)" % (elapsed_time))
+    print("\nSaved file name: %s" % (word_file_to_translate_save_as_path))
     
     get_robot_usage_comment()
 
