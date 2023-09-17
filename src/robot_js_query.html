@@ -85,17 +85,20 @@ deepl_language_names_by_code['ZH'] = 'Chinese (simplified)';
 			
 	    var message_text = ""
 		var message_html = ""
+		var needs_update = ""
 		  
 		switch (program_version) {
-			  case '2023-07-28':
+			  case '2023-09-17':
 				message_text = "You are using the latest version 2023-07-28."
 				break;
 			  default:
-				if(program_version > '2023-07-28'){
+				if(program_version > '2023-09-17'){
 					message_text = "You are using a developer preview version : " + program_version + "." +
 					" This version is ahead of the main version."
+					needs_update = "0"
 				}else{
 					message_text = "You are not using the latest version, please download the latest version 2023-07-28 here :\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
+					needs_update = "1"
 				}
 			
 		}
@@ -123,6 +126,7 @@ deepl_language_names_by_code['ZH'] = 'Chinese (simplified)';
 		  
 		document.getElementById("message_text").innerHTML = message_text;
 		document.getElementById("message_html").innerHTML = message_text;
+		document.getElementById("needs_update").innerHTML = needs_update;
 		return false;
 		
 	 
@@ -144,8 +148,12 @@ deepl_language_names_by_code['ZH'] = 'Chinese (simplified)';
 			<td><div id="divSubmit" styleold="display: none;"><input type="submit" id="submit"></div>
             </form>
 			</table>
+			<h3>Message text</h3>
 			<div id="message_text"></div>
+			<h3>Message html</h3>
 			<div id="message_html"></div>
+			<h3>Need update</h3>
+			<div id="needs_update"></div>
 </span>
 </body> 
 </html>
