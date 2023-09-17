@@ -34,6 +34,7 @@
 	  }
   },
   "version_checker": {
-	  "javascript_json_version_checker_url": "https://translation-robot.github.io/machine-translate-docx/src/robot_js_query.html"
+	  "javascript_json_version_checker_url": "https://translation-robot.github.io/machine-translate-docx/src/robot_js_query.html",
+      "sleep_seconds_on_update": 30
   }
 }
