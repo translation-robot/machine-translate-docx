@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-09-04"
+PROGRAM_VERSION="2023-09-17"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -202,7 +202,8 @@ DefaultJsonConfiguration = """{
 		}
 	},
 	"version_checker": {
-	  "javascript_json_version_checker_url": "https://translation-robot.github.io/machine-translate-docx/src/robot_js_query.html"
+	  "javascript_json_version_checker_url": "https://translation-robot.github.io/machine-translate-docx/src/robot_js_query.html",
+      "sleep_seconds_on_update": 30
 	}
 }"""
 
@@ -254,6 +255,13 @@ except:
     local_json_contents = None
           
 json_configuration_array = [local_json_contents,json_online_configuration,DefaultJsonConfiguration]
+
+# Find default sleep time for update message
+version_checker_sleep_seconds_on_update_key = ["version_checker", "sleep_seconds_on_update"]
+version_checker_sleep_seconds_on_update = get_nested_value_from_json_array(json_configuration_array,
+    version_checker_sleep_seconds_on_update_key, default_when_none=30)
+# We assume the program does not need update. Value of 1 is for update needed.
+str_needs_update = "0"
 
 process_platform = platform.system()
 if platform.system() == 'Windows':
@@ -4053,7 +4061,7 @@ def document_split_phrases():
                         lines_divided = lines_divided_attempt
                     divide_max_try = divide_max_try - 1
 
-                #print("number_lines=%d  ; str_nb_lines=%d  ; divide_max_try=%d" % (number_lines, str_nb_lines, divide_max_try))
+                print("number_lines=%d  ; str_nb_lines=%d  ; divide_max_try=%d" % (number_lines, str_nb_lines, divide_max_try))
                 number_lines = len(lines_divided)
                 translation_result_phrase_array[i] = lines_divided
                 for line_no in range (0, number_lines):
@@ -4449,7 +4457,7 @@ def browser_fill_form_field_value(field_css_id, field_value):
 def get_robot_usage_comment():
     global use_api
     global splitonly, driver
-    global engine_method, end_time, elapsed_time, json_configuration_array
+    global engine_method, end_time, elapsed_time, json_configuration_array, str_needs_update
     
     javascript_json_version_checker_url_key = ['version_checker', 'javascript_json_version_checker_url']
     javascript_json_version_checker_url = get_nested_value_from_json_array(json_configuration_array, javascript_json_version_checker_url_key)
@@ -4609,6 +4617,12 @@ def get_robot_usage_comment():
             soup_div_text = soup.find('div', id='message_text')
             available_updates_message = ''.join(map(str, soup_div_text.text))
             
+            try:
+                soup_div_needs_update = soup.find('div', id='needs_update')
+                str_needs_update = ''.join(map(str, soup_div_needs_update.text))
+            except:
+                pass
+                
             if available_updates_message != "":
                 print (''.join(map(str, soup_div_text.text)))
                 print("\n-------------------------------")
@@ -4879,7 +4893,7 @@ def test_thai_tokenizer_save_html():
 
 def main() -> int:
     global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl, viewdocx, word_file_to_translate_save_as_path
-    global logged_into_deepl
+    global logged_into_deepl, version_checker_sleep_seconds_on_update
     translation_succeded = False
 
     set_translation_function()
@@ -4978,6 +4992,9 @@ def main() -> int:
     if not exitonsuccess and not silent:
         input("Enter to close program")
     else:
+        if str_needs_update == "1":
+            print(f"Please download and install the program update (message will be shown for {version_checker_sleep_seconds_on_update} seconds).")
+            time.sleep(version_checker_sleep_seconds_on_update)
         print("Program ended")
     return 0
 

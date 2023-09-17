@@ -699,14 +699,19 @@ class MachineTranslationApp:
         document_wflow_file_path = self.resource_path("mac_service_template/machine-translate-docx_template.workflow/Contents/document.wflow")
         
         engine = self.engine.get()
+        src_lang_name = self.source_language.get()
+        dest_lang_name = self.target_language.get()
         
         split_string=""
         if not self.split_var.get():
             split_string = " - no split"
+
+        viewdocx_label = ""
+        if self.open_file_after_translation_var.get():
+            viewdocx_label = " - open translated file"
             
         dest_lang_name = self.target_language.get()
-        
-        service_name = f"machine-translate-docx - {dest_lang_name} - {engine}{split_string}"
+        service_name = f"machine-translate-docx - {dest_lang_name} - {engine}{split_string}{viewdocx_label}"
         
         #open text file in read mode
         info_plist_file = open(info_plist_file_path, "r")
@@ -718,9 +723,16 @@ class MachineTranslationApp:
         #read whole file to a string
         info_plist_content = info_plist_file.read().replace('{service_name}', service_name)
         
-        dest_lang_code = self.deepl_translate_lang_codes[dest_lang_name]
-        command = f"~/SMTVRobot/machine-translate-docx --engine deepl --destlang {dest_lang_code} --split --xlsxreplacefile ~/SMTVRobot/french.xlsx --docxfile \" &amp; thisItemsPathname &amp; \" --silent;sleep 1; exit 0"
-        command = f"/Users/sysprobs/SMTVRobot/bin/machine-translate-docx  --srclang en --destlang pl --engine deepl    --split   --xlsxreplacefile \\\"/Users/sysprobs/SMTVRobot/polish.xlsx\\\"  --showbrowser    --exitonsuccess  --docxfile \" &amp; thisItemsPathname &amp; \"; ; exit 0;"
+        if engine == 'deepl':
+            src_lang_code = self.deepl_translate_lang_codes[src_lang_name]
+            dest_lang_code = self.deepl_translate_lang_codes[dest_lang_name]
+            # Show brower is ignored when using Deepl and always true
+            show_browser_param = ""
+        else:
+            src_lang_code = self.google_translate_lang_codes[src_lang_name]
+            dest_lang_code = self.google_translate_lang_codes[dest_lang_name]
+            
+        #command = f"/Users/sysprobs/SMTVRobot/bin/machine-translate-docx  --srclang en --destlang pl --engine deepl    --split   --xlsxreplacefile \\\"/Users/sysprobs/SMTVRobot/polish.xlsx\\\"  --showbrowser    --exitonsuccess  --docxfile \" &amp; thisItemsPathname &amp; \"; ; exit 0;"
         document_wflow_content = document_wflow_file.read().replace('{run_command}', command)
          
         #close file
@@ -881,7 +893,8 @@ class MachineTranslationApp:
             command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \"{docx_file_path}\""
         else:
             if for_service_template:
-                command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \" &amp; thisItemsPathname &amp; \";'"
+                command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \" &amp; thisItemsPathname &amp; \"; exit 0;"
+                 
             else:
                 command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \\\"{docx_file_path}\\\"; \"'"
         
