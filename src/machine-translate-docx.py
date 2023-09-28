@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-09-17"
+PROGRAM_VERSION="2023-09-28"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -1248,7 +1248,7 @@ def selenium_chrome_translate_maxchar_blocks():
             print("Translating block %d/%d, %d characters..." % (current_block_no + 1, blocks_nchar_max_to_translate_array_len, current_block_str_len))
             translation = ""
             translation_try_count = 1
-            max_try_count = 2
+            max_try_count = 4
             #print("--index-- : %d" % index)
             #to_translate_str = str(to_translate)
             to_translate = current_block_str
@@ -2238,34 +2238,56 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 
         # Wait for copy translation button
         # Removed on 2022-05-25
-        try:
-            # Added on 2023-08-14
-            copy_translation_element = "#dl_translator"
-
-            copy_translation_button = WebDriverWait(driver, 3).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
-
-        except:
-             try:
-                # Added on version 2022-05-25
-                # copy_translation_element = "div:nth-child(5) > .shared_module_contents__d48c9809 .button--2IZ9p"
-
-                # Added on version 2022-05-31
-                copy_translation_element = "div:nth-child(5)"
-                copy_translation_button = WebDriverWait(driver, 6).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+        found_copy_button = False
+        loop_counter_search_button = 4
+        while (found_copy_button is False) and (loop_counter_search_button > 0):
+            #print(f"loop {loop_counter_search_button}")
+            try:
+                # Added on 2023-09-26
+                copy_translation_element = "//button[contains(@aria-label, 'Copy to clipboard')]" #//svg
+                #print(f"Looking for {copy_translation_element}")
+                copy_translation_button = WebDriverWait(driver, 0.2).until(
+                    EC.presence_of_element_located((By.XPATH, copy_translation_element)))
                 
-             except:
-                 try:
-                     # Version 2022-03-09
-                     copy_translation_element = ".lmt__target_toolbar_right > span path:nth-child(2)"
-                     copy_translation_button = WebDriverWait(driver, 1).until(
-                         EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
-                 except:
-                     # Version 2022-03-30
-                     copy_translation_element = ".lmt__target_toolbar_right > div > span svg"
-                     copy_translation_button = WebDriverWait(driver, 5).until(
-                         EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+                found_copy_button = True
+                #print(f"Loop {loop_counter_search_button}, found xpath button: {copy_translation_element}")
+                #print(f"Found xpath button: {copy_translation_element}")
+                time.sleep(0.2)
+                
+            except:
+                print(f"Except loop {loop_counter_search_button}, not found xpath button: {copy_translation_element}")
+                try:
+                    copy_translation_element = "#dl_translator"
+                    #print(f"Looking for {copy_translation_element}")
+
+                    copy_translation_button = WebDriverWait(driver, 0.2).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+                                                                                                                                      
+                    found_copy_button = True
+                    #print(f"Found xpath button: {copy_translation_element}")
+                    
+                except:
+                    try:
+                        # Version 2022-03-09
+                        copy_translation_element = ".lmt__target_toolbar_right > span path:nth-child(2)"
+                        copy_translation_element = "div:nth-child(5) > svg"
+                        #print(f"Looking for {copy_translation_element}")
+                        copy_translation_button = WebDriverWait(driver, 0.2).until(
+                            EC.presence_of_element_located((By.XPATH, copy_translation_element)))
+                        found_copy_button = True
+                    except:
+                        # Version 2022-03-30
+                        try:
+                           copy_translation_element = ".lmt__target_toolbar_right > div > span svg"
+                           #print(f"Looking for {copy_translation_element}")       
+                           copy_translation_button = WebDriverWait(driver, 0.2).until(
+                               EC.presence_of_element_located((By.CSS_SELECTOR, copy_translation_element)))
+                           found_copy_button = True
+                        except:
+                           #print("Copy button not found !!")
+                           pass
+            #print("Incrementing loop_counter_search_button")
+            loop_counter_search_button = loop_counter_search_button - 1
         
         busy_element = ".lmt__textarea_separator__border_inner"
         # busy_element = "//div[@id='dl_translator']/div/div/div[5]"
@@ -2298,7 +2320,8 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 except:
                     pass
         except:
-            var = traceback.format_exc()
+            #var = traceback.format_exc()
+            #print(var)
 
             # Look for usage limit reached, and try pro for 30 days
             deepl_usage_limit_reached_element = "//button[contains(.,'Back to Translator')]"
@@ -2312,12 +2335,16 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 pass
             # Sometimes the busy element does not show up, just ignore it and continue
 
+        #print("Scroll to copy_translation_button")
         actions = ActionChains(driver)
         # actions.move_to_element(copy_translation_button).perform()
         # sleep(0.1)
 
         # Scroll the browser to the element's Y position
-        driver.execute_script("arguments[0].scrollIntoView();", copy_translation_button)
+        try:
+            driver.execute_script("arguments[0].scrollIntoView();", copy_translation_button)
+        except:
+            pass
 
         copy_button_clicked = False
         copy_button_clicked_loop_count = 5
@@ -2336,7 +2363,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     actions.move_to_element(copy_translation_button).perform()
                 except:
                     pass
-                sleep(0.3)
+                sleep(0.2)
                 # driver.set_window_size(800, 700)
                 page_source_str = driver.page_source
                 # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
@@ -2346,8 +2373,8 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 wait_translation_finish_try = 300
                 block_translation_percent_done = 0
                 while page_source_str.find(still_translating_html_str) > 0 and wait_translation_finish_try > 0:
-                    sleep(0.3)
-                    print("Still translating...")
+                    sleep(0.2)
+                    #print("Still translating...")
                     page_source_str = driver.page_source
                     # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
                     # print(driver.page_source)
@@ -2390,11 +2417,11 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
                 try:
                     # Try to get the translation from the innerhtml of translation button
-                    button_translation_element = "//button[@class='lmt__translations_as_text__text_btn']"
-                    ButtonTranslationElement = WebDriverWait(driver, 1).until(
-                        EC.presence_of_element_located((By.XPATH, button_translation_element)))
-                    translation_from_button = ButtonTranslationElement.get_attribute('innerHTML')
-                    res = translation_from_button
+                    inner_html_plain_text_element = "//button[@class='lmt__translations_as_text__text_btn']"
+                    InnerHTMLPlainTextElement = WebDriverWait(driver, 1).until(
+                        EC.presence_of_element_located((By.XPATH, inner_html_plain_text_element)))
+                    translation_from_plain_text = InnerHTMLPlainTextElement.get_attribute('innerHTML')
+                    res = translation_from_plain_text
                 except:
                     # if we cannot find translation button with translation the use the copy button
                     # previous_clipbboard = clipboard.paste()
@@ -2405,26 +2432,44 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     #    f.close()
                     res = ""
                     try:
+                        try:
+                            #inner_html_translation_xpath_element = '//div[@contenteditable="true" and @role="textbox" and @aria-labelledby="translation-results-heading"]'
+                            inner_html_translation_xpath_element = "//div[contains(@aria-labelledby, 'translation-target-heading')]"
+                            InnerHTMLTranslationElement = WebDriverWait(driver, 1).until(
+                                EC.presence_of_element_located((By.XPATH, inner_html_translation_xpath_element)))
+                            
+                            if InnerHTMLTranslationElement:
+                                # Get the plain text from the element
+                                translation_from_plain_text = InnerHTMLTranslationElement.text
+                                print("Plain Text: %s " % (translation_from_plain_text))
+                            else:
+                                print("Element not found")
+                            res = translation_from_plain_text
+                        except:
+                            var = traceback.format_exc()
+                            print(var)
+                    
                         # Added on version 2022-05-31
-                        copy_translation_element = '//*[@id="headlessui-tabs-panel-7"]/div/div[1]/section/div/div[2]/div[3]/section/div[2]/div[3]/span[2]/span/span/button'
-                        copy_translation_button = WebDriverWait(driver, 6).until(
-                            EC.presence_of_element_located((By.XPATH, copy_translation_element)))
-                        if not warned_using_clipboard:
+                        #copy_translation_element = '//*[@id="headlessui-tabs-panel-7"]/div/div[1]/section/div/div[2]/div[3]/section/div[2]/div[3]/span[2]/span/span/button'
+                        #copy_translation_button = WebDriverWait(driver, 6).until(
+                        #    EC.presence_of_element_located((By.XPATH, copy_translation_element)))
+                        if not warned_using_clipboard and (res == "" or res == None):
                             print("Warning: Failed to get translation from html, copying from clipboard")
                             warned_using_clipboard = True
                             
                         if warned_using_clipboard and (res == "" or res == None):
-                            return False, None
-                        clipboard.copy('')
-                        copy_translation_button.click()
-                        copy_button_clicked = True
-                        res = clipboard.paste()
-                        if len(res) == 0 or res == None:
-                            print("Error : failed to get translation from Deepl.")
-                            return False, ""
+                            #return False, None
+                            clipboard.copy('')
+                            copy_translation_button.click()
+                            copy_button_clicked = True
+                            res = clipboard.paste()
+                            if len(res) == 0 or res == None:
+                                print("Error : failed to get translation from Deepl.")
+                                return False, ""
+                            
                     except:
-                        #var = traceback.format_exc()
-                        #print(var)
+                        var = traceback.format_exc()
+                        print(var)
                         #print("res : %s" %(res))
                         pass
                     #return False, None
@@ -2454,6 +2499,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     res = ""
 
             except:
+                print(f"Found exception on loop {copy_button_clicked_loop_count}")
                 if copy_button_clicked_loop_count < 20:
                     print("Waiting for the copy button...")
                     var = traceback.format_exc()
