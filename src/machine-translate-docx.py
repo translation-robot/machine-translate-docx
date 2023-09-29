@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-09-28"
+PROGRAM_VERSION="2023-09-29"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -118,7 +118,6 @@ from docx.oxml import parse_xml
 import glob
 
 from langcodes import *
-
 
 print("*********************************************************")
 print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
@@ -359,6 +358,7 @@ except:
     #input ("Type enter to continue")
 
 show_version = args.version
+silent = args.silent
 if show_version:
 
     print("\nDeveloper: %s\n" %(E_mail_str))
@@ -747,7 +747,6 @@ use_api = args.useapi
 
 showbrowser = args.showbrowser
 exitonsuccess = args.exitonsuccess
-silent = args.silent
 splitonly = args.splitonly
 if splitonly:
     split_translation = True
@@ -1515,19 +1514,10 @@ def selenium_chrome_google_translate_text_file(text_file_path):
     
     
 def selenium_chrome_google_translate_html_javascript_file(html_file_path):
-    sleep_time_page_down = 1.2
-    #html_file_path_escaped = urllib.parse.quote_plus(html_file_path).replace('%5C','\\')
-    #html_file_path_escaped = html_file_path.replace('%5C','\\')
-    #html_file_path_escaped = urllib.parse.quote(html_file_path)
     html_file_path_escaped = html_file_path.replace('#','%23')
-    file_url = 'file://' + html_file_path
-    #print("html_file_path=%s" % (html_file_path))
-    #print("html_file_path=%s" % (html_file_path_escaped))
-    driver.get('file://' + html_file_path_escaped)
-    #input("press enter to continue")
-    #input("HTML open file in browser")
-    wait_time = 0
-    #while driver.execute_script('return document.readyState;') != 'complete' and wait_time < 10:
+    file_url = 'file://' + html_file_path_escaped
+    driver.get(file_url)
+    
     print("Reading translation")
 
     try:
@@ -1539,50 +1529,72 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
         var = traceback.format_exc()
         print(var)
 
-    #print(".", end = '', flush=True)
-    time.sleep(1)
-    #print(".", end = '', flush=True)
-    time.sleep(1)
-    #print(".", end = '', flush=True)
-    time.sleep(1)
-    current_height = 0
-    while wait_time < 500:
-        #Scroll down to bottom to load contents, unnecessary for everyone
-        #driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        driver.execute_script("window.scrollBy(0,window.innerHeight)")
-        current_height = current_height + innerHeight
-        try:
-            bar.update(current_height)
-        except:
-            var = traceback.format_exc()
-            #print(var)
+    paragraphs = driver.find_elements(by=By.XPATH, value='//p[@class="translation"]')
 
-        wait_time += sleep_time_page_down
-        time.sleep(sleep_time_page_down)
-        result = driver.execute_script('''
-    // Reach the end of the page, the translation is over
-    return (window.innerHeight + window.scrollY + 10) >= document.body.scrollHeight;
-    ''')
-        #print("result=%s" % (result))
-        #print(".", end = '', flush=True)
-        # If we reached the end of the document after scrolling down
-        if (result == True):
-            driver.execute_script("window.scrollBy(0,window.innerHeight)")
-            time.sleep(1)
-            current_height = current_height + innerHeight
+    try:
+        
+        # How to detect a paragraph is translated is that it has the string below
+        translated_substring = '<font style="vertical-align: inherit;">'
+        scroll_offset_paragraph = 60
+        
+        for index, paragraph in enumerate(paragraphs, start=1):
+        
+            viewport_top = driver.execute_script("return window.pageYOffset;")
+            viewport_bottom = viewport_top + driver.execute_script("return window.innerHeight;")
+
+            # Get the coordinates of the element
+            element_top = paragraph.location['y']
+            element_bottom = element_top + paragraph.size['height']
+            
+            paragraph_html = paragraph.get_attribute('innerHTML')
+            #print(f"{paragraph_html}")
+            
+            location = paragraph.location
+            x = location['x']
+            y = location['y']
+            scroll_position = location['y'] - scroll_offset_paragraph
+            
+            wait_translation_sleep_sec = 0.05
+            
+            # or viewport_top <= element_bottom <= viewport_bottom
+            if viewport_top <= element_top <= viewport_bottom:
+                #print("The element is displayed at the current scroll position.")
+                pass
+            else:
+                #print("The element is not displayed at the current scroll position.")
+                try:
+                    driver.execute_script(f"window.scrollTo(0, {scroll_position});")
+                    time.sleep(wait_translation_sleep_sec)
+                    #print("The element should NOW be displayed at the current scroll position.")
+                except Exception as e:
+                    #Ignore and continue if there is an error
+                    #print(f"Error scrolling paragraph {index}: {str(e)}")
+                    pass
+            
+            # Wait until the translation is available        
+            
+            wait_translation_max_sleep_sec = 30
+            loop_wait_translation_count = wait_translation_max_sleep_sec / wait_translation_sleep_sec
+            while (translated_substring not in paragraph_html) and loop_wait_translation_count > 0:
+                #print(f"Sleeping in Paragraph {index}")
+                time.sleep(wait_translation_sleep_sec)
+                paragraph_html = paragraph.get_attribute('innerHTML')
+                loop_wait_translation_count = loop_wait_translation_count - 1
+            
             try:
-                bar.update(current_height)
+                bar.update(scroll_position + scroll_offset_paragraph)    
             except:
-                var = traceback.format_exc()
-                # print(var)
-            #print(".", end = '', flush=True)
-            break;
+                # Ignore progressbar errors at the end
+                pass
+    except:
+        var = traceback.format_exc()
+        print(var)
+    
     bar.update(scrollHeight)
+    progressbar.streams.flush()
     bar.finish()
-    print()
-
-    #input ("At the end of the document")
-
+    
+    # Read translation from HTML
     html_translation = driver.page_source
     #soup = BeautifulSoup(html_translation)
     soup = BeautifulSoup(html_translation, features="lxml")
@@ -1591,15 +1603,7 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
     for pTranstlation in pTags:
         pData = pTranstlation.text
         translation_array.append(pTranstlation.text)
-        #res = soup.get_text()
-        #pTranstlation
-        #print("id=%s - pData=%s" % (pTranstlation['id'], pData))
 
-    #input("Here")
-
-    #for translation in translation_array:
-    #    #print(translation)
-    #input ("Read translation done")
     return (translation_array)
     
 def getDownLoadedFileNameFirefox(waitTime):
@@ -2255,7 +2259,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 time.sleep(0.2)
                 
             except:
-                print(f"Except loop {loop_counter_search_button}, not found xpath button: {copy_translation_element}")
+                #print(f"Except loop {loop_counter_search_button}, not found xpath button: {copy_translation_element}")
                 try:
                     copy_translation_element = "#dl_translator"
                     #print(f"Looking for {copy_translation_element}")
@@ -2441,7 +2445,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                             if InnerHTMLTranslationElement:
                                 # Get the plain text from the element
                                 translation_from_plain_text = InnerHTMLTranslationElement.text
-                                print("Plain Text: %s " % (translation_from_plain_text))
+                                #print("Plain Text: %s " % (translation_from_plain_text))
                             else:
                                 print("Element not found")
                             res = translation_from_plain_text
@@ -2499,11 +2503,11 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     res = ""
 
             except:
-                print(f"Found exception on loop {copy_button_clicked_loop_count}")
+                #print(f"Found exception on loop {copy_button_clicked_loop_count}")
                 if copy_button_clicked_loop_count < 20:
                     print("Waiting for the copy button...")
-                    var = traceback.format_exc()
-                    print(var)
+                    #var = traceback.format_exc()
+                    #print(var)
             copy_button_clicked_loop_count = copy_button_clicked_loop_count - 1
 
         # translation = res
