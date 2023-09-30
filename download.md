@@ -6,15 +6,15 @@ The latest version of the translation robot is 2023-09-29
 ## Windows version
 Download the binaries for windows 7, 8, 8.1, 10 and 11 (32 bits, compatible 64 bits) here:
 
-https://ln5.sync.com/dl/55b76a9b0/zh2dn2q4-qyx5hta8-djt5n5jr-kr4mcjwt
+https://drive.google.com/file/d/1xWRASQzk7yA0CGRqQMs0MPMbGTwf1EvY/view?usp=drive_link
 
 ## Mac version
 Download the binaries for macos here:
 
 Only update the program (not the excel files):
 
-https://ln5.sync.com/dl/50c8082c0/pmzs27um-tv36zmvb-4fp4ffbw-42qh5tbp
+https://drive.google.com/file/d/1f5_mQxyqO076F2hN7Trne3hZwWV26Qva/view?usp=drive_link
 
 Full installation :
 
-https://ln5.sync.com/dl/23655b800/me3iu6xv-q9rcdvs5-a23gtmcs-m57zm23b
+https://drive.google.com/file/d/1pS0mZ-Wa6o51l82_LneZDpPwDV5gzs3q/view?usp=drive_link
