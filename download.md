@@ -17,7 +17,7 @@ Download the binaries for macos here:
 
 Only update the program (not the excel files):
 
-https://1drv.ms/u/s!ApCK27gWWsMlhmrUGxyZmlp-IMHy?e=NZkgDH
+https://1drv.ms/u/s!ApCK27gWWsMlhnDY9YPdtRMt96lW?e=vzafI9
 
 Full installation :
 
