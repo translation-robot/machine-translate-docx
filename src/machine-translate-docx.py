@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-09-29"
+PROGRAM_VERSION="2023-11-20"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -50,11 +50,10 @@ from screeninfo import get_monitors
 
 
 from selenium import webdriver
-from selenium.webdriver import Firefox, FirefoxOptions
+#from selenium.webdriver import Firefox, FirefoxOptions
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
-
 from time import sleep
 import argparse
 import clipboard
@@ -180,11 +179,12 @@ DefaultJsonConfiguration = """{
 			"email_": "********@gmail.com",
 			"password_": "********",
 			"type": "free",
-			"maximum_character_block": 5000
+			"maximum_character_block": 1500
 		},
 		"no_account": {
 			"maximum_character_block": 1500
-		}
+		},
+        "maximum_clear_cache_retry" : 20
 	},
 	"google": {
 		"javascript_translation": {},
@@ -2140,11 +2140,16 @@ def selenium_chrome_deepl_log_off():
 
 
 def selenium_chrome_deepl_translate(to_translate, retry_count):
+    global logged_into_deepl
     translation = ""
     Translated = False
     # Progress bar to show only when deepl also shows it on the browser
     bar = None
-    global closed_cookies_accept_message_bool, close_install_extension_message_bool
+    global closed_cookies_accept_message_bool, close_install_extension_message_bool, deepl_nb_clear_cached_times
+    global engine_method, end_time, elapsed_time, json_configuration_array
+    
+    deepl_maximum_clear_cache_retry_key = ['deepl', 'maximum_clear_cache_retry']
+    deepl_maximum_clear_cache_retry = get_nested_value_from_json_array(json_configuration_array, deepl_maximum_clear_cache_retry_key)
     
     # Set variable to false if they are not globally defined
     try:
@@ -2326,18 +2331,53 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         except:
             #var = traceback.format_exc()
             #print(var)
+            limit_reached = False
 
             # Look for usage limit reached, and try pro for 30 days
             deepl_usage_limit_reached_element = "//button[contains(.,'Back to Translator')]"
             try:
                 deepl_usage_limit_reached_button = WebDriverWait(driver, 0.05).until(
                     EC.presence_of_element_located((By.XPATH, deepl_usage_limit_reached_element)))
-                print("Error : deepl usage limit reached")
-                deepl_usage_limit_reached_button.click()
-                return False, ""
+                
+                limit_reached = True
+                #deepl_usage_limit_reached_button.click()
             except:
+                
                 pass
             # Sometimes the busy element does not show up, just ignore it and continue
+            
+            
+
+            # Look for usage limit reached, and try pro for 30 days
+            deepl_try_pro_free_element = "//button[contains(.,'Try Pro for free')]"
+            try:
+                deepl_try_pro_free_button = WebDriverWait(driver, 0.05).until(
+                    EC.presence_of_element_located((By.XPATH, deepl_try_pro_free_element)))
+                print("Deepl is promoting their Pro version")
+                limit_reached = True
+                #deepl_usage_limit_reached_button.click()
+            except:
+                
+                pass
+            # Sometimes the busy element does not show up, just ignore it and continue
+            
+            if limit_reached:
+                try:
+                    if deepl_nb_clear_cached_times is None:
+                        deepl_nb_clear_cached_times = 0
+                except:
+                    deepl_nb_clear_cached_times = 0
+                    
+                if deepl_nb_clear_cached_times > deepl_maximum_clear_cache_retry:
+                    return False, ""
+                print("Warning : deepl usage limit reached... retrying after cleaning cache.")
+                driver.delete_all_cookies()
+                driver.get("https://www.deepl.com")
+                closed_cookies_accept_message_bool = False
+                deepl_nb_clear_cached_times = deepl_nb_clear_cached_times + 1
+                logged_into_deepl = selenium_chrome_deepl_log_in()
+                return selenium_chrome_deepl_translate(to_translate, retry_count)
+                
 
         #print("Scroll to copy_translation_button")
         actions = ActionChains(driver)
@@ -4943,7 +4983,7 @@ def test_thai_tokenizer_save_html():
 
 def main() -> int:
     global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl, viewdocx, word_file_to_translate_save_as_path
-    global logged_into_deepl, version_checker_sleep_seconds_on_update
+    global logged_into_deepl, deepl_nb_clear_cached_times, version_checker_sleep_seconds_on_update
     translation_succeded = False
 
     set_translation_function()
