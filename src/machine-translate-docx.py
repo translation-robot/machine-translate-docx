@@ -72,6 +72,8 @@ from docx.shared import Inches
 from docx.enum.text import WD_COLOR_INDEX
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_TAB_ALIGNMENT,WD_PARAGRAPH_ALIGNMENT, WD_ALIGN_PARAGRAPH
+from docx.text.run import Font, Run
+from docx.dml.color import ColorFormat
 
 # For japanese
 import tinysegmenter
@@ -118,11 +120,45 @@ import glob
 
 from langcodes import *
 
+# Used to compare translation with line separator and without line separator
+import difflib
+
+from dataclasses import dataclass
+
 print("*********************************************************")
 print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
 print("*********************************************************")
 
 print("Python programming language %s\n" % (platform.python_version()))
+
+# Define the structure using dataclass
+@dataclass
+class WordTableLine:
+    #from_text_table : str
+    source_lang : str
+    from_text_is_greyed_table : int
+    from_text_is_red_color_table : int
+    from_text_is_end_of_line_table : int
+    from_text_is_beginning_of_line_table : int
+    from_text_is_empty_line_table : int
+    from_text_is_conditional_end_of_line_table : int
+    from_text_by_phrase_using_separator_table : str
+    from_text_by_phrase_table : str
+    from_text_nb_lines_in_phrase : int
+    from_text_nb_lines_in_cell : int
+    to_text_by_phrase_using_separator_table : List[str]
+    to_text_by_phrase_separator_removed_table : List[str]
+    to_text_splited_table1 : List[str]
+    to_text_by_phrase_table : str
+    to_text_table : str
+    to_raw_translated_table : str
+    to_text_removed_line_separator : str
+    translation_result_using_separator : str
+    translation_result_phrase_array : List[str]
+    translation_result : str
+    from_text_is_read : int
+    
+    
 
 # Get key value from an array of json strings, ['deepl','account','email'] for example
 # The first json object containing the key value is returned or default_when_none value.
@@ -276,13 +312,13 @@ from_text_is_end_of_line_table = [0] *1
 from_text_is_beginning_of_line_table = [0] *1
 from_text_is_empty_line_table = [0] *1
 from_text_is_conditional_end_of_line_table = [0] *1
-from_text_by_phrase_separator_table = [''] *1
+from_text_by_phrase_using_separator_table = [''] *1
 from_text_by_phrase_table = [''] *1
 #number of lines in per phrase
 from_text_nb_lines_in_phrase = [0] *1
 from_text_nb_lines_in_cell = [0] *1
 #
-to_text_by_phrase_separator_table = [''] *1
+to_text_by_phrase_using_separator_table = [''] *1
 to_text_by_phrase_separator_removed_table = [''] *1
 to_text_splited_table1 = [''] *1
 to_text_by_phrase_table = [''] *1
@@ -296,7 +332,7 @@ from_text_is_read = [0] *1
 word_translation_table_length = 0
 table = None
 
-table_cells = [['' for i in range(1)] for j in range(1)]
+#table_cells = [['' for i in range(1)] for j in range(1)]
 
 docxfile_table_number_of_phrases = 0
 
@@ -583,8 +619,8 @@ os.environ["PATH"] = new_os_path
 use_translation_api = False
 
 
-#line_separator_str = ' () '
-line_separator_str = ' '
+#line_separator_str = ' '
+line_separator_str = ' _ '
 #line_separator_nospace_str = '()'
 line_separator_nospace_str = '()'
 line_separator_regex_str = ' ?\(\) ?'
@@ -718,6 +754,8 @@ bol_array = ['^[A-Z]']
 # Colors : grey and pink backgroud to ignore
 # https://learn.microsoft.com/en-us/office/vba/api/word.wdcolor
 shading_color_ignore_text = ['FFD320', 'D9D9D9', 'BFBFBF', 'A6A6A6', '808080', 'FF00FF', 'FF0000', 'F3F3F3', 'E6E6E6', 'E0E0E0', 'CCCCCC', 'C0C0C0', 'B3B3B3', 'A0A0A0', '999999', '8C8C8C',  '737373', '666666', '606060', '595959', '4C4C4C', '404040', '333333', '262626', '202020', '191919', '0C0C0C']
+
+font_color_ignore_text = ['FF0000']
 
 html_file_path = ''
 
@@ -1021,8 +1059,8 @@ def get_translated_cells_content(lineno, to_translate):
 
     last_row_n = from_text_nb_lines_in_phrase[lineno] + lineno
     for row_n in range(lineno, last_row_n):
-        #cell_text = docxdoc.tables[0].cell(row_n, 2).text
-        cell_text = table_cells[row_n][2].text
+        cell_text = docxdoc.tables[0].cell(row_n, 2).text
+        #cell_text = table_cells[row_n][2].text
         cell_text = cell_text.strip()
         if cell_text != "":
             print("adding cell %s " % (cell_text))
@@ -1035,12 +1073,16 @@ def get_translated_cells_content(lineno, to_translate):
 found_google_cookies_consent_button = False
 google_translate_first_page_loaded = False
 
-def selenium_chrome_translate_get_from_text_array(to_translate, index):
+def selenium_chrome_translate_get_from_text_array(to_translate, index, split_tag_in_to_translate=False):
+    global translation_array, translation_array_using_separator
     #print("to_translate   :%s" % to_translate)
     #print("translation %3d:%s" % (index, translation_array[index - 1]))
     #input("selenium_chrome_translate_get_from_text_array")
     #input("In selenium_chrome_translate_get_from_text_array")
-    return translation_array[index - 1]
+    if split_tag_in_to_translate:
+        return translation_array_using_separator[index - 1]
+    else:
+        return translation_array[index - 1]
 
 def selenium_chrome_google_translate(to_translate):
     global found_google_cookies_consent_button
@@ -2584,10 +2626,11 @@ def set_translation_function():
         elif engine_method == 'singlephrase':
             selenium_chrome_machine_translate_once = selenium_chrome_google_translate
         else:
+            # google javascript translation
             selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
 
 
-def selenium_chrome_machine_translate(to_translate, index):
+def selenium_chrome_machine_translate(to_translate, index, split_tag_in_to_translate=False):
     global selenium_chrome_machine_translate_once
     translation = ""
     translation_try_count = 1
@@ -2605,17 +2648,17 @@ def selenium_chrome_machine_translate(to_translate, index):
                 print("%d translation retry so far..." % (translation_errors_count))
             if translation_engine == 'deepl':
                 if engine_method == 'phrasesblock':
-                    translation = selenium_chrome_machine_translate_once(to_translate, index)
+                    translation = selenium_chrome_machine_translate_once(to_translate, index, split_tag_in_to_translate)
                 else:
-                    translation = selenium_chrome_machine_translate_once(to_translate, translation_try_count - 1)
+                    translation = selenium_chrome_machine_translate_once(to_translate, translation_try_count - 1, split_tag_in_to_translate=split_tag_in_to_translate)
             elif engine_method == 'textfile':
-                translation = selenium_chrome_machine_translate_once(to_translate, index)
+                translation = selenium_chrome_machine_translate_once(to_translate, index, split_tag_in_to_translate)
             elif engine_method == 'xlsxfile':
-                translation = selenium_chrome_machine_translate_once(to_translate, index)
+                translation = selenium_chrome_machine_translate_once(to_translate, index, split_tag_in_to_translate)
             elif engine_method == 'phrasesblock':
-                translation = selenium_chrome_machine_translate_once(to_translate, index)
+                translation = selenium_chrome_machine_translate_once(to_translate, index, split_tag_in_to_translate)
             elif engine_method == 'javascript':
-                translation = selenium_chrome_machine_translate_once(to_translate, index)
+                translation = selenium_chrome_machine_translate_once(to_translate, index, split_tag_in_to_translate)
             else:            
                 translation = selenium_chrome_machine_translate_once(to_translate)
             translation_try_count = translation_try_count + 1
@@ -2709,7 +2752,7 @@ def get_run_shading_color(xml_run_str):
         except:
             pass
     return attrib_fill
-
+    
 # Return cell_non_greyed_text (string), cell_is_gray (integer for boolean)
 def get_cell_data(cell,row_n):
     global from_text_nb_lines_in_cell
@@ -2956,11 +2999,11 @@ def split_phrases():
             #print "cur_row_n=%s<br>" % (cur_row_n)
             while from_text_is_end_of_line_table[n_last_row_phrase] != 1 \
                 and n_last_row_phrase < (last_table_row - 1):
-                if from_text_by_phrase_separator_table[cur_row_n] == "":
-                    from_text_by_phrase_separator_table[cur_row_n] = from_text_table[n_last_row_phrase]
+                if from_text_by_phrase_using_separator_table[cur_row_n] == "":
+                    from_text_by_phrase_using_separator_table[cur_row_n] = from_text_table[n_last_row_phrase]
                     from_text_by_phrase_table[cur_row_n] = from_text_table[n_last_row_phrase]
                 else:
-                    from_text_by_phrase_separator_table[cur_row_n] = from_text_by_phrase_separator_table[cur_row_n] + line_separator_str + from_text_table[n_last_row_phrase]
+                    from_text_by_phrase_using_separator_table[cur_row_n] = from_text_by_phrase_using_separator_table[cur_row_n] + line_separator_str + from_text_table[n_last_row_phrase]
                     from_text_by_phrase_table[cur_row_n] = from_text_by_phrase_table[cur_row_n] + ' ' + from_text_table[n_last_row_phrase]
                     nb_lines_in_phrase += 1
                     #from_text_nb_lines_in_phrase[cur_row_n] += 1
@@ -2970,11 +3013,13 @@ def split_phrases():
                         #input("nb lines here")
                     from_text_nb_lines_in_phrase[cur_row_n] += from_text_nb_lines_in_cell[n_last_row_phrase]
                 n_last_row_phrase += 1
-            if from_text_by_phrase_separator_table[cur_row_n] == "":
-                from_text_by_phrase_separator_table[cur_row_n] = from_text_table[n_last_row_phrase]
+            print("from_text_by_phrase_using_separator_table[cur_row_n]")
+            print(from_text_by_phrase_using_separator_table[cur_row_n])
+            if from_text_by_phrase_using_separator_table[cur_row_n] == "":
+                from_text_by_phrase_using_separator_table[cur_row_n] = from_text_table[n_last_row_phrase]
                 from_text_by_phrase_table[cur_row_n] = from_text_table[n_last_row_phrase]
             else:
-                from_text_by_phrase_separator_table[cur_row_n] = from_text_by_phrase_separator_table[cur_row_n] + line_separator_str+ from_text_table[n_last_row_phrase]
+                from_text_by_phrase_using_separator_table[cur_row_n] = from_text_by_phrase_using_separator_table[cur_row_n] + line_separator_str+ from_text_table[n_last_row_phrase]
                 nb_lines_in_phrase += 1
                 #from_text_nb_lines_in_phrase[cur_row_n] += 1
                 from_text_nb_lines_in_phrase[cur_row_n] += from_text_nb_lines_in_cell[n_last_row_phrase]
@@ -2982,7 +3027,7 @@ def split_phrases():
             if use_html:
                 print("(%d)from_text_by_phrase_table[%d]=%s<br>" % (n_last_row_phrase, cur_row_n, from_text_by_phrase_table[cur_row_n]))
             nb_lines_in_phrase_str = "[%s]" % (nb_lines_in_phrase)
-            #from_text_by_phrase_separator_table[cur_row_n] = from_text_by_phrase_separator_table[cur_row_n]
+            #from_text_by_phrase_using_separator_table[cur_row_n] = from_text_by_phrase_using_separator_table[cur_row_n]
 
             #nb_character_total = nb_character_total + 1#len(from_text_by_phrase_table[cur_row_n])
             cur_row_n = n_last_row_phrase + 1
@@ -3025,7 +3070,7 @@ def generate_tmx_file():
         f.write(header)
 
         for i, line in enumerate(from_text_table):
-            item = from_text_by_phrase_separator_table[i]
+            item = from_text_by_phrase_using_separator_table[i]
             item.strip()
             from_language = src_lang
             phrase_separator_removed_str = ''
@@ -3039,7 +3084,7 @@ def generate_tmx_file():
             item_escaped = item_escaped.replace("<", "&lt;")
             item_escaped = item_escaped.replace(">", "&gt;")
 
-            item_translation = to_text_by_phrase_separator_table[i].replace("&", "&amp;")
+            item_translation = to_text_by_phrase_using_separator_table[i].replace("&", "&amp;")
             item_translation = item_translation.replace("<", "&lt;")
             item_translation = item_translation.replace(">", "&gt;")
             if item_escaped.strip() != "":
@@ -3061,9 +3106,11 @@ def generate_tmx_file():
 
 
 def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
-    global table_cells
+    #global table_cells
     paragraph_no = 0
-    current_cell = table_cells[row_n][2]
+    #current_cell = table_cells[row_n][2]    
+    current_cell = docxdoc.tables[0].cell(row_n, 2)
+    
     #print("prepare_and_clear_cell_for_writing")
     #print("paragraph[%d]: %s" % (row_n,translation_cell_text))
     for paragraph in current_cell.paragraphs:
@@ -3075,7 +3122,7 @@ def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
 
     nb_paragraph = len(current_cell.paragraphs)
     if nb_paragraph >= 1:
-        table_cells[row_n][2].text = ''
+        current_cell.text = ''
         cell_paragraph = current_cell.paragraphs[0]
     else:
         cell_paragraph = current_cell.add_paragraph("")
@@ -3095,11 +3142,12 @@ def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
     if dest_font != "":
         change_cell_font (current_cell)
         
-    table_cells[row_n][2] = current_cell
+    #current_cell[row_n][2] = current_cell
         
 def cell_set_1st_paragraph(row_n, paragraph_text):
     paragraph_no = 0
-    current_cell = table_cells[row_n][2]
+    #current_cell = table_cells[row_n][2]
+    current_cell = docxdoc.tables[0].cell(row_n, 2)
     
     #print("cell_add_paragraph")
     #print("paragraph[%d]: %s" % (row_n,paragraph_text))
@@ -3120,12 +3168,13 @@ def cell_set_1st_paragraph(row_n, paragraph_text):
     if dest_font != "":
         change_cell_font (current_cell)
         
-    table_cells[row_n][2] = current_cell
+    #table_cells[row_n][2] = current_cell
         
 
 def cell_add_paragraph(row_n, paragraph_text):
     paragraph_no = 0
-    current_cell = table_cells[row_n][2]
+    #current_cell = table_cells[row_n][2]
+    current_cell = docxdoc.tables[0].cell(row_n, 2)
     
     #print("cell_add_paragraph")
     #print("paragraph[%d]: %s" % (row_n,paragraph_text))
@@ -3146,7 +3195,7 @@ def cell_add_paragraph(row_n, paragraph_text):
     if dest_font != "":
         change_cell_font (current_cell)
         
-    table_cells[row_n][2] = current_cell
+    #table_cells[row_n][2] = current_cell
 
 def read_and_parse_docx_document():
     global from_text_table
@@ -3156,11 +3205,11 @@ def read_and_parse_docx_document():
     global from_text_is_beginning_of_line_table
     global from_text_is_empty_line_table
     global from_text_is_conditional_end_of_line_table
-    global from_text_by_phrase_separator_table
+    global from_text_by_phrase_using_separator_table
     global from_text_by_phrase_table
     global from_text_nb_lines_in_phrase
     global from_text_nb_lines_in_cell
-    global to_text_by_phrase_separator_table
+    global to_text_by_phrase_using_separator_table
     global to_text_by_phrase_separator_removed_table
     global to_text_splited_table1
     global to_text_by_phrase_table
@@ -3172,7 +3221,7 @@ def read_and_parse_docx_document():
     global translation_result
     global from_text_is_read
 
-    global table_cells
+    #global table_cells
 
     global word_translation_table_length
 
@@ -3202,7 +3251,7 @@ def read_and_parse_docx_document():
     # print("docx_translation_table_length=%d" %(docx_translation_table_length))
 
     table = docxdoc.tables[0]
-    table_cells = [['' for i in range(len(table.columns))] for j in range(len(table.rows))]
+    #table_cells = [['' for i in range(len(table.columns))] for j in range(len(table.rows))]
 
     numrows = len(table.rows)
     numcols = len(table.columns)
@@ -3221,6 +3270,8 @@ def read_and_parse_docx_document():
 
     rownum = 0
 
+    #wordtablelines_array = [WordTableLine(0, 0) for _ in range(numrows + 1)]
+    
     from_text_table = [''] * (numrows + 1)
     from_text_is_greyed_table = [0] * (numrows + 1)
     from_text_is_red_color_table = [0] * (numrows + 1)
@@ -3228,14 +3279,14 @@ def read_and_parse_docx_document():
     from_text_is_beginning_of_line_table = [0] * (numrows + 1)
     from_text_is_empty_line_table = [0] * (numrows + 1)
     from_text_is_conditional_end_of_line_table = [0] * (numrows + 1)
-    from_text_by_phrase_separator_table = [''] * (numrows + 1)
+    from_text_by_phrase_using_separator_table = [''] * (numrows + 1)
     from_text_by_phrase_table = [''] * (numrows + 1)
     #number of lines in per phrase
     from_text_nb_lines_in_phrase = [0] * (numrows + 1)
     from_text_nb_lines_in_cell = [0] * (numrows + 1)
    #input(numrows)
     #
-    to_text_by_phrase_separator_table = [''] * (numrows + 1)
+    to_text_by_phrase_using_separator_table = [''] * (numrows + 1)
     to_text_by_phrase_separator_removed_table = [''] * (numrows + 1)
     to_text_splited_table1 = [''] * (numrows + 1)
     to_text_by_phrase_table = [''] * (numrows + 1)
@@ -3262,7 +3313,8 @@ def read_and_parse_docx_document():
             for j, cell in enumerate(row.cells):
                 #if cell.text:
                 #    df[i][j] = cell.text
-                table_cells[i][j] = cell
+                #table_cells[i][j] = cell
+                
                 # XML is ._tc
                 #df[i][j] = cell._tc
                 if col_no == 2:
@@ -3417,7 +3469,7 @@ def read_and_parse_docx_document():
 
             if use_html :
                 print("<td>'%s' (%d)<td>'%s' (%d)" % (from_text_by_phrase_table[row_n], len(from_text_by_phrase_table[row_n]), \
-                                                  from_text_by_phrase_separator_table[row_n], len(from_text_by_phrase_separator_table[row_n])))
+                                                  from_text_by_phrase_using_separator_table[row_n], len(from_text_by_phrase_using_separator_table[row_n])))
         except Exception:
             var = traceback.format_exc()
             print(var)
@@ -3461,7 +3513,7 @@ def clean_up_previous_chrome_selenium_drivers(current_driver_full_path):
         
 
 def create_webdriver():
-    global driver, chromedriverpath
+    global driver, chromedriverpath, chrome_options
     if not splitonly:
         print("\nStarting translation using engine : %s" % (translation_engine.title()))
 
@@ -3504,7 +3556,7 @@ def reverse_string(s):
     return s[::-1]
 
 
-def generate_html_file_from_phrases_for_google_translate_javascript():
+def generate_html_file_from_phrases_for_google_translate_javascript(split_tag_in_to_translate=False):
     #input("Here")
     global dest_lang_name, html_file_path, docxfile_table_number_of_phrases
     print("Generating html page.")
@@ -3523,7 +3575,11 @@ def generate_html_file_from_phrases_for_google_translate_javascript():
 ''' % (src_lang, docx_file_name, dest_lang_name, docx_file_name, dest_lang_name, src_lang_name, dest_lang_name, dest_lang_name, src_lang_name, dest_lang_name)
     
     for i, line in enumerate(from_text_table):
-        item = from_text_by_phrase_separator_table[i]
+        if split_tag_in_to_translate:
+            item = from_text_by_phrase_using_separator_table[i]
+        else:
+            item = from_text_by_phrase_table[i]
+        #item = from_text_by_phrase_using_separator_table[i]
         item.strip()
         
         item_searched_and_replaced_before = item
@@ -3581,6 +3637,11 @@ window.onload = function(){
 ''' % (src_lang, src_lang, dest_lang,dest_lang,dest_lang)
     #print (html_to_translate)
     try:
+        if split_tag_in_to_translate:
+            split_suffixe = "-split"
+        else:
+            split_suffixe = ""
+            
         if(platform.system() == "Darwin"):
             # Write to TMPDIR or /tmp folder
             try:
@@ -3589,10 +3650,10 @@ window.onload = function(){
                     tmpdir = '/tmp/'
             except:
                 tmpdir = '/tmp/'
-            html_file_path = tmpdir + docx_file_name + '.' + str(os.getpid()) + '.' + dest_lang + '.html'
+            html_file_path = tmpdir + docx_file_name + '.' + str(os.getpid()) + '.' + dest_lang + split_suffixe +'.html'
         else:
             # Windows, write to file at the same location
-            html_file_path = os.path.abspath(os.path.expanduser(os.path.expandvars(word_file_to_translate))) + '.' + str(os.getpid()) + '.' + dest_lang + '.html'
+            html_file_path = os.path.abspath(os.path.expanduser(os.path.expandvars(word_file_to_translate))) + '.' + str(os.getpid()) + '.' + dest_lang + split_suffixe + '.html'
         
         print(f"Writing temporary html file to : {html_file_path}")
         html_file_to_translate = open(html_file_path, 'w', encoding='utf-8')
@@ -3617,7 +3678,7 @@ def generate_text_file_from_phrases(text_file_path):
     text_to_translate_array = []
     
     for i, line in enumerate(from_text_table):
-        item = from_text_by_phrase_separator_table[i]
+        item = from_text_by_phrase_using_separator_table[i]
         item = item.strip()
         
         item_searched_and_replaced_before = item
@@ -3674,7 +3735,7 @@ def generate_xlsx_file_from_phrases(xlsx_file_path):
     text_to_translate_array = []
     
     for i, line in enumerate(from_text_table):
-        item = from_text_by_phrase_separator_table[i]
+        item = from_text_by_phrase_using_separator_table[i]
         item = item.strip()
         
         item_searched_and_replaced_before = item
@@ -3752,7 +3813,7 @@ def generate_char_blocks_array_from_phrases(text_file_path):
     blocks_nchar_max_to_translate_array = []
     
     for i, line in enumerate(from_text_table):
-        item = from_text_by_phrase_separator_table[i]
+        item = from_text_by_phrase_using_separator_table[i]
         item = item.strip()
         
         item_searched_and_replaced_before = item
@@ -3859,20 +3920,21 @@ def google_translate_from_text_file():
     except:
         pass
 
-def google_translate_from_html_javascript():
+def google_translate_from_html_javascript(split_tag_in_to_translate=False):
     global translation_array
     global html_file_path
     #input("There")
     #input("Here, press enter:")
     print("Starting translation in google using html file...")
     
-    generate_html_file_from_phrases_for_google_translate_javascript()
+    generate_html_file_from_phrases_for_google_translate_javascript(split_tag_in_to_translate=split_tag_in_to_translate)
     
     translation_array = selenium_chrome_google_translate_html_javascript_file(html_file_path)
     
     try:
         #input("before remove html file")
-        os.remove(html_file_path)
+        #os.remove(html_file_path)
+        print("MUST REMOVE html_file_path after debug finish")
         pass
     except:
         pass
@@ -3916,7 +3978,7 @@ def translate_from_phrasesblock():
         pass
     return translation_succeded
 
-def translate_docx():
+def translate_docx(split_tag_in_to_translate=False):
     translation_array = []
     translation_succeded = True
 
@@ -3924,7 +3986,7 @@ def translate_docx():
         google_translate_from_text_file()
 
     if engine_method == 'javascript':
-        translation_array = google_translate_from_html_javascript()
+        translation_array = google_translate_from_html_javascript(split_tag_in_to_translate=split_tag_in_to_translate)
         #print (translation_array)
 
     if engine_method == 'xlsxfile':
@@ -3937,7 +3999,7 @@ def translate_docx():
     return translation_succeded
 
 def get_translation_and_replace_after():
-    global from_text_by_phrase_separator_table, to_text_by_phrase_separator_table, numerrors_deepl, use_api
+    global from_text_by_phrase_table, from_text_by_phrase_using_separator_table, to_text_by_phrase_table, to_text_by_phrase_using_separator_table, numerrors_deepl, use_api
     phrase_no = 0
 
     p_remove_pause = re.compile('(?i)<pause>')
@@ -3945,8 +4007,11 @@ def get_translation_and_replace_after():
     p_remove_parenthesis_spaces = re.compile('\( +')
 
     for i, line in enumerate(from_text_table):
-        item = from_text_by_phrase_separator_table[i]
+        item = from_text_by_phrase_table[i]
         item = item.strip()
+        item_using_separator = from_text_by_phrase_using_separator_table[i]
+        item_using_separator = item.strip()
+        
         from_language = src_lang
         phrase_separator_removed_str = ''
 
@@ -3961,7 +4026,6 @@ def get_translation_and_replace_after():
                 phrase_no = phrase_no + 1
                 print("\n%d/%d" % (i, word_translation_table_length))
                 print("Phrase to translate :'%s'\n" % (item.strip()))
-                item = item.strip()
 
                 item_searched_and_replaced_before = item
                 if xlsxreplacefile is not None:
@@ -4021,35 +4085,44 @@ def get_translation_and_replace_after():
                     if engine_method == "singlephrase" and translation_engine == 'deepl':
                         translation_succeded, web_translation_separators  = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
                     else:
-                        web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
+                        print("Add parameter use line separator here")
+                        web_translation_no_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no, split_tag_in_to_translate=False)
+                        web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no, split_tag_in_to_translate=True)
 
                 #web_translation_separators = translation.text
-                phrase_separator_removed_str = p_remove_double_spaces.sub(' ', web_translation_separators)
+                phrase_separator_double_spaces_removed_str = p_remove_double_spaces.sub(' ', web_translation_separators)
+                phrase_no_separator_double_spaces_removed_str = p_remove_double_spaces.sub(' ', web_translation_no_separators)
 
                 #print("Google translation='%s'" % (phrase_separator_removed_str.encode('utf8')))
                 if xlsxreplacefile is not None:
                     nb_searched_and_replaced = 0
-                    web_translation_separators_searched_and_replaced, nb_searched_and_replaced = xtm.search_and_replace_text('after', phrase_separator_removed_str)
+                    web_translation_separators_searched_and_replaced, nb_searched_and_replaced = xtm.search_and_replace_text('after', phrase_separator_double_spaces_removed_str)
                     if nb_searched_and_replaced > 0:
                         #print("\nPhrase %d replacements :\n'%s'" % (nb_searched_and_replaced, web_translation_separators))
                         #print("Replaced phrase :\n'%s'" % (web_translation_separators_searched_and_replaced))
-                        phrase_separator_removed_str = web_translation_separators_searched_and_replaced
+                        web_translation_separators_searched_and_replaced = web_translation_separators_searched_and_replaced
 
                 if dest_lang in right_to_left_languages_list.keys():
-                    phrase_separator_removed_aligned_str = reverse_string (phrase_separator_removed_str)
+                    phrase_double_spaces_removed_aligned_str = reverse_string (phrase_separator_removed_str)
                 else:
-                    phrase_separator_removed_aligned_str = phrase_separator_removed_str
+                    phrase_double_spaces_removed_aligned_str = web_translation_separators_searched_and_replaced
                 try:
                     if splitonly:
                         print("Translated text :'%s'\n" % (phrase_separator_removed_aligned_str))
                     else:
-                        print("%s translation (%s):'%s'" % (translation_engine.title() ,dest_lang_name, phrase_separator_removed_aligned_str))
+
+                        print("Need logic here")
+                        print("%s translation (%s):'%s'" % (translation_engine.title() ,dest_lang_name, phrase_double_spaces_removed_aligned_str))
                 except Exception:
                     print("")
                     print("Google translation='%s'" % (phrase_separator_removed_str.encode('utf8').decode('utf8')))
                 if web_translation_separators.strip() == '' and not splitonly:
                     print("Error translating='%s'" % (item))
-                to_text_by_phrase_separator_table[i] = phrase_separator_removed_str
+                print("to_text_by_phrase_using_separator_table[%s]" % (i))
+                print("phrase_separator_double_spaces_removed_str = %s" % (phrase_separator_double_spaces_removed_str))
+                print("phrase_no_separator_double_spaces_removed_str = %s" % (phrase_no_separator_double_spaces_removed_str))
+                input("Gérer separateurs ici aussi 1")
+                to_text_by_phrase_using_separator_table[i] = phrase_separator_removed_str
                 phrase_separator_removed_str = p_remove_separator.sub(' ', phrase_separator_removed_str)
                 phrase_separator_removed_str.strip()
                 to_text_by_phrase_separator_removed_table[i] = phrase_separator_removed_str
@@ -4069,6 +4142,7 @@ def get_translation_and_replace_after():
                 phrase_separator_removed_str = p_remove_double_spaces.sub(' ', web_translation_no_separators)
                 phrase_separator_removed_str = p_remove_parenthesis_spaces.sub('(', phrase_separator_removed_str)
                 to_text_by_phrase_table[i] = phrase_separator_removed_str
+                print("Add to_text_by_phrase_table_separator here")
         except Exception:
             var = traceback.format_exc()
             numerrors_googletranslate = numerrors_googletranslate + 1
@@ -4092,15 +4166,15 @@ def document_split_phrases():
     # Split phrases into multiple lines to match source language number of lines
     global docxfile_table_number_of_phrases, docxfile_table_number_of_characters, phrase_number_of_words, docxfile_table_number_of_words
     for i, line in enumerate(from_text_table):
-        if to_text_by_phrase_separator_table[i] != '':
+        if to_text_by_phrase_using_separator_table[i] != '':
             #docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
-            docxfile_table_number_of_characters = docxfile_table_number_of_characters + len(from_text_by_phrase_separator_table[i])
-            phrase_number_of_words = len(from_text_by_phrase_separator_table[i].strip().split(" "))
-            #print("Phrase to split: %s" % (from_text_by_phrase_separator_table[i]))
+            docxfile_table_number_of_characters = docxfile_table_number_of_characters + len(from_text_by_phrase_using_separator_table[i])
+            phrase_number_of_words = len(from_text_by_phrase_using_separator_table[i].strip().split(" "))
+            #print("Phrase to split: %s" % (from_text_by_phrase_using_separator_table[i]))
             #print("number of words: %d" % (phrase_number_of_words))
             docxfile_table_number_of_words = docxfile_table_number_of_words + phrase_number_of_words
             try:
-                current_line = to_text_by_phrase_separator_table[i]
+                current_line = to_text_by_phrase_using_separator_table[i]
                 # Using () as separator for splitting phrases, not used anymore
                 #lines = current_line.split(line_separator_nospace_str)
                 str_translation_len = len(current_line)
@@ -4139,7 +4213,7 @@ def document_split_phrases():
                     #print("   lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
                     divide_max_try = divide_max_try - 1
 
-                #print("Before increasing line size -- %s (%d): %d " % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
+                #print("Before increasing line size -- %s (%d): %d " % (to_text_by_phrase_using_separator_table[i], i, str_nb_lines + 0))
                 number_lines = len(lines_divided)
                 divide_max_try = MAX_LINE_SIZE
                 while (number_lines < str_nb_lines) and (number_lines > 1) and (divide_max_try > 0):
@@ -4163,10 +4237,10 @@ def document_split_phrases():
                 number_lines = len(lines_divided)
 
                 try:
-                    print("Splitting phrase : %s (%d) = %d lines" % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
+                    print("Splitting phrase : %s (%d) = %d lines" % (to_text_by_phrase_using_separator_table[i], i, str_nb_lines + 0))
                 except Exception:
                     try:
-                        print("%s (%d): %d " % (to_text_by_phrase_separator_table[i].encode("utf-8"), i, str_nb_lines + 0))
+                        print("%s (%d): %d " % (to_text_by_phrase_using_separator_table[i].encode("utf-8"), i, str_nb_lines + 0))
                     except Exception:
                         print("(unable to print content to screen) (%d): %d : " % (i, str_nb_lines + 0))
 
@@ -4188,11 +4262,11 @@ def print_html_program_result():
         Identical_with_without_separators = 'DIFFERENT<BR>'
         if to_text_by_phrase_separator_removed_table[i] == to_text_by_phrase_table[i]:
             Identical_with_without_separators = 'SAME<BR>'
-        #print "<tr><td>%s<td>%s<td>%s<td>%s<td>%s%s" % (i, from_text_table[i], from_text_by_phrase_separator_table[i].encode('utf8'), to_text_by_phrase_separator_table[i].encode('utf8'), Identical_with_without_separators.encode('utf8'), to_text_by_phrase_separator_removed_table[i].encode('utf8') )
-        if len(from_text_by_phrase_separator_table[i]) == 0:
+        #print "<tr><td>%s<td>%s<td>%s<td>%s<td>%s%s" % (i, from_text_table[i], from_text_by_phrase_using_separator_table[i].encode('utf8'), to_text_by_phrase_using_separator_table[i].encode('utf8'), Identical_with_without_separators.encode('utf8'), to_text_by_phrase_separator_removed_table[i].encode('utf8') )
+        if len(from_text_by_phrase_using_separator_table[i]) == 0:
             Identical_with_without_separators = ''
         if use_html :
-            print("<tr><td>%d<td>'%s'<td>%s<td>%s<td>%s<td>%s%s" % (i, from_text_table[i], translation_result_using_separator[i].encode('utf8'), to_text_by_phrase_separator_table[i].encode('utf8'), to_text_by_phrase_table[i].encode('utf8'), Identical_with_without_separators.encode('utf8'), to_text_by_phrase_table[i].encode('utf8') ))
+            print("<tr><td>%d<td>'%s'<td>%s<td>%s<td>%s<td>%s%s" % (i, from_text_table[i], translation_result_using_separator[i].encode('utf8'), to_text_by_phrase_using_separator_table[i].encode('utf8'), to_text_by_phrase_table[i].encode('utf8'), Identical_with_without_separators.encode('utf8'), to_text_by_phrase_table[i].encode('utf8') ))
         #sys.exit(0)
 
     if use_html :
@@ -4220,7 +4294,7 @@ def print_console_docx_file_translated():
             #print("%d : %s" % (row_n,' '.join(translation_result_phrase_array[row_n])))
 
             if not split_translation:
-                translation_cell_text = to_text_by_phrase_separator_table[row_n]
+                translation_cell_text = to_text_by_phrase_using_separator_table[row_n]
                 prepare_and_clear_cell_for_writing(row_n, translation_cell_text)
                 if dest_lang in right_to_left_languages_list.keys():
                     translation_cell_aligned_text = reverse_string (translation_cell_text)
@@ -4239,7 +4313,8 @@ def print_console_docx_file_translated():
                     current_cell_row = row_n + translation_phrase_cell_pos
                     cell_lines_len = from_text_nb_lines_in_cell[row_n + translation_phrase_cell_pos]
                     cell_line_pos = 0
-                    current_cell = table_cells[current_cell_row][2]
+                    #current_cell = table_cells[current_cell_row][2]
+                    current_cell = docxdoc.tables[0].cell(current_cell_row, 2)
                     while cell_line_pos < cell_lines_len \
                         and translation_phrase_line_pos < translation_phrase_lines_len:
 
@@ -4984,6 +5059,7 @@ def test_thai_tokenizer_save_html():
 def main() -> int:
     global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl, viewdocx, word_file_to_translate_save_as_path
     global logged_into_deepl, deepl_nb_clear_cached_times, version_checker_sleep_seconds_on_update
+    global translation_array, translation_array_using_separator
     translation_succeded = False
 
     set_translation_function()
@@ -4996,7 +5072,18 @@ def main() -> int:
     if translation_engine == 'deepl':
         logged_into_deepl = selenium_chrome_deepl_log_in()
 
-    translation_succeded = translate_docx()
+    translation_succeded = translate_docx(split_tag_in_to_translate=True)
+
+    with open("globals_nosaparator.json", 'w') as json_file:
+        json_file.write(json.dumps(globals(), default=repr, indent=4))
+    translation_array_using_separator = translation_array.copy()
+    driver.close()
+    driver_after_close_time = datetime.datetime.now()
+    driver.quit()
+    create_webdriver()
+    translation_succeded = translate_docx(split_tag_in_to_translate=False)
+    with open("globals_separator.json", 'w') as json_file:
+        json_file.write(json.dumps(globals(), default=repr, indent=4))
     
     if logged_into_deepl:
         selenium_chrome_deepl_log_off()
@@ -5026,6 +5113,15 @@ def main() -> int:
 
     elapsed_time = end_time - start_time
 
+    #print(json.dumps(locals(), default=repr))
+    #print(json.dumps(globals(), default=repr))
+    #dump_variables_to_json('variables_dump.json')
+    with open("globals.json", 'w') as json_file:
+        json_file.write(json.dumps(globals(), default=repr, indent=4))
+    with open("globals_names.json", 'w') as json_file:
+        json_file.write("\n".join(list(globals().keys())))
+    
+    
     run_statistics()
     save_docx_file()
     
