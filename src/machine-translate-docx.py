@@ -335,7 +335,7 @@ from_text_is_read = [0] *1
 word_translation_table_length = 0
 table = None
 
-#table_cells = [['' for i in range(1)] for j in range(1)]
+table_cells = [['' for i in range(1)] for j in range(1)]
 
 docxfile_table_number_of_phrases = 0
 
@@ -758,8 +758,6 @@ bol_array = ['^[A-Z]']
 # https://learn.microsoft.com/en-us/office/vba/api/word.wdcolor
 shading_color_ignore_text = ['FFD320', 'D9D9D9', 'BFBFBF', 'A6A6A6', '808080', 'FF00FF', 'FF0000', 'F3F3F3', 'E6E6E6', 'E0E0E0', 'CCCCCC', 'C0C0C0', 'B3B3B3', 'A0A0A0', '999999', '8C8C8C',  '737373', '666666', '606060', '595959', '4C4C4C', '404040', '333333', '262626', '202020', '191919', '0C0C0C']
 
-font_color_ignore_text = ['FF0000']
-
 html_file_path = ''
 
 nb_character_total = 0
@@ -1062,8 +1060,8 @@ def get_translated_cells_content(lineno, to_translate):
 
     last_row_n = from_text_nb_lines_in_phrase[lineno] + lineno
     for row_n in range(lineno, last_row_n):
-        cell_text = docxdoc.tables[0].cell(row_n, 2).text
-        #cell_text = table_cells[row_n][2].text
+        #cell_text = docxdoc.tables[0].cell(row_n, 2).text
+        cell_text = table_cells[row_n][2].text
         cell_text = cell_text.strip()
         if cell_text != "":
             print("adding cell %s " % (cell_text))
@@ -3111,10 +3109,10 @@ def generate_tmx_file():
 
 
 def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
-    #global table_cells
+    global table_cells
     paragraph_no = 0
-    #current_cell = table_cells[row_n][2]    
-    current_cell = docxdoc.tables[0].cell(row_n, 2)
+    current_cell = table_cells[row_n][2]    
+    #current_cell = docxdoc.tables[0].cell(row_n, 2)
     
     #print("prepare_and_clear_cell_for_writing")
     #print("paragraph[%d]: %s" % (row_n,translation_cell_text))
@@ -3127,7 +3125,7 @@ def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
 
     nb_paragraph = len(current_cell.paragraphs)
     if nb_paragraph >= 1:
-        current_cell.text = ''
+        table_cells[row_n][2].text = ''
         cell_paragraph = current_cell.paragraphs[0]
     else:
         cell_paragraph = current_cell.add_paragraph("")
@@ -3147,12 +3145,12 @@ def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
     if dest_font != "":
         change_cell_font (current_cell)
         
-    #current_cell[row_n][2] = current_cell
+    table_cells[row_n][2] = current_cell
         
 def cell_set_1st_paragraph(row_n, paragraph_text):
     paragraph_no = 0
-    #current_cell = table_cells[row_n][2]
-    current_cell = docxdoc.tables[0].cell(row_n, 2)
+    current_cell = table_cells[row_n][2]
+    #current_cell = docxdoc.tables[0].cell(row_n, 2)
     
     #print("cell_add_paragraph")
     #print("paragraph[%d]: %s" % (row_n,paragraph_text))
@@ -3173,13 +3171,13 @@ def cell_set_1st_paragraph(row_n, paragraph_text):
     if dest_font != "":
         change_cell_font (current_cell)
         
-    #table_cells[row_n][2] = current_cell
+    table_cells[row_n][2] = current_cell
         
 
 def cell_add_paragraph(row_n, paragraph_text):
     paragraph_no = 0
-    #current_cell = table_cells[row_n][2]
-    current_cell = docxdoc.tables[0].cell(row_n, 2)
+    current_cell = table_cells[row_n][2]
+    #current_cell = docxdoc.tables[0].cell(row_n, 2)
     
     #print("cell_add_paragraph")
     #print("paragraph[%d]: %s" % (row_n,paragraph_text))
@@ -3200,7 +3198,7 @@ def cell_add_paragraph(row_n, paragraph_text):
     if dest_font != "":
         change_cell_font (current_cell)
         
-    #table_cells[row_n][2] = current_cell
+    table_cells[row_n][2] = current_cell
 
 def read_and_parse_docx_document():
     global from_text_table
@@ -3228,7 +3226,7 @@ def read_and_parse_docx_document():
     global from_text_is_read
     global to_text_by_phrase_table_merged
 
-    #global table_cells
+    global table_cells
 
     global word_translation_table_length
 
@@ -3258,7 +3256,7 @@ def read_and_parse_docx_document():
     # print("docx_translation_table_length=%d" %(docx_translation_table_length))
 
     table = docxdoc.tables[0]
-    #table_cells = [['' for i in range(len(table.columns))] for j in range(len(table.rows))]
+    table_cells = [['' for i in range(len(table.columns))] for j in range(len(table.rows))]
 
     numrows = len(table.rows)
     numcols = len(table.columns)
@@ -3322,7 +3320,7 @@ def read_and_parse_docx_document():
             for j, cell in enumerate(row.cells):
                 #if cell.text:
                 #    df[i][j] = cell.text
-                #table_cells[i][j] = cell
+                table_cells[i][j] = cell
                 
                 # XML is ._tc
                 #df[i][j] = cell._tc
@@ -4422,8 +4420,8 @@ def print_console_docx_file_translated():
                     current_cell_row = row_n + translation_phrase_cell_pos
                     cell_lines_len = from_text_nb_lines_in_cell[row_n + translation_phrase_cell_pos]
                     cell_line_pos = 0
-                    #current_cell = table_cells[current_cell_row][2]
-                    current_cell = docxdoc.tables[0].cell(current_cell_row, 2)
+                    current_cell = table_cells[current_cell_row][2]
+                    #current_cell = docxdoc.tables[0].cell(current_cell_row, 2)
                     while cell_line_pos < cell_lines_len \
                         and translation_phrase_line_pos < translation_phrase_lines_len:
 
