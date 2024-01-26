@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-11-20"
+PROGRAM_VERSION="2024-01-26"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -117,6 +117,9 @@ from docx.oxml import parse_xml
 import glob
 
 from langcodes import *
+
+#from parsivar import Normalizer
+my_khoshnevis_normalizer = None
 
 print("*********************************************************")
 print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
@@ -766,6 +769,9 @@ if dest_lang == 'zh-cn':
     dest_lang = 'zh-CN'
 if dest_lang == 'zh-tw':
     dest_lang = 'zh-TW'
+if dest_lang == 'fa':
+    from khoshnevis import Normalizer
+    my_khoshnevis_normalizer = Normalizer()
 
 valid_online_json = validate_json_string(json_online_configuration)
 if not valid_online_json == True:
@@ -1514,6 +1520,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
     
     
 def selenium_chrome_google_translate_html_javascript_file(html_file_path):
+    global my_khoshnevis_normalizer
     html_file_path_escaped = html_file_path.replace('#','%23')
     file_url = 'file://' + html_file_path_escaped
     driver.get(file_url)
@@ -1602,7 +1609,9 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
     translation_array = []
     for pTranstlation in pTags:
         pData = pTranstlation.text
-        translation_array.append(pTranstlation.text)
+        if dest_lang.lower() == 'fa':
+           pData =  my_khoshnevis_normalizer.normalize(text=pData)
+        translation_array.append(pData)
 
     return (translation_array)
     
