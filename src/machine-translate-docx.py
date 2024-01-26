@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-11-20"
+PROGRAM_VERSION="2023-12-22" # Partial update, not usable
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -1266,7 +1266,7 @@ def selenium_chrome_google_translate(to_translate):
     return translation
 
 
-def selenium_chrome_translate_maxchar_blocks():
+def selenium_chrome_translate_maxchar_blocks(split_tag_in_to_translate=False):
     global found_google_cookies_consent_button
     global google_translate_first_page_loaded
     global docxfile_table_number_of_phrases
@@ -1304,7 +1304,7 @@ def selenium_chrome_translate_maxchar_blocks():
                     if translation_engine == 'deepl':
                         #print(to_translate)
                         #print(translation_try_count)
-                        translation_succeded, translation = selenium_chrome_deepl_translate(to_translate, translation_try_count - 1)
+                        translation_succeded, translation = selenium_chrome_deepl_translate(to_translate, translation_try_count - 1, split_tag_in_to_translate=False)
                         if translation_succeded == False:
                             print("Deepl translation permited limit exeeded")
                             return translation_succeded, []
@@ -2182,7 +2182,7 @@ def selenium_chrome_deepl_log_off():
 
 
 
-def selenium_chrome_deepl_translate(to_translate, retry_count):
+def selenium_chrome_deepl_translate(to_translate, retry_count, split_tag_in_to_translate=False):
     global logged_into_deepl
     translation = ""
     Translated = False
@@ -3805,7 +3805,7 @@ def generate_xlsx_file_from_phrases(xlsx_file_path):
             txt_readline = input("\n\nERROR: File saving failed. Please close microsoft excel or other program and press enter to save the xlsx document.\n")
         
         
-def generate_char_blocks_array_from_phrases(text_file_path):
+def generate_char_blocks_array_from_phrases(text_file_path, split_tag_in_to_translate=False):
     global dest_lang_name
     global docxfile_table_number_of_phrases
     global xtm
@@ -3964,7 +3964,7 @@ def google_translate_from_html_xlsxfile():
     except:
         pass
 
-def translate_from_phrasesblock():
+def translate_from_phrasesblock(split_tag_in_to_translate=False):
     global docx_file_name, translation_array
     text_file_path = docx_file_name + '.txt'
     text_file_full_path = os.path.realpath(text_file_path)
@@ -4001,7 +4001,7 @@ def translate_docx(split_tag_in_to_translate=False):
 
     # For both deepl and google translate
     if engine_method == "phrasesblock":
-        translation_succeded = translate_from_phrasesblock()
+        translation_succeded = translate_from_phrasesblock(split_tag_in_to_translate)
 
     return translation_succeded
 
@@ -4301,7 +4301,8 @@ def document_split_phrases():
     for i, line in enumerate(from_text_table):
         if to_text_by_phrase_table[i] != '':
             
-            translation_with_seperators = to_text_by_phrase_using_separator_table[i].split()
+            #translation_with_seperators = to_text_by_phrase_using_separator_table[i].split()
+            translation_with_seperators = re.sub(r'\s*\_\s*', ' _ ', to_text_by_phrase_using_separator_table[i]).split()
             translation_no_seperators = to_text_by_phrase_table[i].split()
             
             print("Translation : %s" %(to_text_by_phrase_table[i]))
@@ -4357,6 +4358,8 @@ def document_split_phrases():
                 pos = pos + 1
             
             # Write the result to translation_result_phrase_array
+            
+            # Test if line splitting is OK and use manual line splitting if inaccurate
             translation_result_phrase_array[i] = translation_merged.split(" _ ")
         
     

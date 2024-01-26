@@ -91,7 +91,7 @@ class xlsx_translation_memory():
                         #    #print("cell[%i,%i]=%s" % (rowno, colpos, row[colpos]))
                         colpos += 1
                     
-                    Search = row[0]
+                    Search = str(row[0])
                     if Search is None:
                         Search = ''
                         continue
@@ -100,11 +100,11 @@ class xlsx_translation_memory():
                         subn_count = subn_result[1]
                         Search = subn_result[0]
                     
-                    Replace = row[1]
+                    Replace = str(row[1])
                     if Replace is None:
                         Replace = ''
                     
-                    KeepSpacesAtTheEndOfSearch = row[5]
+                    KeepSpacesAtTheEndOfSearch = str(row[5])
                     if self.string_is_yes(KeepSpacesAtTheEndOfSearch):
                         KeepSpacesAtTheEndOfSearch = True
                     else:
@@ -112,7 +112,7 @@ class xlsx_translation_memory():
                         Search = Search.strip()
                         Replace = Replace.strip()
 
-                    RegularExpression = row[2]
+                    RegularExpression = str(row[2])
                     RegularExpressionCompiled = None
                     if self.string_is_yes(RegularExpression):
                         RegularExpression = True
@@ -129,7 +129,7 @@ class xlsx_translation_memory():
                         RegularExpression = False
                         SearchRegularExpression = re.escape(Search)
                     
-                    IgnoreWordBoundary = row[4]
+                    IgnoreWordBoundary = str(row[4])
                     if self.string_is_yes(IgnoreWordBoundary):
                         IgnoreWordBoundary = True
                     else:
@@ -142,7 +142,7 @@ class xlsx_translation_memory():
                             SearchRegularExpression = "%s\\b" % (SearchRegularExpression)
 
                     try:
-                        FollowedByAnotherWord = row[6]
+                        FollowedByAnotherWord = str(row[6])
                         if self.string_is_yes(FollowedByAnotherWord):
                             FollowedByAnotherWord = True
                             SearchRegularExpression = "%s[ \\t]+[^ \\t]+" % SearchRegularExpression
@@ -154,7 +154,7 @@ class xlsx_translation_memory():
                     number_replacement = 0
                     number_do_not_split = 0
                     
-                    CaseSensitive = row[3]
+                    CaseSensitive = str(row[3])
                     if self.string_is_yes(CaseSensitive):
                         CaseSensitive = True
                     else:
