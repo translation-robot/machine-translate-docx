@@ -5,9 +5,10 @@ REM --destlang ja
 SET PATH=X:\travail\smtv-translation-bot\versions\SMTVRobot_201909xx - DEV;%PATH%
 
 
-SET PATH=C:\Python397;C:\Python397\bin;C:\Python397\Scripts\;%PATH%
+SET PATH=C:\Python312;C:\Python312\bin;C:\Python32\Scripts\;%PATH%
+SET PATH=C:\Python311;C:\Python311\bin;C:\Python311\Scripts\;%PATH%
+REM SET PATH=C:\Python397;C:\Python397\bin;C:\Python397\Scripts\;%PATH%
 
-REM SET DOCXFILE="NWN 783 sf1 - table fix1.docx"
 SET DOCXFILEFOLDER=.\samples\
 
 SET DOCXFILE="sample4d.docx"
@@ -50,32 +51,50 @@ SET DOCXFILE="Beginning End Slogans#2915 Part 6 - table-thai.docx"
 SET DOCXFILE="video.docx"
 SET DOCXFILE="sample_hu_en.docx"
 SET DOCXFILE="%DOCXFILEFOLDER%TEST - NWN 1257 sf1-p1.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%TEST NWN 1468 sf1 - table fix1 - Hungarian - no split.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%TEST NWN 1468 sf1 - table fix1 - Hungarian.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%TEST NWN 1468 sf1 - table fix1 - Thai.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%TEST NWN 1468 sf1 - table fix1 - french.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%NWN 783 sf1 - table fix1.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%NWN 1938 sf11 - table fix5 - Test_100.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%TEST NWN 1468 sf1 - table fix1.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%Sample-test-replace-persian.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%sample.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%sample_special_characters.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%tests_special_case.docx"
+SET DOCXFILE="%DOCXFILEFOLDER%TEST_BMD 2513 fix3 Priority.docx"
+
+
 
 REM html_file_path=X:\travail\smtv-translation-bot\versions\SMTVRobot_DEV_Pylint\test & (parentheses and ampersand) # [ ] { }    % ~ # .docx.15032.fr.html
 REM html_file_path=X:\travail\smtv-translation-bot\versions\SMTVRobot_DEV_Pylint\test & (parentheses and ampersand) %23 [ ] { }    % ~ %23 .docx.15032.fr.html
 
 
 SET FROMLANG=hu
+SET FROMLANG=
 SET "FROMLANG="
 
 SET DESTLANG=de
 SET DESTLANG=pl
-SET DESTLANG=id
 SET DESTLANG=ru
-SET DESTLANG=fa
 SET DESTLANG=hi
-SET DESTLANG=hu
-SET DESTLANG=ja
-SET DESTLANG=th
 SET DESTLANG=en
+SET DESTLANG=fa
+SET DESTLANG=ja
+SET DESTLANG=es
+SET DESTLANG=fr
+SET DESTLANG=th
+SET DESTLANG=hu
+SET DESTLANG=fa
+SET DESTLANG=id
 SET DESTLANG=fr
 
 SET SPLIT= 
 SET SPLIT=--split
 
 SET ENGINE=yandex
-SET ENGINE=deepl
 SET ENGINE=google
+SET ENGINE=deepl
 
 SET USEAPI=--useapi
 SET USEAPI=
@@ -108,19 +127,25 @@ SET BROWSER=
 
 SET XLSXREPLACEFILE="C:\SMTVRobot\hindi.xlsx"
 SET XLSXREPLACEFILE=
-SET XLSXREPLACEFILE="C:\SMTVRobot\french.xlsx"
+SET XLSXREPLACEFILE=".\excel_files\hungarian.xlsx"
+SET XLSXREPLACEFILE=".\excel_files\spanish.xlsx"
+SET XLSXREPLACEFILE=".\excel_files\indonesian.xlsx"
+SET XLSXREPLACEFILE=".\excel_files\french.xlsx"
 
 SET engine_method=api
 SET engine_method=textfile
 SET engine_method=xlsxfile
+SET engine_method=singlephrase
+SET engine_method=
 SET engine_method=phrasesblock
 SET engine_method=javascript
-SET engine_method=
 
-SET engine_method=singlephrase
+SET engine_method=--enginemethod  %engine_method%
+
+REM SET "engine_method="
 
 SET "SRCLANG="
-SET SRCLANG=--srclang hu
+REM SET SRCLANG=--srclang hu
 
 REM SET PYTHONIOENCODING=CP-1252
 
@@ -139,7 +164,7 @@ REM --enginemethod %engine_method%
 
 REM cd %PYTHONSCRIPTFOLDER%
 
-python %PYTHONSCRIPTFOLDER%%PYTHONSCRIPT%  --destlang %DESTLANG% --engine %ENGINE% %SPLIT% %SHOWBROWSER%  %SRCLANG%  --xlsxreplacefile %XLSXREPLACEFILE% --docxfile %DOCXFILE% 
+python %PYTHONSCRIPTFOLDER%%PYTHONSCRIPT%  --destlang %DESTLANG% --engine %ENGINE% %SPLIT% %SHOWBROWSER%  %SRCLANG%  --xlsxreplacefile %XLSXREPLACEFILE% %engine_method%  --docxfile %DOCXFILE% 
 
 PAUSE
 
