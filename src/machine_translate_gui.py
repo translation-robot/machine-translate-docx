@@ -11,6 +11,8 @@ import sys
 if platform.system() == 'Windows':
     from win32com import client
     from comtypes.client import CreateObject
+    from win32com import client
+    import comtypes
 import re
 import pkgutil
 

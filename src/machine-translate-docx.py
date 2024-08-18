@@ -2,7 +2,7 @@
 
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2023-11-20"
+PROGRAM_VERSION="2024-08-19"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -49,7 +49,6 @@ from selenium.webdriver.remote.remote_connection import LOGGER
 from screeninfo import get_monitors
 
 
-from selenium import webdriver
 #from selenium.webdriver import Firefox, FirefoxOptions
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
@@ -117,6 +116,11 @@ from docx.oxml import parse_xml
 import glob
 
 from langcodes import *
+
+import math
+
+#from parsivar import Normalizer
+my_khoshnevis_normalizer = None
 
 print("*********************************************************")
 print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
@@ -203,7 +207,15 @@ DefaultJsonConfiguration = """{
 	"version_checker": {
 	  "javascript_json_version_checker_url": "https://translation-robot.github.io/machine-translate-docx/src/robot_js_query.html",
       "sleep_seconds_on_update": 30
-	}
+	},
+	"location": {
+	  "primary_country_checker_url": "https://www.contactdirectavecdieu.net/geoip/index.php",
+	  "secondary_country_checker_url": "http://ip-api.com/json/"
+	},
+	"chrome_driver": {
+      "restricted_countries": ["North Korea", "Iran", "Syria", "Sudan", "Cuba", "Crimea"],
+      "mirror_url": "https://www.contactdirectavecdieu.net/known-good-versions-with-downloads.php"
+    }
 }"""
 
 def test_internet(host="8.8.8.8", port=53, timeout=3):
@@ -261,6 +273,8 @@ version_checker_sleep_seconds_on_update = get_nested_value_from_json_array(json_
     version_checker_sleep_seconds_on_update_key, default_when_none=30)
 # We assume the program does not need update. Value of 1 is for update needed.
 str_needs_update = "0"
+
+
 
 process_platform = platform.system()
 if platform.system() == 'Windows':
@@ -766,6 +780,9 @@ if dest_lang == 'zh-cn':
     dest_lang = 'zh-CN'
 if dest_lang == 'zh-tw':
     dest_lang = 'zh-TW'
+if dest_lang == 'fa':
+    from khoshnevis import Normalizer
+    my_khoshnevis_normalizer = Normalizer()
 
 valid_online_json = validate_json_string(json_online_configuration)
 if not valid_online_json == True:
@@ -783,6 +800,7 @@ if os.path.isfile(configuration_file_full_path):
         print(f"Using JSON configuration file at {configuration_file_full_path}")
 
 print("")
+
 
 src_lang_name = (google_translate_lang_codes.get(src_lang))
 if src_lang_name is None:
@@ -895,6 +913,7 @@ def print_os_info():
     platform.mac_ver(),
     ))
 
+
 if not os.path.exists(word_file_to_translate) :
     print("ERROR: File not found: %s" % (word_file_to_translate))
     sys.exit(1)
@@ -977,6 +996,83 @@ if word_file_to_translate_extension != ".docx":
     os._exit(1)
 
 print("")
+
+
+location_primary_country_checker_url_key = ["local_configuration", "json_filename_path"]
+location_primary_country_checker_url_key = ["location", "primary_country_checker_url"]
+location_primary_country_checker_url = get_nested_value_from_json_array(json_configuration_array, location_primary_country_checker_url_key)
+
+location_secondary_country_checker_url_key = ["location", "secondary_country_checker_url"]
+location_secondary_country_checker_url = get_nested_value_from_json_array(json_configuration_array, location_secondary_country_checker_url_key)
+
+chrome_driver_restricted_countries_key = ["chrome_driver", "restricted_countries"]
+chrome_driver_restricted_countries = get_nested_value_from_json_array(json_configuration_array, chrome_driver_restricted_countries_key)
+
+chrome_driver_mirror_url_key = ["chrome_driver", "mirror_url"]
+chrome_driver_mirror_url = get_nested_value_from_json_array(json_configuration_array, chrome_driver_mirror_url_key)
+
+#print(f"location_primary_country_checker_url = {location_primary_country_checker_url}")
+#print(f"location_secondary_country_checker_url = {location_secondary_country_checker_url}")
+#print(f"chrome_driver_restricted_countries = {chrome_driver_restricted_countries}")
+#print(f"chrome_driver_mirror_url = {chrome_driver_mirror_url}")
+
+def fetch_country_data(url):
+    """Fetch country data from the specified URL."""
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Check if the request was successful (status code 200)
+        
+        # Parse the JSON response
+        data = response.json()
+        
+        # Check if the status is success and return the country name
+        if data.get("status") == "success":
+            return data.get('country')
+        else:
+            print(f"Failed to retrieve IP information: {data.get('message')}")
+            return None
+            
+    except requests.exceptions.RequestException as e:
+        print(f"HTTP request failed: {e}")
+    except json.JSONDecodeError:
+        print("Failed to parse the JSON response.")
+    return None
+
+def check_mirror_url(url):
+    """Check if the mirror URL responds with HTTP 200 or 400 status codes."""
+    try:
+        response = requests.get(url)
+        return response.status_code in [200, 400]
+    except requests.exceptions.RequestException as e:
+        print(f"Mirror URL check failed: {e}")
+        return False
+
+def set_SE_DRIVER_MIRROR_URL_if_needed(country_name, mirror_url):
+    """Set the SE_DRIVER_MIRROR_URL environment variable if the country is restricted and mirror URL is valid."""
+    if country_name in chrome_driver_restricted_countries:
+        print(f"The host country ({country_name}) is restricted from downloading Google Chrome Driver, using proxy to bypass restrictions...")
+        
+        # Check the mirror URL and set environment variable if it responds with HTTP 200 or 400
+        if check_mirror_url(mirror_url):
+            os.environ['SE_DRIVER_MIRROR_URL'] = mirror_url
+            print(f"SE_DRIVER_MIRROR_URL set to: {os.environ['SE_DRIVER_MIRROR_URL']}")
+        else:
+            print(f"Mirror URL ({mirror_url}) did not respond with HTTP 200 or 400.")
+    else:
+        print(f"Using Google Chrome Driver from {country_name}...")
+
+
+# Set chrome driver download proxy URL for restricted countries
+country_name = fetch_country_data(location_primary_country_checker_url)
+
+# If primary URL fails or does not return a valid country name, fallback to the secondary URL
+if not country_name:
+    print("Falling back to secondary URL...")
+    country_name = fetch_country_data(location_secondary_country_checker_url)
+
+# Set environment variable if needed
+set_SE_DRIVER_MIRROR_URL_if_needed(country_name, chrome_driver_mirror_url)
+
 
 chrome_options = Options()
 chrome_options.add_argument("--disable-web-security")
@@ -1514,6 +1610,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
     
     
 def selenium_chrome_google_translate_html_javascript_file(html_file_path):
+    global my_khoshnevis_normalizer
     html_file_path_escaped = html_file_path.replace('#','%23')
     file_url = 'file://' + html_file_path_escaped
     driver.get(file_url)
@@ -1602,7 +1699,9 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
     translation_array = []
     for pTranstlation in pTags:
         pData = pTranstlation.text
-        translation_array.append(pTranstlation.text)
+        if dest_lang.lower() == 'fa':
+           pData =  my_khoshnevis_normalizer.normalize(text=pData)
+        translation_array.append(pData)
 
     return (translation_array)
     
@@ -1923,7 +2022,6 @@ def remove_span_tag(text):
 def selenium_chrome_deepl_log_in():
     global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
     
-    
     deepl_account_email_key = ['deepl', 'account', 'email']
     deepl_account_email = get_nested_value_from_json_array(json_configuration_array, deepl_account_email_key)
     
@@ -1943,7 +2041,7 @@ def selenium_chrome_deepl_log_in():
         
             try:
                 # Accept cookies
-                deepl_accept_cookies_element = "//button[contains(.,'Accept all cookies')]"
+                deepl_accept_cookies_element = "//button[contains(.,'Accept')]"
                 deepl_accept_cookies_button = WebDriverWait(driver, 1).until(
                     EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
                 driver.execute_script("arguments[0].scrollIntoView();", deepl_accept_cookies_button)    
@@ -2176,7 +2274,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 # Deepl has a bug for / in text to be translated
                 # must be replaced by %5C%2F
                 driver.get("https://www.deepl.com/translator#%s/%s/%s" % (
-                src_lang, dest_lang, urllib.parse.quote(to_translate).replace("/", "%5C%2F")))
+                src_lang, dest_lang, urllib.parse.quote(to_translate).replace("%5C", "%5C%5C").replace("/", "%5C%2F").replace("%7C", "%5C%7C")))
 
                 translation_page_opened = True
             except:
@@ -2189,6 +2287,30 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         try:
             (driver.page_source).encode('utf-8')
             WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+            
+            try:
+                # Accept cookies
+                deepl_accept_cookies_element = "//button[contains(.,'Accept')]"
+                deepl_accept_cookies_button = WebDriverWait(driver, 0.01).until(
+                    EC.presence_of_element_located((By.XPATH, deepl_accept_cookies_element)))
+                driver.execute_script("arguments[0].scrollIntoView();", deepl_accept_cookies_button)    
+                deepl_accept_cookies_button.click()
+                
+            except:
+                pass
+            
+            try:
+                # Accept cookies
+                deepl_one_click_navigation_element = "//div[@id='react-joyride-step-0']/div/div/div/div[3]/div/button/span/span"
+                deepl_one_click_navigation_button = WebDriverWait(driver, 0.01).until(
+                    EC.presence_of_element_located((By.XPATH, deepl_one_click_navigation_element)))
+                driver.execute_script("arguments[0].scrollIntoView();", deepl_one_click_navigation_button)    
+                deepl_one_click_navigation_button.click()
+            except:
+                pass
+            
+            
+            
             #print("Page loaded completed")
         except:
             # print("Waiting for the input_element...")
@@ -4122,7 +4244,9 @@ def document_split_phrases():
                     print("  ERROR:%s<br>" % (var))
 
                 if str_line_average > MAX_LINE_SIZE:
-                    str_line_average = MAX_LINE_SIZE
+                    #input("str_line_average > MAX_LINE_SIZE : %s > %s" % (str_line_average, MAX_LINE_SIZE))
+                    #str_line_average = MAX_LINE_SIZE
+                    str_line_average = math.ceil(str_line_average)
                 current_phrase_tokenized_array = tokenize_text_to_array(current_line, dest_lang)
                 lines_divided = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
 
