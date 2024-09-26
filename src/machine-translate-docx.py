@@ -1,16 +1,25 @@
 #!/usr/bin/python3
+import sys
+import io
 
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True)
+import platform
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2024-08-19"
+PROGRAM_VERSION="2024-09-26"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
+
+print("*********************************************************")
+print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
+print("*********************************************************")
+
+print("Python programming language %s\n" % (platform.python_version()))
+
 import pprint
 from pprint import pprint
-import sys
 import traceback
-import platform
 import shlex
 import subprocess
 import os
@@ -45,14 +54,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.remote.remote_connection import LOGGER
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
 
 from screeninfo import get_monitors
 
 
 #from selenium.webdriver import Firefox, FirefoxOptions
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import argparse
 import clipboard
@@ -60,7 +68,6 @@ import clipboard
 
 import psutil
 
-import sys
 #import winsound
 
 import docx
@@ -73,14 +80,15 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_TAB_ALIGNMENT,WD_PARAGRAPH_ALIGNMENT, WD_ALIGN_PARAGRAPH
 
 # For japanese
-import tinysegmenter
+#import tinysegmenter
+from tinysegmenter import TinySegmenter
+#from tinysegmenter import TinySegmenter
 # For Thai
 #from thai_tokenizer import Tokenizer as thai_tokenizer_tokenizer
 #from thai_tokenizer import data
 #from thai_tokenizer.data import bpe_merges
 #import thai_tokenizer 
 #import thai-segmenter
-from newmm_tokenizer.tokenizer import word_tokenize
 
 import timeit
 import datetime
@@ -119,14 +127,12 @@ from langcodes import *
 
 import math
 
+
 #from parsivar import Normalizer
-my_khoshnevis_normalizer = None
+my_hazm_normalizer = None
 
-print("*********************************************************")
-print("*  machine-translate-docx program version : %s" % (PROGRAM_VERSION))
-print("*********************************************************")
-
-print("Python programming language %s\n" % (platform.python_version()))
+from hazm import Normalizer
+#import hazm
 
 # Get key value from an array of json strings, ['deepl','account','email'] for example
 # The first json object containing the key value is returned or default_when_none value.
@@ -197,7 +203,7 @@ DefaultJsonConfiguration = """{
 		}
 	},
 	"statistics": {
-		"html_statistics_form_url": "http://translationbot.42web.io/robot-stats.php",
+		"html_statistics_form_url": "https://contactdirectavecdieu.net/robot-stats.php",
 		"google_sheets_statistics": {
 			"account": {
 				"google_account": "to be determined"
@@ -210,7 +216,8 @@ DefaultJsonConfiguration = """{
 	},
 	"location": {
 	  "primary_country_checker_url": "https://www.contactdirectavecdieu.net/geoip/index.php",
-	  "secondary_country_checker_url": "http://ip-api.com/json/"
+	  "secondary_country_checker_url": "http://ip-api.com/json/",
+      "http_query_timeout" : 3
 	},
 	"chrome_driver": {
       "restricted_countries": ["North Korea", "Iran", "Syria", "Sudan", "Cuba", "Crimea"],
@@ -502,12 +509,15 @@ google_translate_lang_codes = {
     }
 
 deepl_translate_lang_codes = {
+    'ar': 'Arabic',
     'bg': 'Bulgarian',
     'cs': 'Czech',
     'da': 'Danish',
     'de': 'German',
     'el': 'Greek',
     'en': 'English',
+    'en-us': 'English (American)',
+    'en-gb': 'English (British)',
     'es': 'Spanish',
     'et': 'Estonian',
     'fi': 'Finnish',
@@ -523,6 +533,8 @@ deepl_translate_lang_codes = {
     'nl': 'Dutch',
     'pl': 'Polish',
     'pt': 'Portuguese',
+    'pt-br': 'Portuguese (Brazilian)',
+    'pt-pt': 'Portuguese (all Portuguese variants excluding Brazilian Portuguese)',
     'ro': 'Romanian',
     'ru': 'Russian',
     'sk': 'Slovak',
@@ -531,6 +543,8 @@ deepl_translate_lang_codes = {
     'tr': 'Turkish',
     'uk': 'Ukrainian',
     'zh': 'Chinese (Simplified)',
+    'zh-hans': 'Chinese (Simplified)',
+    'zh-hant': 'Chinese (Traditional)',
 }
 
 # This is to set docx document language for spelling
@@ -726,7 +740,7 @@ eol_array = ['\. {0,}$', '\! {0,}$', '\? {0,}$',  '[\.\!\?\'] ?["”\'\)] {0,}$'
     '﹖ {0,}$', #SMALL QUESTION MARK	U+FE56	SMALL QUESTION MARK	
     '？ {0,}$', #FULLWIDTH QUESTION MARK	U+FF1F	FULLWIDTH QUESTION MARK	
 ]
-eol_conditional_array = ['\" {0,}$', u'\u201D {0,}$']
+eol_conditional_array = ['\" {0,}$', u'\u201D {0,}$', u'\)']
 bol_array = ['^[A-Z]']
 
 # Colors : grey and pink backgroud to ignore
@@ -737,6 +751,7 @@ html_file_path = ''
 
 nb_character_total = 0
 MAX_LINE_SIZE = 36
+COUNTRY_QUERY_HTTP_TIMEOUT = 3
 
 # Maximum 5000 characters on the free version
 # but only 1500 if not logged on to deepl with free version
@@ -776,13 +791,21 @@ else:
     if not splitonly:
         dest_lang = input ("Please enter language translation code (fr,de,ru,hi,etc.)")
 
+cjk_segmenter = None 
 if dest_lang == 'zh-cn':
     dest_lang = 'zh-CN'
+    cjk_segmenter = TinySegmenter()
 if dest_lang == 'zh-tw':
     dest_lang = 'zh-TW'
+    cjk_segmenter = TinySegmenter()
 if dest_lang == 'fa':
-    from khoshnevis import Normalizer
-    my_khoshnevis_normalizer = Normalizer()
+    my_hazm_normalizer = Normalizer()
+if dest_lang == 'th':
+    from newmm_tokenizer.tokenizer import word_tokenize
+if dest_lang == 'zh' or dest_lang == 'ja' or dest_lang == 'kr':
+    cjk_segmenter = TinySegmenter()
+if dest_lang == 'fa':
+    from hazm import Normalizer
 
 valid_online_json = validate_json_string(json_online_configuration)
 if not valid_online_json == True:
@@ -1005,6 +1028,13 @@ location_primary_country_checker_url = get_nested_value_from_json_array(json_con
 location_secondary_country_checker_url_key = ["location", "secondary_country_checker_url"]
 location_secondary_country_checker_url = get_nested_value_from_json_array(json_configuration_array, location_secondary_country_checker_url_key)
 
+location_http_query_timeout_key = ["location", "http_query_timeout"]
+location_http_query_timeout = get_nested_value_from_json_array(json_configuration_array, location_http_query_timeout_key)
+
+# Check if location_http_query_timeout is not an integer > 0
+if not isinstance(location_http_query_timeout, int) or location_http_query_timeout <= 0:
+    location_http_query_timeout = COUNTRY_QUERY_HTTP_TIMEOUT  # Set to 3 if the condition is not met
+
 chrome_driver_restricted_countries_key = ["chrome_driver", "restricted_countries"]
 chrome_driver_restricted_countries = get_nested_value_from_json_array(json_configuration_array, chrome_driver_restricted_countries_key)
 
@@ -1019,7 +1049,7 @@ chrome_driver_mirror_url = get_nested_value_from_json_array(json_configuration_a
 def fetch_country_data(url):
     """Fetch country data from the specified URL."""
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=location_http_query_timeout)
         response.raise_for_status()  # Check if the request was successful (status code 200)
         
         # Parse the JSON response
@@ -1041,7 +1071,7 @@ def fetch_country_data(url):
 def check_mirror_url(url):
     """Check if the mirror URL responds with HTTP 200 or 400 status codes."""
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=location_http_query_timeout)
         return response.status_code in [200, 400]
     except requests.exceptions.RequestException as e:
         print(f"Mirror URL check failed: {e}")
@@ -1089,8 +1119,7 @@ if not showbrowser and translation_engine.lower() != "deepl":
 
 #word_file_to_translate = r'X:\travail\smtv-hindi\NWN 584 sf2 - table fix1.doc'
 
-# Used to tokenize chinese japanese or korean words
-cjk_segmenter = tinysegmenter.TinySegmenter()
+
 # Used to tokenize thai
 #thai_segmenter = thai_tokenizer_tokenizer()
 #word_tokenize(text)
@@ -1580,7 +1609,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
         #print("URL: %s" % (driver.current_url))
         
         html_translation = driver.page_source
-        text_translated_document_str = html_translation.replace('<html><head></head><body><pre>', '')
+        text_translated_document_str = html_translation.replace('<html><head><meta charset="UTF-8"></head><body><pre>', '')
         text_translated_document_str = text_translated_document_str.replace('</pre></body></html>', '')
         text_translated_document_str = html.unescape(text_translated_document_str)
         
@@ -1610,7 +1639,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
     
     
 def selenium_chrome_google_translate_html_javascript_file(html_file_path):
-    global my_khoshnevis_normalizer
+    global my_hazm_normalizer
     html_file_path_escaped = html_file_path.replace('#','%23')
     file_url = 'file://' + html_file_path_escaped
     driver.get(file_url)
@@ -1700,7 +1729,7 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
     for pTranstlation in pTags:
         pData = pTranstlation.text
         if dest_lang.lower() == 'fa':
-           pData =  my_khoshnevis_normalizer.normalize(text=pData)
+           pData =  my_hazm_normalizer.normalize(text=pData)
         translation_array.append(pData)
 
     return (translation_array)
@@ -2302,6 +2331,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
             try:
                 # Accept cookies
                 deepl_one_click_navigation_element = "//div[@id='react-joyride-step-0']/div/div/div/div[3]/div/button/span/span"
+                deepl_accept_cookies_element = "//button[contains(.,'Got it')]"
                 deepl_one_click_navigation_button = WebDriverWait(driver, 0.01).until(
                     EC.presence_of_element_located((By.XPATH, deepl_one_click_navigation_element)))
                 driver.execute_script("arguments[0].scrollIntoView();", deepl_one_click_navigation_button)    
@@ -3595,8 +3625,8 @@ def create_webdriver():
         try:
             driver = webdriver.Chrome(service=service, options=chrome_options)
         except:
-            print("An error occured during launching chrome. This may happen during google chrome automatic updates.")
-            print("You may start google chrome and open the menu Help -> About google chrome to see if there is an update running and retry machine translation after the update.")
+            print("An error occured during launching chrome. This may happen during google chrome automatic updates or if Google Chrome is not installed.")
+            print("You may start google chrome and open the menu Help -> About Google Chrome to see if there is an update running and retry machine translation after the update.")
             print("Exiting, please retry.")
             
             print("\nDeveloper: %s" % (E_mail_str))
@@ -5043,13 +5073,16 @@ def open_app_docx_file():
     try:
         if platform.system() == 'Windows':
             subprocess.Popen(["start", "", word_file_to_translate_save_as_path], shell=True)
-        elif platform.system() ==  "Darwin":
+        elif platform.system() == "Darwin":  # macOS
             subprocess.Popen(["open", word_file_to_translate_save_as_path])
+        elif platform.system() == "Linux":  # Linux
+            subprocess.Popen(["xdg-open", word_file_to_translate_save_as_path])
+        else:
+            print("Unsupported operating system.")
             
     except Exception as e:
         print("Error:", e)
         print("Warning, unable to open file %s." % (word_file_to_translate_save_as_path))
-
 def save_docx_file():
     global docxdoc, word_file_to_translate, word_file_to_translate_save_as_path
     

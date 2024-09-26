@@ -139,12 +139,15 @@ class MachineTranslationApp:
             }
         
         self.deepl_translate_lang_codes = {
+            'Arabic': 'ar',
             'Bulgarian': 'bg',
             'Czech': 'cs',
             'Danish': 'da',
             'German': 'de',
             'Greek': 'el',
             'English': 'en',
+            'English (British)': 'en-gb',
+            'English (American)': 'en-us',
             'Spanish': 'es',
             'Estonian': 'et',
             'Finnish': 'fi',
@@ -160,6 +163,8 @@ class MachineTranslationApp:
             'Dutch': 'nl',
             'Polish': 'pl',
             'Portuguese': 'pt',
+            'Portuguese (Brazilian)': 'pt-br',
+            'Portuguese (all variants)': 'pt-pt',
             'Romanian': 'ro',
             'Russian': 'ru',
             'Slovak': 'sk',
@@ -167,7 +172,9 @@ class MachineTranslationApp:
             'Swedish': 'sv',
             'Turkish': 'tr',
             'Ukrainian': 'uk',
-            'Chinese (Simplified)': 'zh',
+            'Chinese': 'zh',
+            'Chinese (Simplified)': 'zh-hans',
+            'Chinese (Traditional)': 'zh-hant',
             }
             
         self.deepl_languages = self.deepl_translate_lang_codes.keys()
@@ -219,16 +226,28 @@ class MachineTranslationApp:
         self.source_label.grid(row=3, column=0)
 
         self.languages = [
-            "English",  # Added "English" to the language list
-            "Arabic", "Bulgarian", "Chinese (Simplified)", "Chinese (Traditional)", "Czech", "French",
+            "English", "English (British)", "English (American)", # Added "English" to the language list
+            "Arabic", "Bulgarian", "Chinese", "Chinese (Simplified)", "Chinese (Traditional)", "Czech", "French",
             "German", "Hindi", "Hungarian", "Indonesian", "Italian", "Japanese", "Korean",
-            "Malay", "Mongolian", "Nepali", "Persian", "Polish", "Portuguese", "Punjabi",
-            "Romanian", "Russian", "Spanish", "Telugu", "Thai", "Ukrainian",
+            "Malay", "Mongolian", "Nepali", "Persian", "Polish", "Portuguese", "Portuguese (Brazilian)",
+            "Punjabi", "Romanian", "Russian", "Spanish", "Telugu", "Thai", "Ukrainian",
             "Urdu", "Vietnamese"
         ]
+        
+        self.exclude_from_source_languages = [
+            "English (British)", "English (American)", "Portuguese (Brazilian)"
+        ]
+        
+        self.languages_filtered = [language for language in self.languages if language not in self.exclude_from_source_languages]
+
+        
+        self.exclude_from_deepl_target_languages = [
+            "English"
+        ]
+        
         self.source_language = tk.StringVar(root)
         self.source_language.set(self.languages[0])
-        self.source_combo = tk.OptionMenu(root, self.source_language, *sorted(self.languages))
+        self.source_combo = tk.OptionMenu(root, self.source_language, *sorted(self.languages_filtered))
         self.source_combo.grid(row=3, column=1)
 
         # Target language selection
@@ -412,11 +431,18 @@ class MachineTranslationApp:
     def auto_set_xlsx_entry(self, *args):
         target_language = self.target_language.get().lower()
         
+        if getattr(sys, 'frozen', False):
+            # If the application is compiled by PyInstaller
+            application_path = os.path.dirname(sys.executable)
+        else:
+            # If running in a normal Python environment
+            application_path = os.path.dirname(os.path.abspath(__file__))
+        
         if platform.system() == 'Windows':
-            xlsx_filename = f"C:\\SMTVRobot\\{target_language}.xlsx"
+            xlsx_filename = os.path.abspath(f"{application_path}\\..\\{target_language}.xlsx")
         else:
             home_folder = os.environ['HOME']
-            xlsx_filename = f"{home_folder}/SMTVRobot/{target_language}.xlsx"
+            xlsx_filename = os.path.abspath(f"{application_path}/../xlsx/{target_language}.xlsx")
 
         self.xlsx_file_entry.delete(0, tk.END)
         
@@ -505,15 +531,21 @@ class MachineTranslationApp:
         # List of languages for which Deepl should be selected
 
         if self.source_language.get() in self.deepl_languages and self.target_language.get() in self.deepl_languages:
+            # Languages in Deppl list
             self.engine.set("Deepl")
             self.engine_combo.config(state="normal")
             self.show_browser_var.set(True)
             self.show_browser_checkbox.config(state="disabled")
+            
+            if self.target_language.get() not in self.google_languages:
+                self.engine_combo.config(state="disabled")
         else:
             self.engine_combo.config(state="disabled")
             self.engine.set("Google")
             self.show_browser_var.set(False)
             self.show_browser_checkbox.config(state="normal")
+            if self.source_language.get() not in self.deepl_languages:
+                self.target_language.set(self.languages[0])
     
     def auto_select_font(self, *args):
         # List of font for the selected language
@@ -883,9 +915,9 @@ class MachineTranslationApp:
             bin_launcher_path = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe -ct -font \"Courier New\" -size 16 -run {self.bin_path}\\machine-translate-docx.exe "
         else:
             if for_service_template:
-                bin_launcher_path = f"{self.bin_path}/machine-translate-docx "
+                bin_launcher_path = f"\\\"{self.bin_path}/machine-translate-docx\\\" "
             else:
-                bin_launcher_path = f"osascript -e 'tell app \"Terminal\" to do script \"{self.bin_path}/machine-translate-docx "
+                bin_launcher_path = f"osascript -e 'tell app \"Terminal\" to do script \"\\\"{self.bin_path}/machine-translate-docx\\\" "
         
         open_word_param = ""
         if self.open_file_after_translation_var.get():
@@ -898,8 +930,13 @@ class MachineTranslationApp:
                 command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \" &amp; thisItemsPathname &amp; \"; exit 0;"
                  
             else:
-                command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \\\"{docx_file_path}\\\"; \"'"
+                command = f"{bin_launcher_path} --srclang {src_lang_code} --destlang {dest_lang_code} --engine {engine} {dest_font_param} {split_param} {xlsx_replace_param} {show_browser_param} {exitonsuccess_param} {open_word_param} --docxfile \\\"{docx_file_path}\\\" ; exitCode=$?; exit $exitCode; \"'"
         
+        if platform.system() == 'Windows':
+            pass
+        else:
+            command = f"{command}"
+            
         print("command : %s" % (command))
         
         return command
@@ -928,13 +965,19 @@ class MachineTranslationApp:
             # Open the DOCX file in Windows
             try:
                 if platform.system() == 'Windows':
-                    pass
-                    #subprocess.Popen(["start", "", rf"{docx_file_path}"], shell=True)
-                elif platform.system() ==  "Darwin":
-                    pass
-                    #subprocess.Popen(["open", rf"{docx_file_path}"])
+                    subprocess.Popen(["start", "", rf"{docx_file_path}"], shell=True)
+                elif platform.system() == "Darwin":  # macOS
+                    subprocess.Popen(["open", rf"{docx_file_path}"])
+                elif platform.system() == "Linux":  # Linux
+                    subprocess.Popen(["xdg-open", rf"{docx_file_path}"])
+                else:
+                    print("Unsupported operating system.")
+                    
+                                
             except Exception as e:
                 print("Error:", e)
+                print(f"Warning, unable to open file: {docx_file_path}")
+                
     
     def create_tooltip(self, widget, text):
         tool_tip = tk.Label(self.root, text=text, background="#ffffe0", relief="solid")
