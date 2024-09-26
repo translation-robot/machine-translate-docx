@@ -1,0 +1,151 @@
+
+Sub MoveTextToNextCell()
+    Dim cursorPosition As Long
+    Dim tbl As Table
+    Dim cell As cell
+    Dim nextCell As cell
+    Dim textToMove As String
+    Dim var1 As String
+    Dim strNextStr As String
+    
+    ' Get the cursor position
+    cursorPosition = Selection.Range.Start
+    
+    ' Check if the cursor is inside a table
+    If Selection.Information(wdWithInTable) Then
+        ' Get the table containing the selection
+        Set tbl = Selection.Tables(1)
+        
+        ' Find the cell containing the cursor position
+        For Each cell In tbl.Range.Cells
+            If cursorPosition >= cell.Range.Start And cursorPosition <= cell.Range.End Then
+                ' Get the text after the cursor position
+                textToMove = Mid(cell.Range.Text, cursorPosition - cell.Range.Start + 1)
+                
+                
+                ' Check if the variable ends with vbCrLf followed by BELL character
+                If Right(textToMove, 1) = Chr(7) Then
+                    textToMove = Left(textToMove, Len(textToMove) - 1)
+                End If
+                
+                If Right(textToMove, 1) = vbCr Then
+                    textToMove = Left(textToMove, Len(textToMove) - 1)
+                End If
+                
+                ' Remove leading spaces
+                textToMove = Trim(textToMove) & " "
+                
+                ' Find the next cell in the same column
+                If cell.RowIndex < tbl.Rows.Count Then
+                    Set nextCell = tbl.cell(cell.RowIndex + 1, cell.ColumnIndex)
+                    
+                    ' Move the text to the beginning of the next cell
+                    strNextStr = nextCell.Range.Text
+                    If Right(strNextStr, 1) = Chr(7) Then
+                        ' If Right(textToMove, Len(vbCrLf) + 1) = vbCrLf & Chr(7) Then
+                        ' Remove vbCrLf followed by BELL character
+                        strNextStr = Left(strNextStr, Len(strNextStr) - 2)
+                    End If
+                    
+                    nextCell.Range.Text = RTrim(LTrim(textToMove & strNextStr))
+                    ' Clear the text from the original cell
+                    currentCellText = Trim(Left(cell.Range.Text, cursorPosition - cell.Range.Start))
+                    var2 = Right(var1, Len(vbCr))
+                    
+                    If Right(currentCellText, Len(vbCr)) = vbCr Then
+                        currentCellText = Left(currentCellText, Len(currentCellText) - 1)
+                    End If
+                    
+                    cell.Range.Text = RTrim(LTrim(currentCellText))
+                    
+                    ' Exit the loop since we found the cell and moved the text
+                    Exit For
+                End If
+            End If
+        Next cell
+    End If
+End Sub
+
+
+Sub MoveTextToPreviousCell()
+    On Error GoTo ErrorHandler
+    
+    Dim cursorPosition As Long
+    Dim tbl As Table
+    Dim cell As cell
+    Dim prevCell As cell
+    Dim textToMove As String
+    Dim strPrevStr As String
+    Dim textToKeepOnThisCell As String
+    
+    ' Get the cursor position
+    cursorPosition = Selection.Range.Start
+    
+    ' Check if the cursor is inside a table
+    If Selection.Information(wdWithInTable) Then
+        ' Get the table containing the selection
+        Set tbl = Selection.Tables(1)
+        
+        ' Find the cell containing the cursor position
+        For Each cell In tbl.Range.Cells
+            If cursorPosition >= cell.Range.Start And cursorPosition < cell.Range.End Then
+                ' Get the text before the cursor position
+                textToMove = Left(cell.Range.Text, cursorPosition - cell.Range.Start)
+                
+                ' Check if the text ends with vbCrLf followed by BELL character
+                If Right(textToMove, 1) = Chr(7) Then
+                    textToMove = Left(textToMove, Len(textToMove) - 2)
+                End If
+                
+                If Right(textToMove, 1) = vbCr Then
+                    textToMove = Left(textToMove, Len(textToMove) - 1)
+                End If
+                
+                textToKeepOnThisCell = LTrim(Right(cell.Range.Text, Len(cell.Range.Text) - Len(textToMove)))
+                
+                If Right(textToKeepOnThisCell, 1) = Chr(7) Then
+                    textToKeepOnThisCell = Left(textToKeepOnThisCell, Len(textToKeepOnThisCell) - 1)
+                End If
+                
+                If Right(textToKeepOnThisCell, 1) = vbCr Then
+                    textToKeepOnThisCell = Left(textToKeepOnThisCell, Len(textToKeepOnThisCell) - 1)
+                End If
+                
+                If Right(textToKeepOnThisCell, 1) = Chr(7) Then
+                    textToKeepOnThisCell = Left(textToKeepOnThisCell, Len(textToKeepOnThisCell) - 1)
+                End If
+                
+                ' Remove leading spaces
+                textToMove = Trim(textToMove)
+                
+                ' Find the previous cell in the same column
+                If cell.RowIndex > 1 Then
+                    Set prevCell = tbl.cell(cell.RowIndex - 1, cell.ColumnIndex)
+                    
+                    ' Move the text to the end of the previous cell
+                    strPrevStr = prevCell.Range.Text
+                    If Right(strPrevStr, 1) = Chr(7) Then
+                        strPrevStr = Left(strPrevStr, Len(strPrevStr) - 1)
+                    End If
+                    If Right(strPrevStr, 1) = vbCr Then
+                        strPrevStr = Left(strPrevStr, Len(strPrevStr) - 1)
+                    End If
+                    
+                    prevCell.Range.Text = LTrim(strPrevStr & " " & textToMove)
+                    ' Clear the text from the original cell
+                    cell.Range.Text = textToKeepOnThisCell
+                    
+                    ' Exit the loop since we found the cell and moved the text
+                    Exit For
+                End If
+            End If
+        Next cell
+    End If
+    
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "An error occurred: " & Err.Description, vbExclamation
+End Sub
+
+
