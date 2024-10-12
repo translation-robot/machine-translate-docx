@@ -6,7 +6,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_bufferin
 import platform
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2024-09-26"
+PROGRAM_VERSION="2024-10-12"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -386,7 +386,7 @@ if show_version:
     print("Program version: %s\n" % (PROGRAM_VERSION))
     if not silent:
         input("\nEnter to close program")
-    sys.exit(1)
+    sys.exit(0)
 
 if args.docxfile is None:
     parser.print_help()
@@ -802,7 +802,7 @@ if dest_lang == 'fa':
     my_hazm_normalizer = Normalizer()
 if dest_lang == 'th':
     from newmm_tokenizer.tokenizer import word_tokenize
-if dest_lang == 'zh' or dest_lang == 'ja' or dest_lang == 'kr':
+if dest_lang == 'zh' or dest_lang == 'ja' or dest_lang == 'ko':
     cjk_segmenter = TinySegmenter()
 if dest_lang == 'fa':
     from hazm import Normalizer
@@ -964,7 +964,7 @@ if word_file_to_translate_extension == ".docx":
             input("Enter to close program")
         else:
             print("Program ended with errors")
-        sys.exit(1)
+        sys.exit(2)
     styles = docxdoc.styles
     
     if dest_lang_tag != '':
@@ -1016,7 +1016,7 @@ if word_file_to_translate_extension != ".docx":
         input("Enter to close program")
     else:
         print("Program ended with errors")
-    os._exit(1)
+    os._exit(3)
 
 print("")
 
@@ -1331,7 +1331,7 @@ def selenium_chrome_google_translate(to_translate):
     except Exception:
         var = traceback.format_exc()
         print(var)
-        sys.exit(0)
+        sys.exit(4)
    
     page_source_str = driver.page_source
     #print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
@@ -1447,7 +1447,7 @@ def selenium_chrome_translate_maxchar_blocks():
         print("Error getting google translation from text file.")
         var = traceback.format_exc()
         print(var)
-        sys.exit(0)
+        sys.exit(5)
     return translation_succeded, translation_array
 
 def selenium_chrome_google_click_cookies_consent_button():
@@ -1549,7 +1549,7 @@ def selenium_chrome_google_click_cookies_consent_button():
         print("Error getting google translation from text file.")
         var = traceback.format_exc()
         print(var)
-        sys.exit(0)
+        sys.exit(6)
         
         
 def selenium_chrome_google_translate_text_file(text_file_path):
@@ -1634,7 +1634,7 @@ def selenium_chrome_google_translate_text_file(text_file_path):
         print("Error getting google translation from text file.")
         var = traceback.format_exc()
         print(var)
-        sys.exit(0)
+        sys.exit(7)
     return translation_array
     
     
@@ -1957,7 +1957,7 @@ def selenium_chrome_google_translate_xlsx_file(xlsx_file_path):
         print("Error getting google translation from text file.")
         var = traceback.format_exc()
         print(var)
-        sys.exit(0)
+        sys.exit(8)
     return translation_array
 
 
@@ -2018,7 +2018,7 @@ def selenium_chrome_yandex_translate(to_translate):
     except Exception:
         var = traceback.format_exc()
         print(var)
-        sys.exit(0)
+        sys.exit(9)
     return translation
 
 def remove_span_tag(text):  
@@ -3369,7 +3369,7 @@ def read_and_parse_docx_document():
             input("Enter to close program")
         else:
             print("Program ended with errors")
-        sys.exit(1)
+        sys.exit(11)
 
     rownum = 0
 
@@ -3634,7 +3634,7 @@ def create_webdriver():
             if not exitonsuccess:
                 input("Enter to close program")
             
-            sys.exit(1)
+            sys.exit(12)
         
         print("\nChrome started using driver at %s\n" % (driver.service.path))
 
@@ -3866,7 +3866,7 @@ def generate_xlsx_file_from_phrases(xlsx_file_path):
             input("Enter to close program")
         else:
             print("Program ended with errors")
-        sys.exit(1)
+        sys.exit(13)
     
     index_current_row = 1
     max_col_length = 0
