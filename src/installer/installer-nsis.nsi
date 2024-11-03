@@ -86,7 +86,7 @@ LangString LANG_ENGLISH ${LANG_ENGLISH} "English"
 
 
 Section "Desktop Shortcut" SEC02
-  CreateShortcut "$DESKTOP\Machine Translation Robot.lnk" "$INSTDIR\img\machine_translate_gui.exe" "$INSTDIR\img\app.ico"
+  CreateShortcut "$DESKTOP\Machine Translation Robot.lnk" "$INSTDIR\bin\machine_translate_gui.exe" "$INSTDIR\bin\app.ico"
 SectionEnd
 
 !include "MUI2.nsh"  ; Include the Modern UI macros
