@@ -6,7 +6,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_bufferin
 import platform
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2024-10-12"
+PROGRAM_VERSION="2024-11-23"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -81,7 +81,7 @@ from docx.enum.text import WD_TAB_ALIGNMENT,WD_PARAGRAPH_ALIGNMENT, WD_ALIGN_PAR
 
 # For japanese
 #import tinysegmenter
-from tinysegmenter import TinySegmenter
+
 #from tinysegmenter import TinySegmenter
 # For Thai
 #from thai_tokenizer import Tokenizer as thai_tokenizer_tokenizer
@@ -131,7 +131,7 @@ import math
 #from parsivar import Normalizer
 my_hazm_normalizer = None
 
-from hazm import Normalizer
+#from hazm import Normalizer
 #import hazm
 
 # Get key value from an array of json strings, ['deepl','account','email'] for example
@@ -794,18 +794,20 @@ else:
 cjk_segmenter = None 
 if dest_lang == 'zh-cn':
     dest_lang = 'zh-CN'
+    from tinysegmenter import TinySegmenter
     cjk_segmenter = TinySegmenter()
 if dest_lang == 'zh-tw':
     dest_lang = 'zh-TW'
+    from tinysegmenter import TinySegmenter
     cjk_segmenter = TinySegmenter()
-if dest_lang == 'fa':
-    my_hazm_normalizer = Normalizer()
 if dest_lang == 'th':
     from newmm_tokenizer.tokenizer import word_tokenize
 if dest_lang == 'zh' or dest_lang == 'ja' or dest_lang == 'ko':
+    from tinysegmenter import TinySegmenter
     cjk_segmenter = TinySegmenter()
 if dest_lang == 'fa':
     from hazm import Normalizer
+    my_hazm_normalizer = Normalizer()
 
 valid_online_json = validate_json_string(json_online_configuration)
 if not valid_online_json == True:
@@ -3211,43 +3213,52 @@ def generate_tmx_file():
         print(var)
 
 
-
 def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
     global table_cells
     paragraph_no = 0
     current_cell = table_cells[row_n][2]
-    #print("prepare_and_clear_cell_for_writing")
-    #print("paragraph[%d]: %s" % (row_n,translation_cell_text))
+
+    # Clear paragraphs in the cell
     for paragraph in current_cell.paragraphs:
         if paragraph_no != 0:
-            delete_paragraph (paragraph)
+            delete_paragraph(paragraph)
         else:
             paragraph.text = ''
-        paragraph_no +=1
+        paragraph_no += 1
 
-    nb_paragraph = len(current_cell.paragraphs)
-    if nb_paragraph >= 1:
-        table_cells[row_n][2].text = ''
-        cell_paragraph = current_cell.paragraphs[0]
-    else:
+    # Ensure there's at least one paragraph in the cell
+    if len(current_cell.paragraphs) == 0:
         cell_paragraph = current_cell.add_paragraph("")
+    else:
+        cell_paragraph = current_cell.paragraphs[0]
 
-    # Add orientation from Right To Left (RTL) for specific languages
+    # Add orientation for Right-to-Left (RTL) languages
     if dest_lang in right_to_left_languages_list.keys():
-        run = cell_paragraph.add_run(translation_cell_text,style = "rtlstyle")
-        run.style = rtlstyle
+        run = cell_paragraph.add_run(translation_cell_text)
+        run.style = rtlstyle  # Ensure `rtlstyle` exists in the document
         font = run.font
         font.rtl = True
         cell_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     else:
         cell_paragraph.text = translation_cell_text
-        paragraph.style = 'Normal'
+        # Check if the 'Normal' style exists before applying
+        try:
+            cell_paragraph.style = 'Normal'
+        except KeyError:
+            #print("Warning: 'Normal' style not found. Falling back to 'Default Paragraph Font'.")
+            try:
+                cell_paragraph.style = 'Default Paragraph Font'
+            except KeyError:
+                #print("Error: No usable default style found. Proceeding without style assignment.")
+                pass
         cell_paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
+    # Apply font changes if necessary
     if dest_font != "":
-        change_cell_font (current_cell)
-        
+        change_cell_font(current_cell)
+
     table_cells[row_n][2] = current_cell
+    
         
 def cell_set_1st_paragraph(row_n, paragraph_text):
     paragraph_no = 0
@@ -3266,7 +3277,15 @@ def cell_set_1st_paragraph(row_n, paragraph_text):
         cell_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     else:
         cell_paragraph.text = paragraph_text
-        cell_paragraph.style = 'Normal'
+        try:
+            cell_paragraph.style = 'Normal'
+        except KeyError:
+            #print("Warning: 'Normal' style not found. Falling back to 'Default Paragraph Font'.")
+            try:
+                cell_paragraph.style = 'Default Paragraph Font'
+            except KeyError:
+                #print("Error: No usable default style found. Proceeding without style assignment.")
+                pass
         cell_paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
     if dest_font != "":
@@ -3292,7 +3311,15 @@ def cell_add_paragraph(row_n, paragraph_text):
         cell_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     else:
         cell_paragraph.text = paragraph_text
-        cell_paragraph.style = 'Normal'
+        try:
+            cell_paragraph.style = 'Normal'
+        except KeyError:
+            #print("Warning: 'Normal' style not found. Falling back to 'Default Paragraph Font'.")
+            try:
+                cell_paragraph.style = 'Default Paragraph Font'
+            except KeyError:
+                #print("Error: No usable default style found. Proceeding without style assignment.")
+                pass
         cell_paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
     if dest_font != "":
