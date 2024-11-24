@@ -88,21 +88,21 @@ deepl_language_names_by_code['ZH'] = 'Chinese (simplified)';
 		var needs_update = ""
 		  
 		switch (program_version) {
-			  case '2024-10-12':
-				message_text = "You are using the latest version 2024-10-12."
+			  case '2024-11-23':
+				message_text = "You are using the latest version 2024-11-23."
 				break;
 			  default:
-				if(program_version > '2024-10-12'){
+				if(program_version > '2024-11-23'){
 					message_text = "You are using a developer preview version : " + program_version + "." +
 					" This version is ahead of the main version."
 					needs_update = "0"
 				}else{
 					if(engine == 'deepl'){
-						message_text = "You are not using the latest version, please download the latest version 2024-10-12 here :\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
+						message_text = "You are not using the latest version, please download the latest version 2024-11-23 here :\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
 						needs_update = "1"
 					}
 					else{
-						message_text = "You are using the latest version for google translate.\nAn update for deepl users is available, version 2024-10-12 can be downloaded here :\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
+						message_text = "You are using the latest version for google translate.\nAn update for deepl users is available, version 2024-11-23 can be downloaded here :\n" + "https://github.com/translation-robot/machine-translate-docx/blob/main/download.md"
 					}
 				}
 			
@@ -113,7 +113,7 @@ deepl_language_names_by_code['ZH'] = 'Chinese (simplified)';
 			message_text = message_text + "\n\n* * * * * * * * *  PLEASE READ * * * * * * * * * \n\n" + deepl_language_names_by_code[destlang_code.toUpperCase()] +
 				" is supported by Deepl, please consider using Deepl for better quality instead of Google for translation." +
 				"\n\nTo install Deepl shortcut, use install-" + deepl_language_names_by_code[destlang_code.toUpperCase()]
-				+ '.bat file to install. If the file is not in SMTVRobot_20231120_windows_10_11.7z or SMTVRobot-mac-2024-10-12.tar.gz, you may request it from smtv.bot@gmail.com.\n\n' +
+				+ '.bat file to install. If the file is not in SMTVRobot_20231120_windows_10_11.7z or SMTVRobot-mac-2024-11-23.tar.gz, you may request it from smtv.bot@gmail.com.\n\n' +
 				'Once the shortcut is installed, you can use "machine-translate-docx.exe - ' + deepl_language_names_by_code[destlang_code.toUpperCase()] + ' - Deepl" sendto Shortcut. For Mac version, please email smtv.bot@gmail.com to request service shortcut for ' + deepl_language_names_by_code[destlang_code.toUpperCase()] + '.' +
 				"\n\n* * * * * * * * * * * * * * * * * * * * * * * * *"/**/
 		}else{
