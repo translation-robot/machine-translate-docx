@@ -31,8 +31,11 @@ https://1drv.ms/u/c/25c35a16b8db8a90/EaFIcfpGzGdOlAJtMIxJGBsBrr9iYLMdz-BrV8LA3YE
 Before installing the DMG installer, disable mac Gatekeeper:
 1. From Launchpad open the Term App
 2. Run this command:
+
     sudo spctl --master-disable
+
     (your mac account password will be required)
+
 This will allow unsigned apps to run on Mac OS X.
 
 Only after disabling Gatekeeper, double click on the DMG installer file to install the translation robot, otherwise you will have to reinstall the program again.
@@ -43,6 +46,8 @@ After running the Machine Translator and translating one file from the Machine T
 
 1. From Launchpad open the Term App
 2. Run this command:
+
     sudo spctl --master-enable
+
     (your mac account password will be required)
 This will disallow new unsigned apps to run on Mac OS X.
