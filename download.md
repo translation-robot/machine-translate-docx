@@ -63,12 +63,6 @@ After running the Machine Translator and translating one file from the Machine T
     (your mac account password will be required)
 This will disallow new unsigned apps to run on Mac OS X.
 
-Download the binaries for macos here:
-
-Mac OS X dmg installer:
-
-https://1drv.ms/u/c/25c35a16b8db8a90/EaFIcfpGzGdOlAJtMIxJGBsBrr9iYLMdz-BrV8LA3YEbsg?e=npXyTQ
-
 Before installing the DMG installer, disable mac Gatekeeper:
 1. From Launchpad open the Term App
 2. Run this command:
