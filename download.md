@@ -50,4 +50,5 @@ After running the Machine Translator and translating one file from the Machine T
     sudo spctl --master-enable
 
     (your mac account password will be required)
+	
 This will disallow new unsigned apps to run on Mac OS X.
