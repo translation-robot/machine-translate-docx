@@ -6,7 +6,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_bufferin
 import platform
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2024-11-23"
+PROGRAM_VERSION="2025-07-07"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -56,6 +56,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.remote.remote_connection import LOGGER
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import NoSuchElementException
 
 from screeninfo import get_monitors
 
@@ -202,6 +203,11 @@ DefaultJsonConfiguration = """{
 			"maximum_character_block": 5000
 		}
 	},
+	"perplexity": {
+		"account": {
+			"maximum_character_block": 25000
+		}
+	},
 	"statistics": {
 		"html_statistics_form_url": "https://contactdirectavecdieu.net/robot-stats.php",
 		"google_sheets_statistics": {
@@ -215,8 +221,8 @@ DefaultJsonConfiguration = """{
       "sleep_seconds_on_update": 30
 	},
 	"location": {
-	  "primary_country_checker_url": "https://www.contactdirectavecdieu.net/geoip/index.php",
-	  "secondary_country_checker_url": "http://ip-api.com/json/",
+	  "primary_country_checker_url": "http://ip-api.com/json/",
+	  "secondary_country_checker_url": "https://www.contactdirectavecdieu.net/geoip/index.php",
       "http_query_timeout" : 3
 	},
 	"chrome_driver": {
@@ -353,7 +359,7 @@ parser = argparse.ArgumentParser()
 #parser.add_argument('--source-language', required = True, choices = Languages, help="Specify the source language!")
 parser.add_argument('--srclang', '-sl', required = False, help="Specify the default source language, en is default (hi,ja,ru,de,ru,hi,ja,in, etc)", default='en')
 parser.add_argument('--destlang', '--dl', required = False, help="Specify the destination language with 2 letter code (hi,ja,ru,de,ru,hi,ja,in, etc)")
-parser.add_argument('--engine', '-e', required = False, help="Specify the translation engine (google, deepl, yandex)")
+parser.add_argument('--engine', '-e', required = False, help="Specify the translation engine (google, deepl, yandex, chatgpt, perplexity)")
 parser.add_argument('--enginemethod', '-m', required = False, help="Specify the method (javascript, phrasesblock, singlephrase, xlsxfile, textfile )")
 parser.add_argument('--docxfile', '-d', required = False, help="Input file name")
 parser.add_argument('--xlsxreplacefile', '-x', required = False, help="Excel xlsx search and replace file")
@@ -758,9 +764,6 @@ COUNTRY_QUERY_HTTP_TIMEOUT = 3
 deepl_max_char_bloc_size_key = ['deepl', 'no_account','maximum_character_block']
 deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key)
 
-MAX_TRANSLATION_BLOCK_SIZE = deepl_maximum_character_block
-# Override MAX_TRANSLATION_BLOCK_SIZE value after logging on Deepl
-
 deepl_sleep_wait_translation_seconds = 0.1
 translation_errors_count = 0
 
@@ -857,16 +860,29 @@ if translation_engine is not None:
 else:
     translation_engine = ""
 
-if translation_engine == 'yandex':
+if translation_engine == 'yandex' or translation_engine == 'perplexity':
     showbrowser = True
-    if dest_lang == 'hu':
-        translation_engine = 'yandex'
-    else:
-        translation_engine = 'yandex'
+
+                                     
 elif translation_engine == 'deepl':
     translation_engine = 'deepl'
+elif translation_engine == 'chatgpt':
+    translation_engine = 'chatgpt'
+elif translation_engine == 'perplexity':
+    translation_engine = 'perplexity'
 else:
     translation_engine = 'google'
+
+
+perplexity_max_char_bloc_size_key = ['perplexity', 'account','maximum_character_block']
+perplexity_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, perplexity_max_char_bloc_size_key)
+
+if translation_engine == 'perplexity':
+    MAX_TRANSLATION_BLOCK_SIZE = perplexity_maximum_character_block
+else:
+    MAX_TRANSLATION_BLOCK_SIZE = deepl_maximum_character_block
+# Override MAX_TRANSLATION_BLOCK_SIZE value after logging on Deepl
+
 
 engine_method = args.enginemethod
 engine_method = "%s" % engine_method
@@ -902,6 +918,10 @@ elif translation_engine == 'deepl':
         engine_method = 'phrasesblock'
     else:
         engine_method = 'phrasesblock'
+elif translation_engine == 'chatgpt':
+    engine_method = 'phrasesblock'
+elif translation_engine == 'perplexity':
+    engine_method = 'phrasesblock'
 else:
     engine_method = "web"
 
@@ -1105,6 +1125,18 @@ if not country_name:
 # Set environment variable if needed
 set_SE_DRIVER_MIRROR_URL_if_needed(country_name, chrome_driver_mirror_url)
 
+# Set up Chrome options
+chrome_options = Options()
+# Set the user-data-dir to the parent of the profiles
+
+#chrome_options.add_argument(f"--user-data-dir={user_data_dir}") 
+#chrome_options.add_argument(r'--profile-directory=Default')
+
+
+user_data_dir = fr"C:\Temp\Chrome"
+# Set the user-data-dir to the parent of the profiles
+
+
 
 chrome_options = Options()
 chrome_options.add_argument("--disable-web-security")
@@ -1113,13 +1145,44 @@ chrome_options.add_argument("--lang=en-GB")
 #chrome_options.add_argument("--verbose")
 chrome_options.add_argument("--log-level=3")  # fatal
 
+if  translation_engine.lower() == "chatgpt" and translation_engine.lower() != "perplexity" :
+    print(f"Using Chrome profile")
+    print(f"Using user data dir: {user_data_dir}")
+    chrome_options.add_argument(f"--user-data-dir={user_data_dir}") 
+    chrome_options.add_argument(r'--profile-directory=Default')
+
 #chrome_options.add_argument("load-extension=C:\\Users\Patriot\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\mooikfkahbdckldjjndioackbalphokd\\3.17.0_0")
 
-if not showbrowser and translation_engine.lower() != "deepl":
+if not showbrowser and translation_engine.lower() != "deepl" and translation_engine.lower() != "chatgpt" :
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--lang=en-GB")
 
-#word_file_to_translate = r'X:\travail\smtv-hindi\NWN 584 sf2 - table fix1.doc'
+                                                                               
+
+if translation_engine.lower() == "chatgpt" or translation_engine.lower() == "perplexity" :
+    # Get the Windows username
+    try:
+        username = os.getlogin()
+        home_dir = os.path.expanduser("~")
+
+        # Construct the Chrome user data directory path
+        user_data_dir = os.path.join(home_dir, "AppData", "Local", "Google", "Chrome", "User Data")
+        
+        user_data_dir = fr"C:\Temp\Chrome"
+        print(f"Using Chrome user data directory: {user_data_dir}")
+
+        # Set up ChromeOptions
+        print(f"Using Chrome user data directory: {user_data_dir}")
+        chrome_options.add_argument(f"--user-data-dir={user_data_dir}")  # Path to the user data directory
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--profile-directory=Default")  # Use the "Default" profile
+
+        print(f"Using Chrome user data directory: {user_data_dir}")
+    #word_file_to_translate = r'X:\travail\smtv-hindi\NWN 584 sf2 - table fix1.doc'
+    except:
+        var = traceback.format_exc()
+        print(var)
+        input("Failed to add chrome options")
 
 
 # Used to tokenize thai
@@ -1392,6 +1455,21 @@ def selenium_chrome_translate_maxchar_blocks():
                         if translation_succeded == False:
                             print("Deepl translation permited limit exeeded")
                             return translation_succeded, []
+                    if translation_engine == 'chatgpt':
+                        #print(to_translate)
+                        #print(translation_try_count)
+                        translation_succeded, translation = selenium_chrome_chatgpt_translate(to_translate, translation_try_count - 1)
+                        if translation_succeded == False:
+                            print("Chatgpt translation failed")
+                            return translation_succeded, []
+                    if translation_engine == 'perplexity':
+                        #print(to_translate)
+                        #print(translation_try_count)
+                        #print("Translating with Perplexity AI")
+                        translation_succeded, translation = selenium_chrome_perplexity_translate(to_translate, translation_try_count - 1)
+                        if translation_succeded == False:
+                            print("Perplexity translation failed")
+                            return translation_succeded, []
                     elif translation_engine == 'google':
                         if engine_method == 'xlsxfile':
                             translation = selenium_chrome_machine_translate_once(to_translate, index)
@@ -1641,100 +1719,156 @@ def selenium_chrome_google_translate_text_file(text_file_path):
     
     
 def selenium_chrome_google_translate_html_javascript_file(html_file_path):
-    global my_hazm_normalizer
+    global my_hazm_normalizer, showbrowser, driver
     html_file_path_escaped = html_file_path.replace('#','%23')
     file_url = 'file://' + html_file_path_escaped
-    driver.get(file_url)
+                        
     
-    print("Reading translation")
+    nb_retry = 3
+    
+    while nb_retry > 0:
+        nb_retry = nb_retry -1
+        try:
+            driver.get(file_url)
+            
+            print("Reading translation")
 
-    try:
-        scrollHeight = driver.execute_script("return document.body.scrollHeight")
-        innerHeight = driver.execute_script("return window.innerHeight")
-        bar = progressbar.ProgressBar(max_value=scrollHeight)
-        bar.update(0)
-    except:
-        var = traceback.format_exc()
-        print(var)
-
-    paragraphs = driver.find_elements(by=By.XPATH, value='//p[@class="translation"]')
-
-    try:
-        
-        # How to detect a paragraph is translated is that it has the string below
-        translated_substring = '<font style="vertical-align: inherit;">'
-        scroll_offset_paragraph = 60
-        
-        for index, paragraph in enumerate(paragraphs, start=1):
-        
-            viewport_top = driver.execute_script("return window.pageYOffset;")
-            viewport_bottom = viewport_top + driver.execute_script("return window.innerHeight;")
-
-            # Get the coordinates of the element
-            element_top = paragraph.location['y']
-            element_bottom = element_top + paragraph.size['height']
-            
-            paragraph_html = paragraph.get_attribute('innerHTML')
-            #print(f"{paragraph_html}")
-            
-            location = paragraph.location
-            x = location['x']
-            y = location['y']
-            scroll_position = location['y'] - scroll_offset_paragraph
-            
-            wait_translation_sleep_sec = 0.05
-            
-            # or viewport_top <= element_bottom <= viewport_bottom
-            if viewport_top <= element_top <= viewport_bottom:
-                #print("The element is displayed at the current scroll position.")
-                pass
-            else:
-                #print("The element is not displayed at the current scroll position.")
-                try:
-                    driver.execute_script(f"window.scrollTo(0, {scroll_position});")
-                    time.sleep(wait_translation_sleep_sec)
-                    #print("The element should NOW be displayed at the current scroll position.")
-                except Exception as e:
-                    #Ignore and continue if there is an error
-                    #print(f"Error scrolling paragraph {index}: {str(e)}")
-                    pass
-            
-            # Wait until the translation is available        
-            
-            wait_translation_max_sleep_sec = 30
-            loop_wait_translation_count = wait_translation_max_sleep_sec / wait_translation_sleep_sec
-            while (translated_substring not in paragraph_html) and loop_wait_translation_count > 0:
-                #print(f"Sleeping in Paragraph {index}")
-                time.sleep(wait_translation_sleep_sec)
-                paragraph_html = paragraph.get_attribute('innerHTML')
-                loop_wait_translation_count = loop_wait_translation_count - 1
-            
             try:
-                bar.update(scroll_position + scroll_offset_paragraph)    
+                scrollHeight = driver.execute_script("return document.body.scrollHeight")
+                innerHeight = driver.execute_script("return window.innerHeight")
+                bar = progressbar.ProgressBar(max_value=scrollHeight)
+                bar.update(0)
             except:
-                # Ignore progressbar errors at the end
-                pass
-    except:
-        var = traceback.format_exc()
-        print(var)
-    
-    bar.update(scrollHeight)
-    progressbar.streams.flush()
-    bar.finish()
-    
-    # Read translation from HTML
-    html_translation = driver.page_source
-    #soup = BeautifulSoup(html_translation)
-    soup = BeautifulSoup(html_translation, features="lxml")
-    pTags = soup.find_all('p', {'class':"translation"})
-    translation_array = []
-    for pTranstlation in pTags:
-        pData = pTranstlation.text
-        if dest_lang.lower() == 'fa':
-           pData =  my_hazm_normalizer.normalize(text=pData)
-        translation_array.append(pData)
+                var = traceback.format_exc()
+                print(var)
 
-    return (translation_array)
+            paragraphs = driver.find_elements(by=By.XPATH, value='//p[@class="translation"]')
+
+            try:
+                
+                # How to detect a paragraph is translated is that it has the string below
+                translated_substring = '<font style="vertical-align: inherit;">'
+                scroll_offset_paragraph = 60
+                
+                for index, paragraph in enumerate(paragraphs, start=1):
+                
+                    #input("Time out here next line ")
+                    viewport_top = driver.execute_script("return window.pageYOffset;")
+                    viewport_bottom = viewport_top + driver.execute_script("return window.innerHeight;")
+
+                    # Get the coordinates of the element
+                    element_top = paragraph.location['y']
+                    element_bottom = element_top + paragraph.size['height']
+                    
+                    paragraph_html = paragraph.get_attribute('innerHTML')
+                    #print(f"{paragraph_html}")
+                    
+                    location = paragraph.location
+                    x = location['x']
+                    y = location['y']
+                    scroll_position = location['y'] - scroll_offset_paragraph
+                    
+                    wait_translation_sleep_sec = 0.05
+                    
+                    # or viewport_top <= element_bottom <= viewport_bottom
+                    if viewport_top <= element_top <= viewport_bottom:
+                        #print("The element is displayed at the current scroll position.")
+                        pass
+                    else:
+                        #print("The element is not displayed at the current scroll position.")
+                        try:
+                            driver.execute_script(f"window.scrollTo(0, {scroll_position});")
+                            time.sleep(wait_translation_sleep_sec)
+                            #print("The element should NOW be displayed at the current scroll position.")
+                        except Exception as e:
+                            #Ignore and continue if there is an error
+                            #print(f"Error scrolling paragraph {index}: {str(e)}")
+                            pass
+                    
+                    # Wait until the translation is available        
+                    
+                    wait_translation_max_sleep_sec = 30
+                    loop_wait_translation_count = wait_translation_max_sleep_sec / wait_translation_sleep_sec
+                    while (translated_substring not in paragraph_html) and loop_wait_translation_count > 0:
+                        #print(f"Sleeping in Paragraph {index}")
+                        time.sleep(wait_translation_sleep_sec)
+                        paragraph_html = paragraph.get_attribute('innerHTML')
+                        loop_wait_translation_count = loop_wait_translation_count - 1
+                    
+                    try:
+                        bar.update(scroll_position + scroll_offset_paragraph)    
+                    except:
+                        # Ignore progressbar errors at the end
+                        pass
+            except:
+                var = traceback.format_exc()
+                print(var)
+            
+            bar.update(scrollHeight)
+            progressbar.streams.flush()
+            bar.finish()
+            
+            # Read translation from HTML
+            html_translation = driver.page_source
+            #soup = BeautifulSoup(html_translation)
+            soup = BeautifulSoup(html_translation, features="lxml")
+            pTags = soup.find_all('p', {'class':"translation"})
+            translation_array = []
+            for pTranstlation in pTags:
+                pData = pTranstlation.text
+                if dest_lang.lower() == 'fa':
+                   pData =  my_hazm_normalizer.normalize(text=pData)
+                translation_array.append(pData)
+
+            return (translation_array)
+  
+        except:
+            var = traceback.format_exc()
+            print(var)
+                        
+            
+            Input("Here do something exit with session failed ")
+                
+            chrome_options = Options()
+            chrome_options.add_argument("--disable-web-security")
+            chrome_options.add_argument("--disable-xss-auditor")
+            chrome_options.add_argument("--log-level=3")  # fatal
+            chrome_options.add_argument("--lang=en-GB")
+            
+            if not showbrowser:
+                chrome_options.add_argument("--headless")
+                                                                                                   
+                                                        
+                                                      
+                                                                     
+                                                                             
+            
+            docxfile_table_number_of_lines = numrows
+            if use_api or splitonly:
+                print("\nCreating a new browser for stats")
+                                                      
+                service = Service()                                
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+                                    
+                  
+    
+                            
+                               
+                
+    
+                                
+                                         
+                                           
+                                                           
+                                                       
+                          
+                               
+                                  
+                                     
+                                                            
+                                       
+
+                              
     
 def getDownLoadedFileNameFirefox(waitTime):
     driver.execute_script("window.open()")
@@ -2222,6 +2356,34 @@ def selenium_chrome_deepl_log_in():
         return False
 
 
+def selenium_chrome_perplexity_wait_log_in():
+    global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
+    
+    driver.set_window_size(600, 600)
+    #driver.maximize_window()
+
+    loop_count = 200
+    sleep_wait_sec = 5
+
+    while True:
+        try:
+            driver.get("https://www.perplexity.ai/")
+            
+            # Wait up to 10 seconds for the signed-in avatar to appear
+            WebDriverWait(driver, 3).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="sidebar-popover-trigger-signed-in"]'))
+            )
+            print("✅ User is logged in perplexity.")
+            return True
+
+        except:
+            var = traceback.format_exc()
+            print(var)
+            
+    return False
+
+
+
 def selenium_chrome_deepl_log_off():
     global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
         
@@ -2568,7 +2730,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 # with open('before.html', 'w', encoding="utf-8") as f:
                 #    f.write(page_source_str)
                 # f.close()
-                wait_translation_finish_try = 300
+                wait_translation_finish_try = 400
                 block_translation_percent_done = 0
                 while page_source_str.find(still_translating_html_str) > 0 and wait_translation_finish_try > 0:
                     sleep(0.2)
@@ -2708,6 +2870,480 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         translation = "\n".join(translated_phrases_array)
         # print("translation=%s" % (translation))
         # input("Press enter to continue")
+    except Exception:
+        var = traceback.format_exc()
+        print(var)
+        sleep(1)
+        # sys.exit(0)
+    return True, translation
+
+
+
+def selenium_chrome_chatgpt_translate(to_translate, retry_count):
+    global logged_into_chatgpt, src_lang_name, dest_lang_name
+    
+    translation = ""
+    Translated = False
+    # Progress bar to show only when deepl also shows it on the browser
+    bar = None
+    global closed_cookies_accept_message_bool, close_install_extension_message_bool, deepl_nb_clear_cached_times
+    global engine_method, end_time, elapsed_time, json_configuration_array
+    
+    deepl_maximum_clear_cache_retry_key = ['deepl', 'maximum_clear_cache_retry']
+    deepl_maximum_clear_cache_retry = get_nested_value_from_json_array(json_configuration_array, deepl_maximum_clear_cache_retry_key)
+    
+    # Set variable to false if they are not globally defined
+    try:
+        tmp_var = closed_cookies_accept_message_bool
+        tmp_var = close_install_extension_message_bool
+    except:
+        closed_cookies_accept_message_bool = False
+        close_install_extension_message_bool = False
+
+    to_translate_phrases_array = to_translate.split("\n")
+    to_translate_phrases_array_len = len(to_translate_phrases_array)
+
+    driver.set_window_size(800, 700)
+
+    try:
+        translation_page_openeing_loop_count = 4
+        translation_page_opened = False
+        
+        # Open ChatGPT translation page
+        while translation_page_opened == False and translation_page_openeing_loop_count > 0:
+            #print(f"{translation_page_openeing_loop_count} trying left")
+            try:
+                driver.get("https://chatgpt.com/")
+                #sleep(1)
+
+                translation_page_opened = True
+            except:
+                print("Waiting for https://chatgpt.com/ ...")
+                sleep(1)
+            translation_page_openeing_loop_count = translation_page_openeing_loop_count - 1
+
+        sleep(1)
+        # Locate the contenteditable div
+        textarea = driver.find_element(By.XPATH, "//div[@id='prompt-textarea']")
+
+        # Send text to the element
+        textarea.click()
+
+        #time.sleep(5)
+        #textarea.send_keys("Translate this from English to Persian:")
+
+        # Sending a new line using Keys.RETURN for proper formatting
+        #textarea.send_keys(Keys.SHIFT + Keys.ENTER)
+
+        #textarea.send_keys("I was lying with my eyes closed,")
+        #textarea.send_keys(Keys.SHIFT + Keys.ENTER)
+
+
+        # The string that needs to be sent
+        # Max 4,096 characters 
+        str_prompt = f"""Translate the following text from {src_lang_name} to {dest_lang_name} for Supreme Master Television subtitles:
+Each input line must correspond to exactly one output line.
+Do not split, merge, or add any lines.
+Do not insert any line breaks within a line, even if the line is long.
+There should be no formating including URLs and spacing, within each line.
+Only use a line break to move to the next input line.
+Do not add, remove, or split any lines.
+Each output line must contain the full translation of the corresponding input line.
+
+Here is the text to be translated:
+"""
+
+        str_prompt = str_prompt + to_translate
+        
+        lines = str_prompt.split('\n')
+
+        # Split the string on new lines
+        lines = str_prompt.splitlines()
+
+        # Wrap each line in <p>...</p>
+        wrapped_lines = [f"<p>{line}</p>" for line in lines]
+
+        # Join all wrapped lines into a single string
+        output_string = "".join(wrapped_lines)
+
+        # JavaScript to set the content of the contenteditable div
+        js_script = """
+        var textarea = document.getElementById('prompt-textarea');
+        textarea.innerHTML = arguments[0];
+        """
+
+        # Execute JavaScript to inject the text into the div
+        driver.execute_script(js_script, output_string)
+
+        print("Test 1 completed")
+
+        # Send each line to the textarea
+        #for i, line in enumerate(lines):
+        #    textarea.send_keys(line)  # Send the current line
+            
+        #    # If it's not the last line, send SHIFT + ENTER to move to the next line
+        #    if i < len(lines) - 1:
+        #        textarea.send_keys(Keys.SHIFT + Keys.RETURN)
+
+        # Wait for the button to appear with a timeout of 3 seconds
+        sleep(1)
+        #button = WebDriverWait(driver, 3).until(
+        #    EC.presence_of_element_located((By.XPATH, "//button[@aria-label='Send prompt' and @data-testid='send-button']"))
+        #)
+        
+        #button = WebDriverWait(driver, 3).until(
+        #    EC.presence_of_element_located((By.CSS_SELECTOR, "#composer-submit-button > svg.icon > path"))
+        #)
+
+
+        try:
+            button = driver.find_element(By.CSS_SELECTOR, 'button[data-testid="close-button"]')
+            button.click()
+        except:
+            pass
+
+        # Locate the button element using its attributes
+        button_submit_prompt = driver.find_element(By.ID, "composer-submit-button")
+        
+        driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", button_submit_prompt)
+
+        # Click the button
+        button_submit_prompt.click()
+
+
+        # Set a timeout value for waiting for the element
+        timeout = 1  # Timeout after 10 seconds if not found
+
+        while True:
+            try:
+                # Search for the button with aria-label="Stop streaming"
+                stop_button = WebDriverWait(driver, timeout).until(
+                    EC.presence_of_element_located((By.XPATH, "//button[@aria-label='Stop streaming']"))
+                )
+                
+                # Element found, perform action (if any)
+                print("Found the 'Stop streaming' button!")
+                
+                # Sleep for 0.5 seconds before checking again
+                time.sleep(0.5)
+            except Exception as e:
+                # If the element is no longer found or any other exception occurs
+                print("Element not found or timeout reached. Stopping the loop.")
+                break
+
+        # Wait for the button to appear with a timeout of 3 seconds
+        #button = WebDriverWait(driver, 3).until(
+        #    EC.presence_of_element_located((By.XPATH, "//button[@aria-label='Dictate button']"))
+        #)
+
+        page_source_str = driver.page_source
+
+
+        # Parse the HTML with BeautifulSoup
+        soup = BeautifulSoup(page_source_str, 'html.parser')
+
+        # Find all the article tags
+        articles = soup.find_all('article')
+
+        #print(len(articles))
+
+        second_article_html = str(articles[1])
+        #print (second_article_html)
+        #print()
+
+
+        # Get the text of the last article element
+        last_article_text = articles[-1].get_text()
+
+        # Print the extracted text
+        #print(last_article_text)
+
+        lines = None
+
+        # Find the div with class "markdown"
+        markdown_div = articles[1].find('div', class_='markdown')
+
+        # Check if the div exists and then process the text
+        if markdown_div:
+            # Step 1: Replace all </p><p> with <br/>
+            html_str = str(markdown_div)
+            html_str = html_str.replace('</p><p>', '<br/><br/>')
+
+            # Reparse the modified HTML to a BeautifulSoup object again
+            markdown_div = BeautifulSoup(html_str, 'html.parser')
+
+            # Step 2: Define a complex delimiter for <br/>
+            delimiter = 'random_complex_delimiter_123456'
+            delimiter_paragraph = f"<p>{delimiter}</p>"
+
+            # Step 3: Replace <br/> tags with the complex delimiter
+            for line_break in markdown_div.find_all('br'):
+                line_break.insert_before(BeautifulSoup(delimiter_paragraph, 'html.parser'))
+                line_break.unwrap()  # Remove the <br> tag after inserting the delimiter
+                
+
+            # Get the full text with the complex delimiter and print it
+            markdown_text_with_delimiter = markdown_div.get_text()
+
+            # Output the result
+            #print(markdown_text_with_delimiter)
+            #input("After markdown text split")
+            
+            lines = markdown_text_with_delimiter.split(delimiter)
+            if(len(lines) == 1):
+                lines = markdown_text_with_delimiter.split("\n")
+            print(lines)
+            print("after print lines")
+
+        else:
+            print("No div with class 'markdown' found.")
+
+        translated_phrases_array = lines
+        translated_phrases_array_len = len(translated_phrases_array)
+        
+        input_nb_lines = len(to_translate.replace("\r", "").split("\n"))
+        # for pos_remove in range(0,translated_phrases_array_len - to_translate_phrases_array_len):
+        if translated_phrases_array_len >= to_translate_phrases_array_len:
+            print(f"input_nb_lines={input_nb_lines}")
+            translated_phrases_array = translated_phrases_array[:input_nb_lines]
+            #print("input_nb_lines: %s" % (input_nb_lines))
+            #print("array: %s" % (translated_phrases_array))
+            res = "\n".join(translated_phrases_array)
+            if translated_phrases_array_len > to_translate_phrases_array_len + 1:
+                input("Found %s lines out of %s lines" % (translated_phrases_array_len, to_translate_phrases_array_len))
+
+        if translated_phrases_array_len < to_translate_phrases_array_len:
+            res = ""
+            print("Error, not enough lines")
+            sleep(3)
+
+        translation = "\n".join(lines)
+        #input("After markdown text")
+        # Get the text inside this div
+        #if assistant_div:
+        #    assistant_text = assistant_div.get_text()
+        #    print(assistant_text)
+        #else:
+        #    print("No div with data-message-author-role='assistant' found.")
+        
+        # Step 1: Click the 3-dot conversation options button
+        menu_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="conversation-options-button"]'))
+        )
+        menu_button.click()
+
+        # Step 2: Wait for and click the "Delete" button by visible text
+        delete_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//*/text()[normalize-space(.)='Delete']/parent::*"))
+        )
+        delete_button.click()
+        
+        # Step: Click the red "Delete" confirmation button
+        confirm_delete_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="delete-conversation-confirm-button"]'))
+        )
+        confirm_delete_button.click()
+        
+        
+            
+    except Exception:
+        var = traceback.format_exc()
+        print(var)
+        sleep(1)
+        # sys.exit(0)
+    return True, translation
+
+
+
+def selenium_chrome_perplexity_translate(to_translate, retry_count):
+    global logged_into_chatgpt, src_lang_name, dest_lang_name
+    
+    translation = ""
+    Translated = False
+    # Progress bar to show only when deepl also shows it on the browser
+    bar = None
+    global closed_cookies_accept_message_bool, close_install_extension_message_bool, deepl_nb_clear_cached_times
+    global engine_method, end_time, elapsed_time, json_configuration_array
+    
+    to_translate_phrases_array = to_translate.split("\n")
+    to_translate_phrases_array_len = len(to_translate_phrases_array)
+
+
+    str_prompt = f"""Translate the following text from {src_lang_name} to {dest_lang_name} for Supreme Master Television subtitles:
+Each input line must correspond to exactly one output line.
+Do not split, merge, or add any lines.
+Do not insert any line breaks within a line, even if the line is long.
+Preserve all original formatting, including URLs and spacing, within each line.
+Only use a line break to move to the next input line.
+Do not add, remove, or split any lines.
+Each output line must contain the full translation of the corresponding input line.
+Do add extra output with current time EDT at the end of the output that is not in the text to be translated. Do not echo text to be translated in the translation.
+
+Here is the text to be translated:
+"""
+
+    str_prompt = str_prompt + to_translate
+    
+    #print(str_prompt)
+    
+    # Set variable to false if they are not globally defined
+    try:
+        tmp_var = closed_cookies_accept_message_bool
+        tmp_var = close_install_extension_message_bool
+    except:
+        closed_cookies_accept_message_bool = False
+        close_install_extension_message_bool = False
+
+    to_translate_phrases_array = to_translate.split("\n")
+    to_translate_phrases_array_len = len(to_translate_phrases_array)
+
+    driver.set_window_size(800, 700)
+
+    try:
+        translation_page_openeing_loop_count = 4
+        translation_page_opened = False
+        
+        # Open ChatGPT translation page
+        while translation_page_opened == False and translation_page_openeing_loop_count > 0:
+            #print(f"{translation_page_openeing_loop_count} trying left")
+            try:
+                driver.get("https://www.perplexity.ai/")
+                #sleep(1)
+
+                translation_page_opened = True
+            except:
+                print("Waiting for https://www.perplexity.ai/ ...")
+                sleep(1)
+            translation_page_openeing_loop_count = translation_page_openeing_loop_count - 1
+
+
+        # Locate the contenteditable div
+        textarea = driver.find_element(By.XPATH, "//*[@id='ask-input']")
+
+        # Send text to the element
+        textarea.click()
+        
+        # Assuming you already have a WebDriver instance (driver)
+        #textarea = driver.find_element(By.ID, "ask-input")
+
+        js_script = f"""
+        const textarea = document.getElementById('ask-input');
+
+        // Create a clipboard event with the desired text
+        const clipboardData = new DataTransfer();
+        clipboardData.setData('text/plain', `{str_prompt}`);
+        const pasteEvent = new ClipboardEvent('paste', {{
+          bubbles: true,
+          cancelable: true,
+          clipboardData: clipboardData
+        }});
+
+        // Focus and dispatch paste
+        textarea.focus();
+        textarea.dispatchEvent(pasteEvent);
+        """
+
+        driver.execute_script(js_script)
+        
+        submit_button = driver.find_element(By.XPATH, '//button[@data-testid="submit-button"]')
+        submit_button.click()
+
+        time.sleep(1)
+
+        timeout = 300  # seconds
+        poll_interval = 1  # seconds
+        start_time = time.time()
+
+       # print("⏳ Waiting for stop button to disappear", end='')
+        while True:
+            try:
+                stop_button = driver.find_element(By.CSS_SELECTOR, '[data-testid="stop-generating-response-button"]')
+                if stop_button.is_displayed():
+                    #print("⏳ Waiting for stop button to disappear...")
+                    #print('.', end='')
+                    pass
+                else:
+                    #print("\n✅ Stop button is no longer visible.")
+                    #print("\n")
+                    break
+            except NoSuchElementException:
+                #print("✅ Stop button has been removed from the DOM.")
+                #print("\n")
+                break
+
+            # Timeout check
+            if time.time() - start_time > timeout:
+                print("⚠️ Timed out waiting for stop button to disappear.")
+                break
+
+            time.sleep(poll_interval)
+            
+        time.sleep(1)
+
+        input_nb_lines = len(to_translate.replace("\r", "").split("\n"))
+
+        
+        # Get the div with class "prose"
+        prose_div = driver.find_element(By.CSS_SELECTOR, "div.prose")
+
+        # Extract all visible text content
+        text = prose_div.text
+
+        # Split into lines and strip empty ones
+        result_lines = [line.strip() for line in text.splitlines() if line.strip()]
+        
+        translated_phrases_array = result_lines
+        translated_phrases_array_len = len(translated_phrases_array)
+        
+        #print("result_lines:")
+        #print(result_lines)
+        
+        res = None
+                
+
+        # for pos_remove in range(0,translated_phrases_array_len - to_translate_phrases_array_len):
+        if translated_phrases_array_len >= to_translate_phrases_array_len:
+            #print(f"input_nb_lines={input_nb_lines}")
+            translated_phrases_array = translated_phrases_array[:input_nb_lines]
+            #print("input_nb_lines: %s" % (input_nb_lines))
+            #print("array: %s" % (translated_phrases_array))
+            res = "\n".join(translated_phrases_array)
+            if translated_phrases_array_len > to_translate_phrases_array_len + 1:
+                input("Found %s lines out of %s lines" % (translated_phrases_array_len, to_translate_phrases_array_len))
+
+        if translated_phrases_array_len < to_translate_phrases_array_len:
+            res = ""
+            print(f"Error, not enough lines : {translated_phrases_array_len} out of {to_translate_phrases_array_len}")
+            sleep(3)
+
+        #print(res)
+        
+        ##################################################
+        # Delete this chat from perplexity AI history
+        wait = WebDriverWait(driver, 10)
+
+        # 1. Click the three-dot (⋯) menu icon
+        dots_button = wait.until(EC.element_to_be_clickable((
+            By.CSS_SELECTOR,
+            'svg.tabler-icon-dots'
+        )))
+        dots_button.click()
+
+        # 2. Click the Delete option (with trash icon and text "Delete")
+        delete_button = wait.until(EC.element_to_be_clickable((
+            By.XPATH,
+            '//div[contains(@class, "cursor-pointer")]//span[text()="Delete"]'
+        )))
+        delete_button.click()
+
+        # Wait for the Confirm button and click it
+        confirm_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="thread-delete-confirm"]'))
+        )
+        confirm_button.click()
+        
+        translation = res
+            
     except Exception:
         var = traceback.format_exc()
         print(var)
@@ -2964,6 +3600,7 @@ def get_cell_data(cell,row_n):
     cell_non_greyed_text = cell_non_greyed_text.replace('’', "'")
     cell_non_greyed_text = cell_non_greyed_text.replace("\n", " ")
     cell_non_greyed_text = cell_non_greyed_text.replace("\r", " ")
+    cell_non_greyed_text = re.sub(r'[\r\n\u2028\u2029]+', ' ', cell_non_greyed_text)
     
     cell_non_greyed_text = re.sub("(?i)<pause>", "", cell_non_greyed_text) #'remove <pause> case insensitive
     cell_non_greyed_text = re.sub("(?i)<enter>", "", cell_non_greyed_text) #'remove <pause> case insensitive
@@ -3640,13 +4277,13 @@ def clean_up_previous_chrome_selenium_drivers(current_driver_full_path):
         
 
 def create_webdriver():
-    global driver, chromedriverpath
+    global driver, chromedriverpath, translation_engine
     if not splitonly:
         print("\nStarting translation using engine : %s" % (translation_engine.title()))
 
 
     if use_api == False and not splitonly:
-        print("Starting Chrome browser\n")
+        print(f"Starting Chrome browser\n")
         service = Service()
         
         try:
@@ -4075,7 +4712,7 @@ def google_translate_from_html_xlsxfile():
         pass
 
 def translate_from_phrasesblock():
-    global docx_file_name, translation_array
+    global docx_file_name, translation_array, translation_engine
     text_file_path = docx_file_name + '.txt'
     text_file_full_path = os.path.realpath(text_file_path)
     #print("text_file_full_path=%s" % text_file_full_path)
@@ -4085,7 +4722,7 @@ def translate_from_phrasesblock():
     translation_succeded = True
 
     #input("phrasesblock")
-    print("Starting translation in deepl using phrase blocks of %d characters..." % (MAX_TRANSLATION_BLOCK_SIZE))
+    print("Starting translation in %s using phrase blocks of %d characters..." % (translation_engine, MAX_TRANSLATION_BLOCK_SIZE))
 
     translation_succeded, translation_array = selenium_chrome_translate_maxchar_blocks()
     try:
@@ -4094,6 +4731,8 @@ def translate_from_phrasesblock():
     except:
         pass
     return translation_succeded
+
+
 
 def translate_docx():
     translation_array = []
@@ -4111,7 +4750,9 @@ def translate_docx():
 
     # For both deepl and google translate
     if engine_method == "phrasesblock":
-        translation_succeded = translate_from_phrasesblock()
+        # For both deepl and google translate
+        if translation_engine == "deepl" or translation_engine == "chatgpt" or translation_engine == "perplexity":
+            translation_succeded = translate_from_phrasesblock()
 
     return translation_succeded
 
@@ -4161,7 +4802,7 @@ def get_translation_and_replace_after():
                             # Faster google Chrome translate failed, using Selenium as backup
 
                             if translation_engine != 'yandex' and driver is not None:
-                                print("Starting Chrome browser\n")
+                                print(f"[Line {inspect.currentframe().f_lineno}] Starting Chrome browser\n")
                                 
                                 service = Service()                                
                                 driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -4177,7 +4818,7 @@ def get_translation_and_replace_after():
                         # Faster google Chrome translate failed, using Selenium as backup
 
                         if driver is not None:
-                            print("Starting Chrome browser\n")
+                            print(f"Starting Chrome browser\n")
                             
                             service = Service()                                
                             driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -4642,8 +5283,9 @@ def run_statistics():
         if use_api or splitonly:
             print("\nCreating a new browser for stats")
             
-            service = Service()                                
+                                                               
             driver = webdriver.Chrome(service=service, options=chrome_options)
+            service = Service()                                
         
         query_params = {
             "program_version" : PROGRAM_VERSION,
@@ -5179,6 +5821,12 @@ def main() -> int:
     
     if translation_engine == 'deepl':
         logged_into_deepl = selenium_chrome_deepl_log_in()
+        
+    if translation_engine == 'perplexity':
+        logged_into_perplexity = selenium_chrome_perplexity_wait_log_in
+        if not logged_into_perplexity:
+            print("Failed to login into perplexity")
+            exit(100)
 
     translation_succeded = translate_docx()
     
