@@ -26,7 +26,7 @@ Download the binaries for macos here:
 
 Mac OS X dmg installer:
 
-https://1drv.ms/u/c/25c35a16b8db8a90/EeBrkQotaZFDt9HD4mcNDnIBPg1lykgsOkPc4Ks6Fbb5Qw?e=R1XsOn
+https://1drv.ms/u/c/25c35a16b8db8a90/EfxfE3XwjLNNl_E0niU46H0BE494l41tkf-zRmYfrUGulg?e=bKOnyh
 
 Before installing the DMG installer, disable mac Gatekeeper:
 1. From Launchpad open the Term App
