@@ -6,7 +6,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_bufferin
 import platform
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-07-07"
+PROGRAM_VERSION="2025-07-28"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -1722,7 +1722,6 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
     global my_hazm_normalizer, showbrowser, driver
     html_file_path_escaped = html_file_path.replace('#','%23')
     file_url = 'file://' + html_file_path_escaped
-                        
     
     nb_retry = 3
     
@@ -1747,7 +1746,8 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
             try:
                 
                 # How to detect a paragraph is translated is that it has the string below
-                translated_substring = '<font style="vertical-align: inherit;">'
+                translated_substring_old = '<font style="vertical-align: inherit;">'
+                translated_substring_new = '<font dir="auto" style="vertical-align: inherit;"><font dir="auto" style="vertical-align: inherit;">'
                 scroll_offset_paragraph = 60
                 
                 for index, paragraph in enumerate(paragraphs, start=1):
@@ -1789,10 +1789,14 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
                     
                     wait_translation_max_sleep_sec = 30
                     loop_wait_translation_count = wait_translation_max_sleep_sec / wait_translation_sleep_sec
-                    while (translated_substring not in paragraph_html) and loop_wait_translation_count > 0:
+                    while (
+                        translated_substring_old not in paragraph_html
+                        and translated_substring_new not in paragraph_html
+                    ) and loop_wait_translation_count > 0:
                         #print(f"Sleeping in Paragraph {index}")
                         time.sleep(wait_translation_sleep_sec)
                         paragraph_html = paragraph.get_attribute('innerHTML')
+                        #print(f"\n{paragraph_html}\n")
                         loop_wait_translation_count = loop_wait_translation_count - 1
                     
                     try:
@@ -1837,11 +1841,6 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
             
             if not showbrowser:
                 chrome_options.add_argument("--headless")
-                                                                                                   
-                                                        
-                                                      
-                                                                     
-                                                                             
             
             docxfile_table_number_of_lines = numrows
             if use_api or splitonly:
@@ -1850,23 +1849,7 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
                 service = Service()                                
                 driver = webdriver.Chrome(service=service, options=chrome_options)
                                     
-                  
-    
-                            
-                               
-                
-    
-                                
-                                         
-                                           
-                                                           
-                                                       
                           
-                               
-                                  
-                                     
-                                                            
-                                       
 
                               
     
