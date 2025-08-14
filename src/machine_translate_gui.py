@@ -152,6 +152,7 @@ class MachineTranslationApp:
             'Estonian': 'et',
             'Finnish': 'fi',
             'French': 'fr',
+            'Hebrew': 'he',
             'Hungarian': 'hu',
             'Indonesian': 'id',
             'Italian': 'it',
@@ -172,6 +173,7 @@ class MachineTranslationApp:
             'Swedish': 'sv',
             'Turkish': 'tr',
             'Ukrainian': 'uk',
+            'Vietnamese': 'vi',
             'Chinese': 'zh',
             'Chinese (Simplified)': 'zh-hans',
             'Chinese (Traditional)': 'zh-hant',
@@ -269,7 +271,7 @@ class MachineTranslationApp:
         self.engine_label = tk.Label(root, text="Engine")
         self.engine_label.grid(row=6, column=0)
 
-        engines = ["Deepl", "Google"]
+        engines = ["Deepl", "Google","Perplexity"]
         self.engine = tk.StringVar(root)
         self.engine.set(engines[0])
         self.engine_combo = tk.OptionMenu(root, self.engine, *engines)
@@ -528,24 +530,34 @@ class MachineTranslationApp:
             #self.show_all_languages_var.set(True)
             
     def auto_select_engine(self, *args):
-        # List of languages for which Deepl should be selected
+        # Always-available engines
+        engines = ["Google", "Perplexity"]
 
-        if self.source_language.get() in self.deepl_languages and self.target_language.get() in self.deepl_languages:
-            # Languages in Deppl list
+        # Add Deepl only if both source & target are supported
+        if (self.source_language.get() in self.deepl_languages and
+            self.target_language.get() in self.deepl_languages):
+            engines.append("Deepl")
             self.engine.set("Deepl")
-            self.engine_combo.config(state="normal")
             self.show_browser_var.set(True)
             self.show_browser_checkbox.config(state="disabled")
-            
-            if self.target_language.get() not in self.google_languages:
-                self.engine_combo.config(state="disabled")
         else:
-            self.engine_combo.config(state="disabled")
+            # Force Google if Deepl is not available
             self.engine.set("Google")
             self.show_browser_var.set(False)
             self.show_browser_checkbox.config(state="normal")
             if self.source_language.get() not in self.deepl_languages:
                 self.target_language.set(self.languages[0])
+
+        # Update OptionMenu with the new engine list
+        menu = self.engine_combo["menu"]
+        menu.delete(0, "end")
+        for engine in engines:
+            menu.add_command(
+                label=engine,
+                command=lambda value=engine: self.engine.set(value)
+            )
+
+
     
     def auto_select_font(self, *args):
         # List of font for the selected language
@@ -557,7 +569,7 @@ class MachineTranslationApp:
             self.font_var.set("")
             
     def update_show_browser(self, *args):
-        if self.engine.get() == "Deepl":
+        if self.engine.get() == "Deepl" or self.engine.get() == "Perplexity":
             self.show_browser_var.set(True)
             self.show_browser_checkbox.config(state="disabled")
         elif self.engine.get() == "Google":
