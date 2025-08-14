@@ -3323,6 +3323,9 @@ AFTERTEXTTOTRANSLATE"""
                                 prose_div.click()
                                 prose_div.send_keys(Keys.PAGE_DOWN)
                                 
+                                body = driver.find_element(By.TAG_NAME, "body")
+                                body.send_keys(Keys.PAGE_DOWN)
+                                
                             except:
                                 try:
                                     body = driver.find_element(By.TAG_NAME, "body")
@@ -3367,7 +3370,19 @@ AFTERTEXTTOTRANSLATE"""
         except:
             pass
 
-
+        try:
+            prose_div = driver.find_element(By.CSS_SELECTOR, "div.prose")
+            prose_div.click()
+            prose_div.send_keys(Keys.PAGE_DOWN)
+            
+        except:
+            try:
+                body = driver.find_element(By.TAG_NAME, "body")
+                body.send_keys(Keys.PAGE_DOWN)
+            except:
+                print("Cannot find html body...")
+                pass
+                                
         # Try to get the div again (big)
         time.sleep(0.25)
         try:
