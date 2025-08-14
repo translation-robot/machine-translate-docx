@@ -3319,7 +3319,6 @@ AFTERTEXTTOTRANSLATE"""
                             time.sleep(0.25)
                             # Locate the div by its class
                             try:
-                                
                                 prose_div = driver.find_element(By.CSS_SELECTOR, "div.prose")
                                 prose_div.click()
                                 prose_div.send_keys(Keys.PAGE_DOWN)
@@ -3371,7 +3370,10 @@ AFTERTEXTTOTRANSLATE"""
 
         # Try to get the div again (big)
         time.sleep(0.25)
-        prose_div = driver.find_element(By.CSS_SELECTOR, "div.prose")
+        try:
+            prose_div = driver.find_element(By.CSS_SELECTOR, "div.prose")
+        except:
+            pass
         
         # Extract all visible text content
         text = prose_div.text
