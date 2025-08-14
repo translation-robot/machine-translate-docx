@@ -1494,6 +1494,18 @@ def selenium_chrome_translate_maxchar_blocks():
                         else:
                             translation_succeded, translation = selenium_chrome_perplexity_translate(to_translate, translation_try_count - 1)
                             # Sleep enough time to let perplexity page display a new converstation
+                            if translation == "":
+                                lines_to_translate = to_translate.split('\n')
+                                result_translation = ""
+                                for line in lines_to_translate:
+                                    translation_succeded, line_translated = selenium_chrome_perplexity_translate(line, 1)
+                                    if result_translation == "":
+                                        result_translation = line_translated
+                                    else:
+                                        result_translation = result_translation + "\n" + line_translated
+                                        driver.delete_all_cookies()
+                                translation = result_translation
+                                translation_succeded = True
                             time.sleep(0.25)
                         
                         if translation_succeded == False:
@@ -1509,6 +1521,9 @@ def selenium_chrome_translate_maxchar_blocks():
                             #print(to_translate)            
                             translation = selenium_chrome_google_translate(to_translate)
                     translation_try_count = translation_try_count + 1
+                if translation_try_count == 0:
+                   print(f"Failed to translate block:\n{to_translate}")
+                   print("Try translating line by line")
             except:
                 print("Error in selenium_chrome_translate_maxchar_blocks...")
                 var = traceback.format_exc()
@@ -3189,7 +3204,7 @@ def selenium_chrome_perplexity_translate(to_translate, retry_count):
     to_translate_phrases_array_len = len(to_translate_phrases_array)
 
 
-    str_prompt = f"""Translate the following text from {src_lang_name} to {dest_lang_name} for Supreme Master Television subtitles:
+    str_prompt = f"""Translate the following text from {src_lang_name} to {dest_lang_name} :
 Each input line must correspond to exactly one output line.
 Do not split, merge, or add any lines.
 Do not insert any line breaks within a line, even if the line is long.
@@ -3198,7 +3213,7 @@ Do not add, remove, or split any lines.
 If a phrase is on multiple lines, it must remain on multiple lines, no merge.
 Do not echo text to be translated in the translation, and do not insert an introduction before the translation:
 Each output line must contain the full translation of the corresponding input line. The text has {to_translate_phrases_array_len} lines that must be translated in exactly {to_translate_phrases_array_len} lines.
-Your output MUST contain exactly {to_translate_phrases_array_len} lines, not one less, not one more.
+Your output MUST contain exactly {to_translate_phrases_array_len} lines, not one less, not one more. Do not provide an introduction before translation or a conclusion after translation.
 
 The text to be translated start after the first line containing only BEFORETEXTTOTRANSLATE and ends the line before the first occurence if the line containing only AFTERTEXTTOTRANSLATE:
 BEFORETEXTTOTRANSLATE
@@ -3393,8 +3408,13 @@ AFTERTEXTTOTRANSLATE"""
         # Extract all visible text content
         text = prose_div.text
 
-        # Split into lines and strip empty ones
-        result_lines = [line.strip() for line in text.splitlines() if line.strip()]
+        # Split into lines (don't remove empties yet)
+        result_lines = [line.strip() for line in text.splitlines()]
+
+        # Check for empty lines
+        if any(line == "" for line in result_lines):
+            print(f"Translation contains emtpy lines...")
+            res = ""
         
         translated_phrases_array = result_lines
         translated_phrases_array_len = len(translated_phrases_array)
@@ -3414,10 +3434,17 @@ AFTERTEXTTOTRANSLATE"""
             res = "\n".join(translated_phrases_array)
             if translated_phrases_array_len > to_translate_phrases_array_len + 1:
                 print("Found %s lines out of %s lines" % (translated_phrases_array_len, to_translate_phrases_array_len))
+                result_lines = []
+                res = ""
+            if any(line == "" for line in result_lines):
+                print(f"Translation contains emtpy lines...")
+                res = ""
 
         if translated_phrases_array_len < to_translate_phrases_array_len:
             res = ""
             print(f"Error, not enough lines : {translated_phrases_array_len} out of {to_translate_phrases_array_len}")
+            print(f"Cleaning up perplexity cookies...")
+            driver.delete_all_cookies()
             sleep(0.3)
 
         #print(res)
@@ -3569,8 +3596,10 @@ AFTERTEXTTOTRANSLATE"""
         if translated_phrases_array_len < to_translate_phrases_array_len:
             res = ""
             print(f"Error, not enough lines : {translated_phrases_array_len} out of {to_translate_phrases_array_len}")
+            print(f"Cleaning up perplexity cookies...")
+            driver.delete_all_cookies()
             #input(str_prompt)
-            sleep(3)
+            sleep(1)
 
         #print("Translation:")
         #print(res)
