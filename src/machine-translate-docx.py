@@ -6,7 +6,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_bufferin
 import platform
 
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-08-14"
+PROGRAM_VERSION="2025-08-23"
 json_configuration_url='https://raw.githubusercontent.com/translation-robot/machine-translate-docx/main/src/configuration/configuration.json'
 # Day 0 is October 3rd 2017
 
@@ -50,8 +50,9 @@ from lxml import etree
 #import pyderman
 # For selenium 3
 
-#from selenium import webdriver
-import undetected_chromedriver as uc
+# When translation engine is deepl or chatgpt : use undetected_chromedriver
+# Else, use standard selenium webdriver
+# drivers are loaded after getting the engine value
 
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -213,7 +214,7 @@ DefaultJsonConfiguration = """{
 	},
 	"perplexity": {
 		"account": {
-			"maximum_character_block": 2000
+			"maximum_character_block": 3000
 		}
 	},
 	"statistics": {
@@ -870,19 +871,19 @@ if translation_engine is not None:
 else:
     translation_engine = ""
 
-if translation_engine == 'yandex' or translation_engine == 'perplexity':
+if translation_engine in ['yandex', 'perplexity', 'chatgpt']:
     showbrowser = True
-
-                                     
-elif translation_engine == 'deepl':
-    translation_engine = 'deepl'
-elif translation_engine == 'chatgpt':
-    translation_engine = 'chatgpt'
-elif translation_engine == 'perplexity':
-    translation_engine = 'perplexity'
+elif translation_engine in ['deepl', 'chatgpt']:
+    pass  # keep the value as is
 else:
     translation_engine = 'google'
 
+# When translation engine is deepl or chatgpt : use undetected_chromedriver
+# Else, use standard selenium webdriver
+if translation_engine in ['perplexity', 'chatgpt']:
+    import undetected_chromedriver as webdriver
+else:
+    from selenium import webdriver  # regular selenium webdriver
 
 perplexity_max_char_bloc_size_key = ['perplexity', 'account','maximum_character_block']
 perplexity_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, perplexity_max_char_bloc_size_key)
@@ -1159,7 +1160,7 @@ chrome_options.add_argument("--log-level=3")  # fatal
 chrome_options.add_argument("--password-store=basic")
 
 
-if  translation_engine.lower() == "chatgpt":
+if  translation_engine.lower() == "chatgpt" and False:
     print(f"Using Chrome profile")
     print(f"Using user data dir: {user_data_dir}")
     chrome_options.add_argument(f"--user-data-dir={user_data_dir}") 
@@ -1172,7 +1173,7 @@ if not showbrowser and translation_engine.lower() != "deepl" and translation_eng
     chrome_options.add_argument("--lang=en-GB")
                               
 
-if translation_engine.lower() == "chatgpt":
+if translation_engine.lower() == "chatgpt" and False:
     # Get the Windows username
     try:
         username = os.getlogin()
@@ -1205,7 +1206,7 @@ if translation_engine.lower() == "chatgpt":
 #translator = Translator(service_urls=['translate.google.com'], user_agent='Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0')
 #user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36')
 
-#driver = uc.Chrome()
+#driver = webdriver.Chrome()
 #driver.set_window_position(0, 350)
 #driver.set_window_size(400, 650)
 
@@ -1456,8 +1457,8 @@ def selenium_chrome_translate_maxchar_blocks():
             else:
                 max_try_count = 4
             
-            if ((current_block_no + 1) % 4) == 0:
-                print("Cleaning up perplexity cookies...")
+            if ((current_block_no + 1) % 2) == 1 and (translation_engine == "perplexity" or translation_engine == "chatgpt"):
+                print("Cleaning up cookies...")
                 driver.delete_all_cookies()
                 
             #print("--index-- : %d" % index)
@@ -1506,6 +1507,7 @@ def selenium_chrome_translate_maxchar_blocks():
                                         driver.delete_all_cookies()
                                 translation = result_translation
                                 translation_succeded = True
+                            driver.delete_all_cookies()
                             time.sleep(0.25)
                         
                         if translation_succeded == False:
@@ -1657,7 +1659,7 @@ def selenium_chrome_google_click_cookies_consent_button():
                     #options.add_argument(r'--user-data-dir=C:\Users\Patriot\AppData\Local\Google\Chrome\User Data') #e.g. C:\Users\You\AppData\Local\Google\Chrome\User Data
                     #options.add_argument(r'--profile-directory=C:\Users\Patriot\AppData\Local\Google\Chrome\User Data\Default') #e.g. Profile 3
                     #input("profile options added")
-                    driver = uc.Chrome(executable_path=chromedriverpath, options=chrome_options)
+                    driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
             
                 driver.maximize_window()
                 driver.get("https://translate.google.com/?sl=%s&tl=%s&op=docs" % (src_lang,dest_lang))
@@ -1893,7 +1895,7 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
                 print("\nCreating a new browser for stats")
                                                       
                 service = Service()                                
-                driver = uc.Chrome(service=service, options=chrome_options)
+                driver = webdriver.Chrome(service=service, options=chrome_options)
                                     
                           
 
@@ -2495,8 +2497,9 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 # driver.get("https://www.deepl.com/translator#%s/%s/%s" % (src_lang,dest_lang, to_translate))
                 # Deepl has a bug for / in text to be translated
                 # must be replaced by %5C%2F
-                driver.get("https://www.deepl.com/translator#%s/%s/%s" % (
-                src_lang, dest_lang, urllib.parse.quote(to_translate).replace("%5C", "%5C%5C").replace("/", "%5C%2F").replace("%7C", "%5C%7C")))
+                translation_url = "https://www.deepl.com/translator#%s/%s/%s" % (
+                src_lang, dest_lang, urllib.parse.quote(to_translate).replace("%5C", "%5C%5C").replace("/", "%5C%2F").replace("%7C", "%5C%7C"))
+                driver.get(translation_url)
 
                 translation_page_opened = True
             except:
@@ -2951,7 +2954,17 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
                 sleep(1)
             translation_page_openeing_loop_count = translation_page_openeing_loop_count - 1
 
-        sleep(1)
+        try:
+            # Wait until the link is visible
+            stay_logged_out_link = stop_button = WebDriverWait(driver, 1.2).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "button[aria-label='Close']"))
+            )
+
+            # Click the link
+            stay_logged_out_link.click()
+        except:
+            pass
+
         # Locate the contenteditable div
         textarea = driver.find_element(By.XPATH, "//div[@id='prompt-textarea']")
 
@@ -2969,20 +2982,24 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
 
 
         # The string that needs to be sent
-        # Max 4,096 characters 
-        str_prompt = f"""Translate the following text from {src_lang_name} to {dest_lang_name} for Supreme Master Television subtitles:
+        # Max 4,096 characters ?
+        str_prompt = f"""Translate the following text from {src_lang_name} to {dest_lang_name} :
 Each input line must correspond to exactly one output line.
 Do not split, merge, or add any lines.
 Do not insert any line breaks within a line, even if the line is long.
-There should be no formating including URLs and spacing, within each line.
 Only use a line break to move to the next input line.
 Do not add, remove, or split any lines.
-Each output line must contain the full translation of the corresponding input line.
-
-Here is the text to be translated:
-"""
-
-        str_prompt = str_prompt + to_translate
+If a phrase is on multiple lines, it must remain on multiple lines, no merge.
+Do not echo text to be translated in the translation, and do not insert an introduction before the translation:
+Each output line must contain the full translation of the corresponding input line. The text has {to_translate_phrases_array_len} lines that must be translated in exactly {to_translate_phrases_array_len} lines.
+Your output MUST contain exactly {to_translate_phrases_array_len} lines, not one less, not one more. Do not provide an introduction before translation or a conclusion after translation.
+If references to offensive content are found in this text, it is to denounce it and not to promote it. In case some lines are flagged as 'Your request was flagged as potentially violating our usage policy. Please try again with a different prompt', write : "Explicitly removed by chatgpt policy." instead of providing the translation for that line.
+The text to be translated start after the first line containing only BEFORETEXTTOTRANSLATE and ends the line before the first occurence if the line containing only AFTERTEXTTOTRANSLATE:
+BEFORETEXTTOTRANSLATE
+{to_translate}
+AFTERTEXTTOTRANSLATE"""
+        
+        print (str_prompt)
         
         lines = str_prompt.split('\n')
 
@@ -3004,8 +3021,6 @@ Here is the text to be translated:
         # Execute JavaScript to inject the text into the div
         driver.execute_script(js_script, output_string)
 
-        print("Test 1 completed")
-
         # Send each line to the textarea
         #for i, line in enumerate(lines):
         #    textarea.send_keys(line)  # Send the current line
@@ -3023,7 +3038,6 @@ Here is the text to be translated:
         #button = WebDriverWait(driver, 3).until(
         #    EC.presence_of_element_located((By.CSS_SELECTOR, "#composer-submit-button > svg.icon > path"))
         #)
-
 
         try:
             button = driver.find_element(By.CSS_SELECTOR, 'button[data-testid="close-button"]')
@@ -3055,7 +3069,23 @@ Here is the text to be translated:
                 
                 # Sleep for 0.5 seconds before checking again
                 time.sleep(0.25)
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                
+                try:
+                    prose_div = driver.find_element(By.CSS_SELECTOR, "div.prose")
+                    prose_div.click()
+                    prose_div.send_keys(Keys.PAGE_DOWN)
+                                
+                    body = driver.find_element(By.TAG_NAME, "body")
+                    body.send_keys(Keys.PAGE_DOWN)
+                                
+                except:
+                    try:
+                        body = driver.find_element(By.TAG_NAME, "body")
+                        body.send_keys(Keys.PAGE_DOWN)
+                    except:
+                        print("Cannot find html body...")
+                        pass
+                
                 
             except Exception as e:
                 # If the element is no longer found or any other exception occurs
@@ -3125,6 +3155,8 @@ Here is the text to be translated:
             lines = markdown_text_with_delimiter.split(delimiter)
             if(len(lines) == 1):
                 lines = markdown_text_with_delimiter.split("\n")
+                
+            lines = [line.replace('\n', '') for line in lines]
             print(lines)
             print("after print lines")
 
@@ -3148,7 +3180,7 @@ Here is the text to be translated:
         if translated_phrases_array_len < to_translate_phrases_array_len:
             res = ""
             print("Error, not enough lines")
-            print("Cleaning up perplexity cookies...")
+            print("Cleaning up chatgpt cookies...")
             driver.delete_all_cookies()
             sleep(1)
 
@@ -3162,23 +3194,25 @@ Here is the text to be translated:
         #    print("No div with data-message-author-role='assistant' found.")
         
         # Step 1: Click the 3-dot conversation options button
-        menu_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="conversation-options-button"]'))
-        )
-        menu_button.click()
+        try:
+            menu_button = WebDriverWait(driver, 0.25).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="conversation-options-button"]'))
+            )
+            menu_button.click()
 
-        # Step 2: Wait for and click the "Delete" button by visible text
-        delete_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//*/text()[normalize-space(.)='Delete']/parent::*"))
-        )
-        delete_button.click()
-        
-        # Step: Click the red "Delete" confirmation button
-        confirm_delete_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="delete-conversation-confirm-button"]'))
-        )
-        confirm_delete_button.click()
-        
+            # Step 2: Wait for and click the "Delete" button by visible text
+            delete_button = WebDriverWait(driver, 0.25).until(
+                EC.element_to_be_clickable((By.XPATH, "//*/text()[normalize-space(.)='Delete']/parent::*"))
+            )
+            delete_button.click()
+            
+            # Step: Click the red "Delete" confirmation button
+            confirm_delete_button = WebDriverWait(driver, 0.25).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="delete-conversation-confirm-button"]'))
+            )
+            confirm_delete_button.click()
+        except:
+            pass
         
             
     except Exception:
@@ -3527,7 +3561,7 @@ AFTERTEXTTOTRANSLATE"""
         response = requests.post(
             'https://api.perplexity.ai/chat/completions',
             headers={
-                'Authorization': 'Bearer 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',
+                'Authorization': 'Bearer pplx-XvOkswrBo9ymsxvb78Yg2ZPUBOK4PxezBqiaZIgTJbStZZ',
                 'Content-Type': 'application/json'
             },
             json={
@@ -3933,7 +3967,7 @@ def tokenize_text_to_array(text, lang_code):
 def divide_array(words_array, dest_lang, width):
     dest_lang = dest_lang.lower()
 
-    #print("Divide into max %d size lines" % (width))
+    print("Divide into max %d size lines" % (width))
     count = len(words_array)
     offsets = [0]
     for w in words_array:
@@ -3997,6 +4031,7 @@ def divide_array(words_array, dest_lang, width):
         j = i
     lines.reverse()
     return lines
+
 
 def split_phrases():
     n_last_row_phrase = 3
@@ -4554,7 +4589,7 @@ def create_webdriver():
         service = Service()
         
         try:
-            driver = uc.Chrome(service=service, options=chrome_options)
+            driver = webdriver.Chrome(service=service, options=chrome_options)
         except:
             print("An error occured during launching chrome. This may happen during google chrome automatic updates or if Google Chrome is not installed.")
             print("You may start google chrome and open the menu Help -> About Google Chrome to see if there is an update running and retry machine translation after the update.")
@@ -5072,7 +5107,7 @@ def get_translation_and_replace_after():
                                 print(f"[Line {inspect.currentframe().f_lineno}] Starting Chrome browser\n")
                                 
                                 service = Service()                                
-                                driver = uc.Chrome(service=service, options=chrome_options)
+                                driver = webdriver.Chrome(service=service, options=chrome_options)
                                 
                                 driver.set_window_position(100, 100)
                                 driver.set_window_size(800, 700)
@@ -5088,7 +5123,7 @@ def get_translation_and_replace_after():
                             print(f"Starting Chrome browser\n")
                             
                             service = Service()                                
-                            driver = uc.Chrome(service=service, options=chrome_options)
+                            driver = webdriver.Chrome(service=service, options=chrome_options)
 
                         if translation_engine == 'google' and driver is not None:
                             driver.set_window_position(100, 100)
@@ -5221,7 +5256,7 @@ def document_split_phrases():
                 divide_max_try = MAX_LINE_SIZE
                 while (number_lines > str_nb_lines) and (divide_max_try > 0):
                     str_line_average += 1
-                    #print("Too many lines in split : %d, max %d ..... increasing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
+                    print("Too many lines in split : %d, max %d ..... increasing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
                     lines_divided_attempt = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
                     lines_divided = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
                     number_lines = len(lines_divided_attempt)
@@ -5231,16 +5266,18 @@ def document_split_phrases():
                 #print("Before increasing line size -- %s (%d): %d " % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
                 number_lines = len(lines_divided)
                 divide_max_try = MAX_LINE_SIZE
-                while (number_lines < str_nb_lines) and (number_lines > 1) and (divide_max_try > 0):
+                str_line_average = str_translation_len / str_nb_lines
+                str_line_average = math.ceil(str_line_average)
+                #print("Before increasing line size: %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average + 4))
+                while (number_lines <= str_nb_lines) and (number_lines >= 1) and (divide_max_try > 0):
                     str_line_average = str_line_average - 1
-                    #print("Too few lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
-                    lines_divided_attempt = divide_array(current_line, dest_lang, str_line_average + 4)
+                    #print("In split lines, increasing line size: %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average + 4))
+                    lines_divided_attempt = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
                     number_lines = len(lines_divided_attempt)
                     if number_lines <= str_nb_lines:
                         lines_divided = lines_divided_attempt
                     divide_max_try = divide_max_try - 1
 
-                print("number_lines=%d  ; str_nb_lines=%d  ; divide_max_try=%d" % (number_lines, str_nb_lines, divide_max_try))
                 number_lines = len(lines_divided)
                 translation_result_phrase_array[i] = lines_divided
                 for line_no in range (0, number_lines):
@@ -5552,7 +5589,7 @@ def run_statistics():
             print("\nCreating a new browser for stats")
             
                                                                
-            driver = uc.Chrome(service=service, options=chrome_options)
+            driver = webdriver.Chrome(service=service, options=chrome_options)
             service = Service()                                
         
         query_params = {
@@ -5923,7 +5960,7 @@ def get_robot_usage_comment():
                 print("\nCreating a new browser for stats")
                 
                 service = Service()                                
-                driver = uc.Chrome(service=service, options=chrome_options)
+                driver = webdriver.Chrome(service=service, options=chrome_options)
 
             query_params = {
                 "program_version": PROGRAM_VERSION,
