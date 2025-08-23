@@ -32,6 +32,7 @@ import urllib
 import urllib.request
 import requests
 import json
+import json5 # json 5 with the ability to have comments
 
 
 from inspect import currentframe, getframeinfo
@@ -130,13 +131,58 @@ from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 
 import glob
-
 from langcodes import *
-
 import math
-
 import shutil
+import signal
+import atexit
 
+# Track the child processes
+def kill_child_process():
+    import time
+    parent = psutil.Process(os.getpid())
+    children = parent.children(recursive=True)
+
+    #print(f"[CLEANUP] Found {len(children)} child process(es).")
+
+    for child in children:
+        try:
+            #print(f"[CLEANUP] Terminating PID {child.pid} ({' '.join(child.cmdline())})")
+            child.terminate()
+        except psutil.NoSuchProcess:
+            print(f"[CLEANUP] PID {child.pid} already gone.")
+        except Exception as e:
+            print(f"[CLEANUP] Could not terminate PID {child.pid}: {e}")
+
+    # Give processes some time to exit gracefully
+    _, alive = psutil.wait_procs(children, timeout=3)
+
+    for child in alive:
+        try:
+            print(f"[CLEANUP] Forcing kill on PID {child.pid} ({' '.join(child.cmdline())})")
+            child.kill()
+        except psutil.NoSuchProcess:
+            print(f"[CLEANUP] PID {child.pid} disappeared before kill().")
+        except Exception as e:
+            print(f"[CLEANUP] Could not kill PID {child.pid}: {e}")
+
+    # Re-check if any children remain
+    still_alive = parent.children(recursive=True)
+    if still_alive:
+        print(f"[CLEANUP] WARNING: Still alive: {[p.pid for p in still_alive]}")
+    else:
+        print("[CLEANUP] All child processes terminated.")
+
+# Run cleanup on normal exit
+atexit.register(kill_child_process)
+
+# Trap termination signals
+def handle_signal(signum, frame):
+    kill_child_process()
+    raise SystemExit(0)
+
+signal.signal(signal.SIGINT, handle_signal)
+signal.signal(signal.SIGTERM, handle_signal)
 
 #from parsivar import Normalizer
 my_hazm_normalizer = None
@@ -154,7 +200,7 @@ def validate_json_string(json_string):
             pass # OK
         else:
             return False
-        json_obj = json.loads(json_string)
+        json_obj = json5.loads(json_string)
         if json_obj is None:
             return False
         return True
@@ -170,7 +216,7 @@ def get_nested_value_from_json_array(json_array, keys, default_when_none = None)
     try:
         for json_str in json_array:
             try:
-                json_obj = json.loads(json_str)
+                json_obj = json5.loads(json_str)
                 value = None
                 
                 for key in keys:
@@ -381,6 +427,7 @@ parser.add_argument('--exitonsuccess', '-t', required = False, help="Exit progre
 parser.add_argument('--viewdocx', '-l', required = False, help="Open the docx file with the default application after completion.", action='store_true')
 parser.add_argument('--silent', '-q', required = False, help="Silent, do not ask question and exit silently", action='store_true')
 parser.add_argument("--verbose", '-v', help="increase output verbosity", action="store_true")
+parser.add_argument("--clientip", '-i', help="Client IP for statistics")
 #parser.add_argument('--destination-file', required = True, help="Output file name")
 #args = parser.parse_args()
 parser.add_argument('--version', required = False, help="Show program version", action='store_true')
@@ -781,6 +828,7 @@ translation_errors_count = 0
 word_file_to_translate = args.docxfile
 
 viewdocx = args.viewdocx
+client_ip = args.clientip
 
 xlsxreplacefile = args.xlsxreplacefile
 dest_font = args.destfont
@@ -1457,7 +1505,7 @@ def selenium_chrome_translate_maxchar_blocks():
             else:
                 max_try_count = 4
             
-            if ((current_block_no + 1) % 2) == 1 and (translation_engine == "perplexity" or translation_engine == "chatgpt"):
+            if ((current_block_no) % 2) == 1 and (translation_engine == "perplexity" or translation_engine == "chatgpt"):
                 print("Cleaning up cookies...")
                 driver.delete_all_cookies()
                 
@@ -3435,7 +3483,9 @@ AFTERTEXTTOTRANSLATE"""
         # Try to get the div again (big)
         time.sleep(0.25)
         try:
-            prose_div = driver.find_element(By.CSS_SELECTOR, "div.prose")
+            prose_div = WebDriverWait(driver, 5).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, "div.prose"))
+            )
         except:
             pass
         
@@ -3485,30 +3535,32 @@ AFTERTEXTTOTRANSLATE"""
         
         ##################################################
         # Delete this chat from perplexity AI history
-        wait = WebDriverWait(driver, 10)
+        try:
+            wait = WebDriverWait(driver, 10)
 
-        # 1. Click the three-dot (⋯) menu icon
-        dots_button = wait.until(EC.element_to_be_clickable((
-            By.CSS_SELECTOR,
-            'svg.tabler-icon-dots'
-        )))
-        dots_button.click()
+            # 1. Click the three-dot (⋯) menu icon
+            dots_button = wait.until(EC.element_to_be_clickable((
+                By.CSS_SELECTOR,
+                'svg.tabler-icon-dots'
+            )))
+            dots_button.click()
 
-        # 2. Click the Delete option (with trash icon and text "Delete")
-        delete_button = wait.until(EC.element_to_be_clickable((
-            By.XPATH,
-            '//div[contains(@class, "cursor-pointer")]//span[text()="Delete"]'
-        )))
-        delete_button.click()
+            # 2. Click the Delete option (with trash icon and text "Delete")
+            delete_button = wait.until(EC.element_to_be_clickable((
+                By.XPATH,
+                '//div[contains(@class, "cursor-pointer")]//span[text()="Delete"]'
+            )))
+            delete_button.click()
 
-        # Wait for the Confirm button and click it
-        confirm_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="thread-delete-confirm"]'))
-        )
-        confirm_button.click()
+            # Wait for the Confirm button and click it
+            confirm_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="thread-delete-confirm"]'))
+            )
+            confirm_button.click()
+        except:
+            print("Unable to delete conversation")
         
-        translation = res
-            
+        translation = res  
     except Exception:
         var = traceback.format_exc()
         print(var)
@@ -3625,7 +3677,7 @@ AFTERTEXTTOTRANSLATE"""
             #print("array: %s" % (translated_phrases_array))
             res = "\n".join(translated_phrases_array)
             if translated_phrases_array_len > to_translate_phrases_array_len + 1:
-                input("Found %s lines out of %s lines" % (translated_phrases_array_len, to_translate_phrases_array_len))
+                print("Found %s lines out of %s lines" % (translated_phrases_array_len, to_translate_phrases_array_len))
 
         if translated_phrases_array_len < to_translate_phrases_array_len:
             res = ""
@@ -5271,11 +5323,12 @@ def document_split_phrases():
                 #print("Before increasing line size: %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average + 4))
                 while (number_lines <= str_nb_lines) and (number_lines >= 1) and (divide_max_try > 0):
                     str_line_average = str_line_average - 1
-                    #print("In split lines, increasing line size: %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average + 4))
+                    print("In split lines, increasing line size: %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average + 4))
                     lines_divided_attempt = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
                     number_lines = len(lines_divided_attempt)
                     if number_lines <= str_nb_lines:
                         lines_divided = lines_divided_attempt
+                        #print(lines_divided)
                     divide_max_try = divide_max_try - 1
 
                 number_lines = len(lines_divided)
@@ -5444,7 +5497,7 @@ def local_time_offset(t=None):
 def run_statistics():
     global use_api
     global splitonly, driver
-    global engine_method, end_time, elapsed_time, json_configuration_array
+    global engine_method, end_time, elapsed_time, json_configuration_array, client_ip
     
     statistics_html_statistics_form_url_key = ['statistics', 'html_statistics_form_url']
     statistics_html_statistics_form_url = get_nested_value_from_json_array(json_configuration_array, statistics_html_statistics_form_url_key)
@@ -5528,6 +5581,7 @@ def run_statistics():
         if bool_print_stats:
             print("Statistics:")
             print("program_version: %s" % (PROGRAM_VERSION))
+            print("client_ip: %s" % (client_ip))
             #https://stackoverflow.com/questions/1695183/how-to-percent-encode-url-parameters-in-python
             
             print("docxfile: %s" % (word_file_to_translate))
@@ -5550,6 +5604,7 @@ def run_statistics():
             print("start_time: %s" % (start_time))
             print("end_time: %s" % (end_time))
             print("elapsed_time: %s" % ((elapsed_time)))
+            
             
             if xlsxreplacefile_name != "":
                 print("replacebeforelistsize: %s" % (replacebeforelistsize))
@@ -5632,30 +5687,36 @@ def run_statistics():
             "local_time_offset" : local_time_offset_str,
             "docxfile_page_count" : docxfile_page_count,
             "platform_node" : platform_node,
-            "docxfile" : docx_file_name
+            "docxfile" : docx_file_name,
+            "client_ip" : client_ip
         }
         
         base_url = statistics_html_statistics_form_url
         encoded_params = urlencode(query_params, quote_via=quote_plus)
         url = f"{base_url}?{encoded_params}"
         
-        driver.get(url)
-        
-        #time.sleep(20)
-        
-        submit_stats_element = "//input[@value='Submit']"
         try:
-            submit_stats_button = WebDriverWait(driver, 1).until(EC.presence_of_element_located((By.XPATH, submit_stats_element)))
-            submit_stats_button.submit()
-            #time.sleep(1)
-            submited_div_element = "//div[@id='form_post_submitted']"
-            submited_div = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, submited_div_element)))
-            #print("statistics updated")
-        except:
-            print("Warning failed to update stats, you can ignore this.")
-            #pass
-
+            # Set a page load timeout
+            driver.set_page_load_timeout(7)  # 7 seconds
+            driver.get(url)
+            
+            submit_stats_element = "//input[@value='Submit']"
+            try:
+                submit_stats_button = WebDriverWait(driver, 1).until(EC.presence_of_element_located((By.XPATH, submit_stats_element)))
+                submit_stats_button.submit()
+                #time.sleep(1)
+                submited_div_element = "//div[@id='form_post_submitted']"
+                submited_div = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, submited_div_element)))
+                #print("statistics updated")
+            except:
+                print("Warning failed to update stats, you can ignore this.")
+                #pass
+        except TimeoutException:
+            print(f"Timeout: Page did not load within 10 seconds: {url}")
+        except WebDriverException as e:
+            print(f"WebDriver error: {e}")
     except:
+        
         #var = traceback.format_exc()
         #print(var)
         print("Warning failed to update stats, you can ignore this...")
@@ -5712,7 +5773,7 @@ def get_robot_usage_comment():
         driver.get(javascript_json_version_checker_url)
         bool_print_stats = False
 
-        json_obj = json.loads("{}")
+        json_obj = json5.loads("{}")
 
         json_obj["program_version"] = PROGRAM_VERSION
         json_obj["docxfile"] = word_file_to_translate
