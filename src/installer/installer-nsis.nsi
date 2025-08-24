@@ -1,19 +1,21 @@
-!include "MUI2.nsh"  ; Include the Modern UI macro
+!include "MUI2.nsh"
 !include "nsDialogs.nsh"
 
 ; Other definitions...
 
-; SetCompressor /SOLID lzma
+SetCompressor /SOLID lzma
 
 !define APP_NAME "Machine Translation Robot"
+
 Name "${APP_NAME}"  ; Set the installer title
-!define APP_VERSION "0.2"
+!define APP_VERSION "1.0.1"
 !define APP_PUBLISHER "Blue Sun"
 !define APP_PUBLISHER_URL "https://github.com/translation-robot/machine-translate-docx"
 !define DEFAULT_DIR "C:\SMTVRobot"
 
-!define MUI_ICON "C:\SMTVRobot-installer\source_code\img\app.ico"
-!define MUI_UNICON "C:\SMTVRobot-installer\source_code\img\app.ico"
+!define MUI_ICON "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\img\app.ico"
+!define MUI_UNICON "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\img\app.ico"
+
 
 
 !define MUI_WELCOME_TITLE "Welcome to ${APP_NAME} Setup"
@@ -34,7 +36,6 @@ Name "${APP_NAME}"  ; Set the installer title
 ;!insertmacro MUI_WELCOMEPAGE_TITLE_3LINES
 
 
-; Add the components page here
 !insertmacro MUI_PAGE_WELCOME
 Page custom InfoPage1 ; Custom Info Page
 !insertmacro MUI_PAGE_COMPONENTS  ; Ensure this line is included
@@ -71,17 +72,12 @@ Section "Core" SEC01
 
   SectionIn RO
   SetOutPath "$INSTDIR"
-  File /r "C:\SMTVRobot-installer\*"
+  File /r "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\*"
   WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
-
-!define OUTPUT_FILE "installer-nsis.exe"
-
-OutFile "${OUTPUT_FILE}"
+OutFile "installer-nsis.exe"
 InstallDir "${DEFAULT_DIR}"
-
 RequestExecutionLevel user  ; Set the execution level
-
 LangString LANG_ENGLISH ${LANG_ENGLISH} "English"
 
 
@@ -100,138 +96,138 @@ InstallDir "${DEFAULT_DIR}"
 SectionGroup "Shortcuts" SEC_SHORTCUTS
   Section "Machine Translation Robot" SEC_MTR
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\Machine Translation Robot.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\Machine Translation Robot.lnk"
   SectionEnd
 
   Section "Graphical Interface - Ask Language" SEC_GI
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe   Graphical Inface - Ask language.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe   Graphical Inface - Ask language.lnk"
   SectionEnd
 
   Section "Show Version" SEC_SV
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe   Show version.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe   Show version.lnk"
   SectionEnd
 
   Section "Split Translation - Any Language" SEC_ST
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe   Split translation - any language.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe   Split translation - any language.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Bulgarian - Deepl" SEC_BUL_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Bulgarian - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Bulgarian - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Bulgarian - Google" SEC_BUL_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Bulgarian - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Bulgarian - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Chinese (Simplified) - Deepl" SEC_CHI_SIM_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Chinese (Simplified) - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Chinese (Simplified) - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Chinese (Traditional) - Google" SEC_CHI_TRA_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Chinese (Traditional) - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Chinese (Traditional) - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Czech - Deepl" SEC_CZE_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Czech - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Czech - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Czech - Google" SEC_CZE_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Czech - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Czech - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - French - Deepl" SEC_FRE_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - French - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - French - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - French - Google" SEC_FRE_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - French - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - French - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Hindi - Google" SEC_HIN_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Hindi - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Hindi - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Hungarian - Deepl" SEC_HUN_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Hungarian - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Hungarian - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Hungarian - Google" SEC_HUN_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Hungarian - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Hungarian - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Indonesian - Deepl" SEC_IND_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Indonesian - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Indonesian - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Indonesian - Google" SEC_IND_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Indonesian - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Indonesian - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Italian - Deepl" SEC_ITA_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Italian - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Italian - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Italian - Google" SEC_ITA_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Italian - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Italian - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Japanese - Deepl" SEC_JAP_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Japanese - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Japanese - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Japanese - Google" SEC_JAP_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Japanese - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Japanese - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Nepali - Google" SEC_NEP_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Nepali - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Nepali - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Persian - Google" SEC_PER_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Persian - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Persian - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Polish - Deepl" SEC_POL_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Polish - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Polish - Deepl.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Polish - Google" SEC_POL_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Polish - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Polish - Google.lnk"
   SectionEnd
 
   Section /o "Machine Translation - Punjabi - Google" SEC_PUN_GOOGLE
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Punjabi - Google.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Punjabi - Google.lnk"
   SectionEnd
   
   
   Section /o "Machine Translation - Romanian - Deepl" SEC_RD
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk"
   SectionEnd
 
 ;  Section /o "Machine Translation - Romanian - Deepl" SEC_RD
@@ -241,13 +237,13 @@ SectionGroup "Shortcuts" SEC_SHORTCUTS
 ;	  IfFileExists "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk" checkFile
 ;	  
 ;	  ; If the file doesn't exist, install it
-;	  File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk"
+;	  File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk"
 ;	  Goto done
 ;
 ;	  checkFile:
 ;	  ; Get timestamps for both source and destination files
 ;	  GetFileTime "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk" $0 $1
-;	  GetFileTime "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk" $2 $3
+;	  GetFileTime "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk" $2 $3
 ;	  
 ;	  ; Compare the timestamps
 ;	  IntCmp $0 $2 newerFile skipReplace
@@ -259,33 +255,47 @@ SectionGroup "Shortcuts" SEC_SHORTCUTS
 ;	  Goto done
 ;	  
 ;	  replaceFile:
-;	  File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk"
+;	  File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Romanian - Deepl.lnk"
 ;	  
 ;	  skipReplace:
 ;	  ; File is not newer or user chose not to replace
 ;	  
 ;	  done:
-;	SectionEnd
+
+SectionGroupEnd ; Close the Shortcuts section group
+
 Var FontHandle
 
+;---------------------------------------
+; Detect and uninstall previous version
 Function .onInit
-    ; Create a bold Arial font with size 16 for the title
+    ReadRegStr $R0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString"
+    StrCmp $R0 "" no_old_install
+    MessageBox MB_YESNO|MB_ICONQUESTION \
+      "A previous version of ${APP_NAME} is installed. Do you want to uninstall it first?" \
+      IDNO no_old_install
+    ExecWait '$R0 _?=$INSTDIR'
+no_old_install:
+
+    ; Create bold font for info page
     System::Call 'gdi32::CreateFont(i 16, i 0, i 0, i 0, i 700, i 0, i 0, i 0, i 1, i 0, i 0, i 0, i 0, t "Arial") i .r0'
-    StrCpy $FontHandle $0  ; Save the font handle to $FontHandle
+    StrCpy $FontHandle $0
 FunctionEnd
 
+;---------------------------------------
+; Custom info page
 Function InfoPage1
     nsDialogs::Create 1018
     Pop $0
     ${If} $0 == error
         Abort
     ${EndIf}
-
+	
     ; Create a label for the title with size 16 and bold font
     ${NSD_CreateLabel} 10u 10u 100% 20u "Search and Replace Excel Files"
     Pop $1  ; Get the control handle for the title
     SendMessage $1 ${WM_SETFONT} $FontHandle 0  ; Apply the custom bold font (size 16) to the title
-
+	
     ; Create a text block for the information
     ${NSD_CreateLabel} 10u 40u 100% 40u "The Excel search and replace files will be overwritten. Please backup all Excel files you modified in the $INSTDIR folder before installing."
     Pop $2  ; Get the control handle for the text block
@@ -297,7 +307,6 @@ Function InfoPage1
 	
     ; Use NSD_OnClick for more direct event handling
     ${NSD_OnClick} $3 LinkClicked
-
     nsDialogs::Show
 FunctionEnd
 
@@ -305,91 +314,57 @@ Function LinkClicked
     ExecShell "open" "https://github.com/translation-robot/machine-translate-docx/"
 FunctionEnd
 
-  Section /o "Machine Translation - Romanian - Google" SEC_ROM_GOOGLE
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Romanian - Google.lnk"
-  SectionEnd
+;---------------------------------------
+; Core installation
+Section "Core Files" SEC_CORE
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayName" "${APP_NAME}"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString" "$INSTDIR\uninstall.exe"
+    SectionIn RO
+    SetOutPath "$INSTDIR"
+    File /r "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\*"
+    WriteUninstaller "$INSTDIR\uninstall.exe"
+SectionEnd
 
-  Section /o "Machine Translation - Russian - Deepl" SEC_RUS_DEEPL
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Russian - Deepl.lnk"
-  SectionEnd
+;---------------------------------------
+; Shortcuts
+Section "Desktop Shortcut" SEC_DESKTOP
+    CreateShortcut "$DESKTOP\Machine Translation Robot.lnk" "$INSTDIR\bin\machine_translate_gui.exe" "" "$INSTDIR\source_code\img\app.ico"
+SectionEnd
 
-  Section /o "Machine Translation - Russian - Google" SEC_RUS_GOOGLE
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Russian - Google.lnk"
-  SectionEnd
-
-  Section /o "Machine Translation - Spanish - Deepl" SEC_SPA_DEEPL
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Spanish - Deepl.lnk"
-  SectionEnd
-
-  Section /o "Machine Translation - Spanish - Google" SEC_SPA_GOOGLE
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Spanish - Google.lnk"
-  SectionEnd
-
-  Section /o "Machine Translation - Telugu - Google" SEC_TEL_GOOGLE
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Telugu - Google.lnk"
-  SectionEnd
-
-  Section /o "Machine Translation - Thai - Google" SEC_THA_GOOGLE
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Thai - Google.lnk"
-  SectionEnd
-
-  Section /o "Machine Translation - Ukrainian - Deepl" SEC_UKR_DEEPL
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Ukrainian - Deepl.lnk"
-  SectionEnd
-
-  Section /o "Machine Translation - Ukrainian - Google" SEC_UKR_GOOGLE
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Ukrainian - Google.lnk"
-  SectionEnd
-
-  Section /o "Machine Translation - Urdu - Google" SEC_URD_GOOGLE
-    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
-    File "C:\SMTVRobot-installer\source_code\SendTo\machine-translate-docx.exe - Urdu - Google.lnk"
-  SectionEnd
-
-SectionGroupEnd ; Close the Shortcuts section group
 
 !define MUI_COMPONENTS_PAGE_UNFOLDERED "Shortcuts"
+
+;---------------------------------------
+; Uninstaller
 
 !define MUI_UNFINISH_TITLE "Uninstall ${APP_NAME}"
 !define MUI_UNFINISH_SUBTITLE "This will remove ${APP_NAME} from your system."
 
-Section "Uninstall"
-  RMDir /r "$INSTDIR\bin"
-  RMDir /r "$INSTDIR\source_code"
-  RMDir /r "$INSTDIR\ConEmuPack"
-  Delete "$DESKTOP\Machine Translation Robot.lnk"
-  Delete "$APPDATA\Microsoft\Windows\SendTo\Machine Translation Robot.lnk"
-  Delete "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe Graphical Inface - Ask language.lnk"
-  Delete "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe Show version.lnk"
-  Delete "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe Split translation - any language.lnk"
-  
-  
-  ; Remove registry entries; Remove from Local Machine (if installed for all users)
-	DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
-	; Remove from Current User (if installed for the current user only)
-	DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"	
+Section "Uninstall" SEC_UNINSTALL
+    RMDir /r "$INSTDIR\bin"
+    RMDir /r "$INSTDIR\source_code"
+    RMDir /r "$INSTDIR\ConEmuPack"
+    RMDir "$INSTDIR"
+
+    ; Remove shortcuts
+    Delete "$DESKTOP\Machine Translation Robot.lnk"
+    Delete "$APPDATA\Microsoft\Windows\SendTo\Machine Translation Robot.lnk"
+    Delete "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe Graphical Inface - Ask language.lnk"
+    Delete "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe Show version.lnk"
+    Delete "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe Split translation - any language.lnk"
+    Delete "$APPDATA\Microsoft\Windows\SendTo\machine-translate-docx.exe - Japanese - Deepl.lnk"
+
+    ; Remove registry entries
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
 SectionEnd
 
+;---------------------------------------
+; After successful install
 Function .onInstSuccess
-  MessageBox MB_YESNO|MB_ICONQUESTION "Would you like to launch ${APP_NAME} now?" IDYES Launch IDNO NoLaunch
-  
-  Launch:
+    MessageBox MB_YESNO|MB_ICONQUESTION "Would you like to launch ${APP_NAME} now?" IDYES Launch IDNO NoLaunch
+Launch:
     Exec "$INSTDIR\bin\machine_translate_gui.exe"
-	Exec "cmd /c start http://github.com/translation-robot/machine-translate-docx/"
-  NoLaunch:
-  
-  
-  ;Exec "cmd /c start http://github.com/translation-robot/machine-translate-docx/"
-  ExecShell "open" "http://github.com/translation-robot/machine-translate-docx/"
+NoLaunch:
+    ExecShell "open" "${APP_PUBLISHER_URL}"
 FunctionEnd
-
-; Pages
