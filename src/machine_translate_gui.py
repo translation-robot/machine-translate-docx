@@ -924,7 +924,9 @@ class MachineTranslationApp:
         print(f"{self.bin_path}\\..")
         bin_launcher_path = ""
         if platform.system() == 'Windows':
-            bin_launcher_path = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe -ct -font \"Courier New\" -size 16 -run {self.bin_path}\\machine-translate-docx.exe "
+            #bin_launcher_path = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe -ct -font \"Courier New\" -size 16 -run {self.bin_path}\\machine-translate-docx.exe "
+            file_name = os.path.basename(docx_file_path)
+            bin_launcher_path = f"{self.bin_path}\\..\\WindowsTerminal\\WindowsTerminal.exe --title \"Translating {file_name} in {dest_lang_name}\" --  {self.bin_path}\\machine-translate-docx.exe "
         else:
             if for_service_template:
                 bin_launcher_path = f"\\\"{self.bin_path}/machine-translate-docx\\\" "
