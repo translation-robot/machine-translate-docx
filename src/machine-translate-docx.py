@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-09-27"
+PROGRAM_VERSION="2025-10-02"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -13,37 +13,6 @@ warnings.filterwarnings(
 
 import sys
 import io
-import psutil
-import os
-
-# Detect unwanted resource_tracker spawn in PyInstaller
-if sys.argv[1:] == ["-B", "-S", "-E", "-s", "-c"]:
-    sys.exit(0)
-    
-def safe_cmdline(proc):
-    """Return process cmdline safely, fallback to name if denied."""
-    try:
-        cmdline = proc.cmdline()
-        return " ".join(cmdline) if cmdline else proc.name()
-    except (psutil.AccessDenied, psutil.NoSuchProcess):
-        return f"[AccessDenied] {proc.name()}"
-    except Exception as e:
-        return f"[Error: {e}] {proc.name()}"
-
-def print_process_tree(proc):
-    ancestors = proc.parents()
-    ancestors.reverse()  # root first
-    for depth, ancestor in enumerate(ancestors, start=1):
-        indent = "  " * depth
-        print(f"{indent}└─ PID {ancestor.pid}: {safe_cmdline(ancestor)}")
-    
-    # Print current process
-    print(f"{'  ' * (len(ancestors)+1)}└─ PID {proc.pid}: {safe_cmdline(proc)}")
-    
-current_proc = psutil.Process(os.getpid())
-print(f"Process tree for PID {current_proc.pid}:")
-print_process_tree(current_proc)
-
 
 # For bidirectional text display right to left and left to right
 from bidi.algorithm import get_display
@@ -179,58 +148,58 @@ import glob
 from langcodes import *
 import math
 import shutil
-#import signal
-#import atexit
+import signal
+import atexit
 
 from tkinter import Tk
 
 # Track the child processes
-#def kill_child_process():
-#    import time
-#    parent = psutil.Process(os.getpid())
-#    children = parent.children(recursive=True)
-#
-#    #print(f"[CLEANUP] Found {len(children)} child process(es).")
-#
-#    for child in children:
-#        try:
-#            #print(f"[CLEANUP] Terminating PID {child.pid} ({' '.join(child.cmdline())})")
-#            child.terminate()
-#        except psutil.NoSuchProcess:
-#            print(f"[CLEANUP] PID {child.pid} already gone.")
-#        except Exception as e:
-#            print(f"[CLEANUP] Could not terminate PID {child.pid}: {e}")
-#
-#    # Give processes some time to exit gracefully
-#    _, alive = psutil.wait_procs(children, timeout=3)
-#
-#    for child in alive:
-#        try:
-#            print(f"[CLEANUP] Forcing kill on PID {child.pid} ({' '.join(child.cmdline())})")
-#            child.kill()
-#        except psutil.NoSuchProcess:
-#            print(f"[CLEANUP] PID {child.pid} disappeared before kill().")
-#        except Exception as e:
-#            print(f"[CLEANUP] Could not kill PID {child.pid}: {e}")
-#
-#    # Re-check if any children remain
-#    still_alive = parent.children(recursive=True)
-#    if still_alive:
-#        print(f"[CLEANUP] WARNING: Still alive: {[p.pid for p in still_alive]}")
-#    else:
-#        #print("[CLEANUP] All child processes terminated.")
-#        pass
+def kill_child_process():
+    import time
+    parent = psutil.Process(os.getpid())
+    children = parent.children(recursive=True)
+
+    #print(f"[CLEANUP] Found {len(children)} child process(es).")
+
+    for child in children:
+        try:
+            #print(f"[CLEANUP] Terminating PID {child.pid} ({' '.join(child.cmdline())})")
+            child.terminate()
+        except psutil.NoSuchProcess:
+            print(f"[CLEANUP] PID {child.pid} already gone.")
+        except Exception as e:
+            print(f"[CLEANUP] Could not terminate PID {child.pid}: {e}")
+
+    # Give processes some time to exit gracefully
+    _, alive = psutil.wait_procs(children, timeout=3)
+
+    for child in alive:
+        try:
+            print(f"[CLEANUP] Forcing kill on PID {child.pid} ({' '.join(child.cmdline())})")
+            child.kill()
+        except psutil.NoSuchProcess:
+            print(f"[CLEANUP] PID {child.pid} disappeared before kill().")
+        except Exception as e:
+            print(f"[CLEANUP] Could not kill PID {child.pid}: {e}")
+
+    # Re-check if any children remain
+    still_alive = parent.children(recursive=True)
+    if still_alive:
+        print(f"[CLEANUP] WARNING: Still alive: {[p.pid for p in still_alive]}")
+    else:
+        #print("[CLEANUP] All child processes terminated.")
+        pass
 
 # Run cleanup on normal exit
-#atexit.register(kill_child_process)
+atexit.register(kill_child_process)
 
 # Trap termination signals
-#def handle_signal(signum, frame):
-#    kill_child_process()
-#    raise SystemExit(0)
+def handle_signal(signum, frame):
+    kill_child_process()
+    raise SystemExit(0)
 
-#signal.signal(signal.SIGINT, handle_signal)
-#signal.signal(signal.SIGTERM, handle_signal)
+signal.signal(signal.SIGINT, handle_signal)
+signal.signal(signal.SIGTERM, handle_signal)
 
 #from parsivar import Normalizer
 my_hazm_normalizer = None
@@ -597,7 +566,7 @@ parser.add_argument("--clientip", '-i', help="Client IP for statistics")
 parser.add_argument('--version', required = False, help="Show program version", action='store_true')
 
 try:
-    args, unknown = parser.parse_known_args()
+    args = parser.parse_args()
 except:
     #print("Waiting for the input_element...")
     var = traceback.format_exc()
@@ -2148,8 +2117,7 @@ def selenium_chrome_google_translate_html_javascript_file(html_file_path):
             if use_api or splitonly:
                 print("\nCreating a new browser for stats")
                                                       
-                service = Service()
-                service.startup_timeout = 240  # Increase timeout (default is 20s)
+                service = Service()                                
                 driver = webdriver.Chrome(service=service, options=chrome_options)
                                     
                           
@@ -3563,8 +3531,21 @@ AFTERTEXTTOTRANSLATE"""
                 print("Waiting for https://www.perplexity.ai/ ...")
                 sleep(1)
             translation_page_openeing_loop_count = translation_page_openeing_loop_count - 1
-
-
+        
+        # Close "Try Comet brower" annoying layer
+        try:
+            # Locate the div by CSS selector
+            div_element = driver.find_element(By.CSS_SELECTOR, "div.relative.w-full.overflow-hidden.rounded-lg")
+            div_element.click()
+            #print("Div clicked successfully.")
+            # Send ESC to the <body>, not the div
+            body = driver.find_element(By.TAG_NAME, "body")
+            body.send_keys(Keys.ESCAPE)
+            #print("ESC key sent to the page.")
+        except NoSuchElementException:
+            # Ignore if the element is not found
+            pass
+        
         # Locate the contenteditable div
         textarea = WebDriverWait(driver, 1).until(
             EC.presence_of_element_located((By.XPATH, "//*[@id='ask-input']"))
@@ -3798,6 +3779,20 @@ AFTERTEXTTOTRANSLATE"""
             confirm_button.click()
         except:
             print("Unable to delete conversation")
+            
+        # Close "Try Comet brower" annoying layer, ignore if the layer is not present
+        try:
+            # Locate the div by CSS selector
+            div_element = driver.find_element(By.CSS_SELECTOR, "div.relative.w-full.overflow-hidden.rounded-lg")
+            div_element.click()
+            #print("Div clicked successfully.")
+            # Send ESC to the <body>, not the div
+            body = driver.find_element(By.TAG_NAME, "body")
+            body.send_keys(Keys.ESCAPE)
+            #print("ESC key sent to the page.")
+        except NoSuchElementException:
+            # Ignore if the element is not found
+            pass
         
         translation = res  
     except Exception:
@@ -4877,22 +4872,41 @@ def clean_up_previous_chrome_selenium_drivers(current_driver_full_path):
         
 
 def create_webdriver():
-    global driver, chromedriverpath, translation_engine, chrome_options
+    global driver, chromedriverpath, translation_engine, chrome_options, driver_path
     if not splitonly:
         print("\nStarting translation using engine : %s" % (translation_engine.title()))
 
+    driver_path = ""
 
     if use_api == False and not splitonly:
         print(f"Starting Chrome browser\n")
         service = Service()
         
-        try:
-            service.startup_timeout = 240  # Increase timeout (default is 20s)
-            driver = webdriver.Chrome(service=service, options=chrome_options)
-        except:
-            var = traceback.format_exc()
-            print(var)
+        if webdriver.__name__ == "undetected_chromedriver":
+            try:
+                from selenium import webdriver as selenium_webdriver
+                # Step 1: Get the ChromeDriver path using Selenium Manager
+                options_manager = selenium_webdriver.ChromeOptions()
+                # For headless mode, choose the new or old flag as per your Chrome version:
+                options_manager.add_argument('--headless=new')  # Recommended for latest Chrome/Chromium
+                # Alternatively, for compatibility with older versions, you can use:
+                # options.add_argument('--headless')
+
+                manager = selenium_webdriver.Chrome(options=options_manager)
+                driver_path = manager.service.path
+                manager.quit()
+                print(f"Using selenium chrome driver path : {driver_path}")
+            except:
+                pass
             
+        try:
+            if driver_path != "":
+                print("Please wait while patching chrome driver to help prevent robot detections...")
+                driver = webdriver.Chrome(service=service, options=chrome_options, executable_path=driver_path)
+            else:
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+                
+        except:
             print("An error occured during launching chrome. This may happen during google chrome automatic updates or if Google Chrome is not installed.")
             print("You may start google chrome and open the menu Help -> About Google Chrome to see if there is an update running and retry machine translation after the update.")
             print("Exiting, please retry.")
@@ -5409,8 +5423,7 @@ def get_translation_and_replace_after():
                             if translation_engine != 'yandex' and driver is not None:
                                 print(f"[Line {inspect.currentframe().f_lineno}] Starting Chrome browser\n")
                                 
-                                service = Service() 
-                                service.startup_timeout = 240  # Increase timeout (default is 20s)                                
+                                service = Service()                                
                                 driver = webdriver.Chrome(service=service, options=chrome_options)
                                 
                                 driver.set_window_position(100, 100)
@@ -5426,8 +5439,7 @@ def get_translation_and_replace_after():
                         if driver is not None:
                             print(f"Starting Chrome browser\n")
                             
-                            service = Service()    
-                            service.startup_timeout = 240  # Increase timeout (default is 20s)                            
+                            service = Service()                                
                             driver = webdriver.Chrome(service=service, options=chrome_options)
 
                         if translation_engine == 'google' and driver is not None:
@@ -5904,8 +5916,7 @@ def run_statistics():
             
                                                                
             driver = webdriver.Chrome(service=service, options=chrome_options)
-            service = Service()        
-            service.startup_timeout = 240  # Increase timeout (default is 20s)            
+            service = Service()                                
         
         query_params = {
             "program_version" : PROGRAM_VERSION,
@@ -6280,8 +6291,7 @@ def get_robot_usage_comment():
             if use_api or splitonly:
                 print("\nCreating a new browser for stats")
                 
-                service = Service()     
-                service.startup_timeout = 240  # Increase timeout (default is 20s)                
+                service = Service()                                
                 driver = webdriver.Chrome(service=service, options=chrome_options)
 
             query_params = {
