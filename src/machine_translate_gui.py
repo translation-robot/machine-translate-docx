@@ -667,7 +667,7 @@ class MachineTranslationApp:
             return
             
         bin_launcher_path = ""
-        target = f"{self.bin_path}\\..\\ConEmuPack\\ConEmu.exe"
+        target = f"{self.bin_path}\\..\\WindowsTerminal\\WindowsTerminal.exe"
         
         open_word_param = ""
         viewdocx_label = ""
@@ -682,7 +682,7 @@ class MachineTranslationApp:
         console_arguments = ""
         arguments = ""
         if platform.system() == 'Windows':
-            console_arguments = f"-ct -font \"Courier New\" -size 16 -run "
+            console_arguments = f" -- "
         else:
             bin_launcher_path = f"osascript -e 'tell app \"Terminal\" to do script \"{self.bin_path}/machine-translate-docx "
             

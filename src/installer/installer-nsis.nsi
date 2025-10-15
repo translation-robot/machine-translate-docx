@@ -88,7 +88,6 @@ SectionEnd
 !include "MUI2.nsh"  ; Include the Modern UI macros
 
 OutFile "${APP_NAME} Setup.exe"
-InstallDir "${DEFAULT_DIR}"
 
 
 
@@ -209,6 +208,11 @@ SectionGroup "Shortcuts" SEC_SHORTCUTS
     File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Persian - Google.lnk"
   SectionEnd
 
+  Section /o "Machine Translation - Persian - Perlexity" SEC_PER_PERPLEXITY
+    SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
+    File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Persian - Perplexity.lnk"
+  SectionEnd
+  
   Section /o "Machine Translation - Polish - Deepl" SEC_POL_DEEPL
     SetOutPath "$APPDATA\Microsoft\Windows\SendTo"
     File "X:\travail\smtv-translation-bot\versions\pytranslation-robot\dist\SMTVRobot\source_code\SendTo\machine-translate-docx.exe - Polish - Deepl.lnk"

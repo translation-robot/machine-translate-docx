@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-10-02"
+PROGRAM_VERSION="2025-10-16"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -387,10 +387,15 @@ DefaultJsonConfiguration = """{
 			"maximum_character_block": 1500
 		}
 	},
+	"chatgpt": {
+		"no_account": {
+			"maximum_character_block": 1000
+		}
+	},
 	"statistics": {
 		"html_statistics_form_url": "https://contactdirectavecdieu.net/robot-stats.php",
 		"google_sheets_statistics": {
-			"account": {
+			"no_account": {
 				"google_account": "to be determined"
 			}
 		}
@@ -1091,8 +1096,14 @@ else:
 perplexity_max_char_bloc_size_key = ['perplexity', 'account','maximum_character_block']
 perplexity_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, perplexity_max_char_bloc_size_key)
 
+chatgpt_max_char_bloc_size_key = ['chatgpt', 'no_account','maximum_character_block']
+chatgpt_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, chatgpt_max_char_bloc_size_key)
+
+
 if translation_engine == 'perplexity':
     MAX_TRANSLATION_BLOCK_SIZE = perplexity_maximum_character_block
+elif translation_engine == 'chatgpt':
+    MAX_TRANSLATION_BLOCK_SIZE = chatgpt_maximum_character_block
 else:
     MAX_TRANSLATION_BLOCK_SIZE = deepl_maximum_character_block
 # Override MAX_TRANSLATION_BLOCK_SIZE value after logging on Deepl
@@ -1450,15 +1461,17 @@ def selenium_chrome_translate_get_from_text_array(to_translate, index):
     return translation_array[index - 1]
 
 def selenium_chrome_google_translate(to_translate):
-    global found_google_cookies_consent_button
+    global found_google_cookies_consent_button, driver
     global google_translate_first_page_loaded
+    
+    driver.execute_script("window.focus();")
+    selenium_chrome_google_click_cookies_consent_button()
+    
     try:
         translation = ''
         #to_translate_encoding = chardet.detect(bytes(to_translate))['encoding']
         #print("to_translate_encoding=%s" % (to_translate_encoding))
         
-        if not google_translate_first_page_loaded:
-            selenium_chrome_google_click_cookies_consent_button()
         #print("HERE **********")
         #input("Here")
             
@@ -1491,6 +1504,47 @@ def selenium_chrome_google_translate(to_translate):
         to_translate_add_new_line = '%0A '.join(to_translate_escaped.split('\n'))
         translation_url = "https://translate.google.com/?sl=%s&tl=%s&op=translate&text=%s" % (src_lang,dest_lang,to_translate_add_new_line)
         driver.get(translation_url)
+        #print(translation_url)
+        
+        # Wait for page to be loaded
+        try:
+            (driver.page_source).encode('utf-8')
+            WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+        except:
+            print("ERROR: Page load timeout reached.")
+        
+        
+        try:
+            # Wait up to 0.5 seconds for the button to appear
+            button = WebDriverWait(driver, 0.01).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Accept all']]"))
+            )
+            button.click()
+            
+            driver.get(translation_url)
+            
+             # Wait for page to be loaded
+            try:
+                (driver.page_source).encode('utf-8')
+                WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+            except:
+                print("ERROR: Page load timeout reached.")
+            # Wait up to 0.5 seconds for the button to appear
+            button = WebDriverWait(driver, 0.01).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Accept all']]"))
+            )
+            button.click()
+        except Exception:
+            # Ignore if not found or not clickable
+            pass
+        try:
+            button = driver.find_element(By.XPATH, "//button[.//span[text()='Browse your files']]")
+            #print("Button is present")
+        except:
+            #print("Button not found") 
+            pass
+            
+        
         #print("---------------------------------------------------------")
         #print("translation_url")
         #print(translation_url)
@@ -1520,10 +1574,22 @@ def selenium_chrome_google_translate(to_translate):
         time.sleep(0.2)
         #driver.execute_script('document.getElementById(\'//textarea[@id=\\\'source\\\']\').setAttribute(\'value\', \'Hello world !\');')
         #driver.execute_script("arguments[0].value = arguments[1];", input_button, to_translate_utf8)
+        
+        try:
+            # Wait up to 0.5 seconds for the button to appear
+            button = WebDriverWait(driver, 0.05).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Accept all']]"))
+            )
+            button.click()
+        except Exception:
+            # Ignore if not found or not clickable
+            pass
 
         try:
             copy_translation_element = "//div[4]/div[4]/div"
             copy_translation_element = "//i[contains(.,'content_copy')]"
+            copy_translation_element = "//button[contains(., 'Copy translation')]"
+            copy_translation_element = "//button[@aria-label='Copy translation']"
             
             copy_translation_button = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, copy_translation_element)))
         except :
@@ -1544,6 +1610,10 @@ def selenium_chrome_google_translate(to_translate):
         regex_still_translating_str = '$Translation'
         pos_separator_phonetic = 0
         #if re.search(regex_still_translating_str, to_translate_utf8):
+        
+        driver.execute_script("window.focus();")
+        selenium_chrome_google_click_cookies_consent_button()
+    
         if re.search(regex_still_translating_str, to_translate):
             time.sleep(4)
             try:
@@ -1596,7 +1666,7 @@ def selenium_chrome_google_translate(to_translate):
                     result_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, res_element_xpath)))
                     
                     translation = result_element.get_attribute('innerHTML')
-                    #translation = html.unescape(translation)
+                    translation = translation.unescape(translation)
                     
                     #print("translation:")
                     #print(translation)
@@ -1613,7 +1683,6 @@ def selenium_chrome_google_translate(to_translate):
     except Exception:
         var = traceback.format_exc()
         print(var)
-        sys.exit(4)
    
     page_source_str = driver.page_source
     #print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
@@ -1627,6 +1696,7 @@ def selenium_chrome_google_translate(to_translate):
     #print(translation)
     #print("#########################")
     #input("press enter")
+    #print(f"google translation:{translation}")
     return translation
 
 
@@ -1658,7 +1728,9 @@ def selenium_chrome_translate_maxchar_blocks():
             if translation_engine == 'perplexity':
                 max_try_count = 3
             elif translation_engine == 'deepl':
-                max_try_count = 3
+                max_try_count = 1
+            elif translation_engine == 'chatgpt':
+                max_try_count = 1
             else:
                 max_try_count = 4
             
@@ -1673,21 +1745,127 @@ def selenium_chrome_translate_maxchar_blocks():
                         deepl_sleep_wait_translation_seconds  = deepl_sleep_wait_translation_seconds * 1.1
                         print("%d translation retry so far..." % (translation_errors_count))
                         driver.execute_script("window.focus();")
+                        
                     if translation_engine == 'deepl':
-                        #print(to_translate)
-                        #print(translation_try_count)
                         translation_succeded, translation = selenium_chrome_deepl_translate(to_translate, translation_try_count - 1)
-                        if translation_succeded == False:
-                            print("Deepl translation permited limit exeeded")
+
+                        if not translation_succeded:
+                            print("Deepl translation permitted limit exceeded or wrong number of phrases received from Deepl.")
                             driver.delete_all_cookies()
-                            #return translation_succeded, []
+
+                        if translation_try_count >= (max_try_count - 1) and not translation_succeded:
+                            lines_to_translate = to_translate.split('\n')
+                            nb_lines_block = len(lines_to_translate)
+                            current_block_no_from_1 = current_block_no + 1
+
+                            def translate_lines_block(lines_block):
+                                """
+                                Try to translate a block of lines.
+                                If translation fails, split into halves (if possible),
+                                else translate line-by-line.
+                                """
+                                # Nothing to translate
+                                if not lines_block:
+                                    return ""
+
+                                # Try translating the entire block first
+                                joined_block = "\n".join(lines_block)
+                                success, translated_block = selenium_chrome_deepl_translate(joined_block, 1)
+
+                                if success and translated_block:
+                                    return translated_block.strip()
+
+                                # If it fails and block has more than one line → split
+                                if len(lines_block) > 1:
+                                    mid = len(lines_block) // 2
+                                    print(f"Splitting block of {len(lines_block)} lines into halves...")
+                                    first_half = translate_lines_block(lines_block[:mid])
+                                    second_half = translate_lines_block(lines_block[mid:])
+                                    return (first_half + "\n" + second_half).strip()
+                                else:
+                                    # Fallback: single line translation
+                                    line = lines_block[0]
+                                    print(f"Translating single line: {line}")
+                                    success, line_translated = selenium_chrome_deepl_translate(line, 1)
+                                    if not success or not line_translated:
+                                        line_translated = "Unable to get translation from Deepl."
+                                        print(f"ERROR: Unable to get translation for: {line}")
+                                    return line_translated.strip()
+
+                            # Main execution
+                            print(f"Attempting recursive translation for block {current_block_no_from_1}/{blocks_nchar_max_to_translate_array_len} "
+                                  f"with {nb_lines_block} lines...")
+                            translation = translate_lines_block(lines_to_translate)
+                            translation_succeded = True
+                        driver.delete_all_cookies()
+                        
                     if translation_engine == 'chatgpt':
-                        #print(to_translate)
-                        #print(translation_try_count)
-                        translation_succeded, translation = selenium_chrome_chatgpt_translate(to_translate, translation_try_count - 1)
-                        if translation_succeded == False:
-                            print("Chatgpt translation failed")
-                            return translation_succeded, []
+                        if engine_method == 'api':
+                            translation_succeded, translation = selenium_chrome_chatgpt_translate(to_translate, translation_try_count - 1)
+                        else:
+                            translation_succeded, translation = selenium_chrome_chatgpt_translate(to_translate, translation_try_count)
+
+                            if translation_try_count >= (max_try_count - 1) and not translation_succeded:
+                                lines_to_translate = to_translate.split('\n')
+                                nb_lines_block = len(lines_to_translate)
+                                current_block_no_from_1 = current_block_no + 1
+
+                                def translate_lines_block_chatgpt(lines_block):
+                                    """
+                                    Recursive translation logic for ChatGPT with Google fallback.
+                                    Splits failed blocks in half, falls back to Google Translate for single-line failures.
+                                    """
+                                    if not lines_block:
+                                        return ""
+
+                                    # Try translating the entire block first
+                                    joined_block = "\n".join(lines_block)
+                                    success, translated_block = selenium_chrome_chatgpt_translate(joined_block, 1)
+
+                                    if success and translated_block:
+                                        return translated_block.strip()
+
+                                    # If it fails and the block has more than one line → split into halves
+                                    if len(lines_block) > 1:
+                                        mid = len(lines_block) // 2
+                                        print(f"ChatGPT: splitting block of {len(lines_block)} lines into halves...")
+                                        first_half = translate_lines_block_chatgpt(lines_block[:mid])
+                                        second_half = translate_lines_block_chatgpt(lines_block[mid:])
+                                        return (first_half + "\n" + second_half).strip()
+
+                                    # Fallback for a single-line block
+                                    line = lines_block[0]
+                                    print(f"ChatGPT: Translating single line (fallback with Google if needed): {line}")
+                                    success, line_translated = selenium_chrome_chatgpt_translate(line, 1)
+
+                                    if not success or not line_translated:
+                                        # Try Google Translate
+                                        selenium_chrome_google_click_cookies_consent_button()
+                                        line_translated = selenium_chrome_google_translate(line)
+
+                                        # Retry once more if first attempt fails
+                                        if not line_translated:
+                                            selenium_chrome_google_click_cookies_consent_button()
+                                            line_translated = selenium_chrome_google_translate(line)
+
+                                        if not line_translated:
+                                            print(f"ERROR: Unable to translate line even with Google: {line}")
+                                            line_translated = "Unable to get translation from ChatGPT or Google."
+                                        else:
+                                            #print(f"Google Translate fallback succeeded for: {line}")
+                                            pass
+
+                                    return line_translated.strip()
+
+                                # Execute recursive translation
+                                print(f"Attempting recursive translation for ChatGPT block {current_block_no_from_1}/{blocks_nchar_max_to_translate_array_len} "
+                                      f"with {nb_lines_block} lines...")
+                                translation = translate_lines_block_chatgpt(lines_to_translate)
+                                translation_succeded = True
+
+                            driver.delete_all_cookies()
+                            time.sleep(0.25)
+                    
                     if translation_engine == 'perplexity':
                         #print(to_translate)
                         #print(translation_try_count)
@@ -1807,99 +1985,36 @@ def selenium_chrome_google_click_cookies_consent_button():
     global chromedriverpath
     try:
         translation = ''
-        browse_file_element_xpath = "//label[contains(.,'Browse your computer')]"
-
-        if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
-            print("Opening google translation page...")
-            if engine_method == 'textfile' or engine_method == 'xlsxfile':
-                driver.get("https://translate.google.com/?sl=%s&tl=%s&op=docs" % (src_lang,dest_lang))
-                (driver.page_source).encode('utf-8')
-            else:
-                driver.get("https://translate.google.com/?sl=%s&tl=%s&op=translate" % (src_lang,dest_lang))
-                (driver.page_source).encode('utf-8')
+        browse_file_element_xpath = "//button[.//span[contains(text(), 'Browse ')]]"
         
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        #driver.get("https://translate.google.com/")
         
-        if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
-            print("Waiting for cookies consent button...")
-            try:
-                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
-                found_google_cookies_consent_button = True
-            except:
-                pass
-                
-        if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
-            consent_cookies_element = "//form/div/div/button/span"
-            try:
-                consent_cookies_button = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, consent_cookies_element)))
-                consent_cookies_button.click()
-                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
-                found_google_cookies_consent_button = True
-                
-            except:
-                pass
-                
-        if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
-            consent_cookies_element = "//button/span"
-            try:
-                consent_cookies_button = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, consent_cookies_element)))
-                consent_cookies_button.click()
-                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
-                found_google_cookies_consent_button = True
-                
-            except:
-                pass
-                
-        if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
-            consent_cookies_element = "//button/div[2]"
-            try:
-                consent_cookies_button = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, consent_cookies_element)))
-                consent_cookies_button.click()
-                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
-                found_google_cookies_consent_button = True
-                
-            except:
-                pass
+        #Wait for page status loaded to be complete
+        WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
         
-        if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
-            try:
-                browse_file_element = WebDriverWait(driver, 0.1).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
-                found_google_cookies_consent_button = True
-            except:
-                pass
-                
-        if not found_google_cookies_consent_button and not google_translate_first_page_loaded:
-            try:
-                                
-                if not showbrowser:
-                    chrome_options = Options()
-                    chrome_options.add_argument("--disable-web-security")
-                    chrome_options.add_argument("--disable-xss-auditor")
-                    #chrome_options.add_argument("--verbose")
-                    chrome_options.add_argument("--log-level=3")  # fatal
-                    chrome_options.add_argument("--lang=en-GB")
-                    chrome_options.add_argument("--password-store=basic")
-                    #options.add_argument(r'--user-data-dir=C:\Users\Patriot\AppData\Local\Google\Chrome\User Data') #e.g. C:\Users\You\AppData\Local\Google\Chrome\User Data
-                    #options.add_argument(r'--profile-directory=C:\Users\Patriot\AppData\Local\Google\Chrome\User Data\Default') #e.g. Profile 3
-                    #input("profile options added")
-                    driver = webdriver.Chrome(executable_path=chromedriverpath, options=chrome_options)
+        try:
+            # Wait up to 0.5 seconds for the button to appear
+            button = WebDriverWait(driver, 0.01).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Accept all']]"))
+            )
+            button.click()
+        except Exception:
+            # Ignore if not found or not clickable
+            pass
+        try:
+            button = driver.find_element(By.XPATH, "//button[.//span[text()='Browse your files']]")
+            #print("Button is present")
+        except:
+            #print("Button not found") 
+            pass
             
-                driver.maximize_window()
-                driver.get("https://translate.google.com/?sl=%s&tl=%s&op=docs" % (src_lang,dest_lang))
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                driver.switch_to.window(driver.current_window_handle)
-                print('\nCLICK ON I Agree TO CONTINUE\n')
-                browse_file_element = WebDriverWait(driver, 500).until(EC.presence_of_element_located((By.XPATH, browse_file_element_xpath)))
-            except:
-                pass      
             
         google_translate_first_page_loaded = True
-        print("Cookies consent button cliqued...")
+        #print("Cookies consent button cliqued...")
     except Exception:
-        print("Error gaccepting google cookie consent.")
+        #print("Error gaccepting google cookie consent.")
         var = traceback.format_exc()
-        print(var)
-        sys.exit(6)
+        #print(var)
         
         
 def selenium_chrome_google_translate_text_file(text_file_path):
@@ -1933,8 +2048,6 @@ def selenium_chrome_google_translate_text_file(text_file_path):
         #text_file_translate_button_xpath = "//div[2]/div[2]/button/span"
         text_file_translate_button_xpath = "//div[2]/div/button/span"
         
-        
-       
         
         
         text_file_translate_button = WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.XPATH, text_file_translate_button_xpath)))
@@ -2763,7 +2876,8 @@ def deepl_close_messages():
     if close_install_extension_message_bool:
         #Call another time in case some messages because layers order
         deepl_close_messages()
-    
+
+
 
 def selenium_chrome_deepl_translate(to_translate, retry_count):
     global logged_into_deepl
@@ -2993,13 +3107,13 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         while copy_button_clicked_loop_count > 0 and (res == "" or res is None):
             #print(f"copy_button_clicked_loop_count : {copy_button_clicked_loop_count}")
             try:
-                driver.execute_script("scrollBy(0,-1000);")
+                #driver.execute_script("scrollBy(0,-1000);")
                 # clipboard.copy('')
-                try:
-                    actions.move_to_element(copy_translation_button).perform()
-                except:
-                    pass
-                sleep(0.2)
+                #try:
+                #    actions.move_to_element(copy_translation_button).perform()
+                #except:
+                #    pass
+                sleep(0.05)
                 # driver.set_window_size(800, 700)
                 page_source_str = driver.page_source
                 # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
@@ -3009,7 +3123,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 wait_translation_finish_try = 400
                 block_translation_percent_done = 0
                 while page_source_str.find(still_translating_html_str) > 0 and wait_translation_finish_try > 0:
-                    sleep(0.2)
+                    sleep(0.05)
                     #print("Still translating...")
                     page_source_str = driver.page_source
                     # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
@@ -3151,7 +3265,10 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         print(var)
         sleep(1)
         # sys.exit(0)
-    return True, translation
+    if res == "":
+        return False, ""
+    else:
+        return True, translation
 
 
 
@@ -3164,6 +3281,8 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
     bar = None
     global closed_cookies_accept_message_bool, close_install_extension_message_bool, deepl_nb_clear_cached_times
     global engine_method, end_time, elapsed_time, json_configuration_array
+    
+    res = ""
     
     deepl_maximum_clear_cache_retry_key = ['deepl', 'maximum_clear_cache_retry']
     deepl_maximum_clear_cache_retry = get_nested_value_from_json_array(json_configuration_array, deepl_maximum_clear_cache_retry_key)
@@ -3189,6 +3308,7 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
         while translation_page_opened == False and translation_page_openeing_loop_count > 0:
             #print(f"{translation_page_openeing_loop_count} trying left")
             try:
+                driver.delete_all_cookies()
                 driver.get("https://chatgpt.com/")
                 #sleep(1)
 
@@ -3197,6 +3317,27 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
                 print("Waiting for https://chatgpt.com/ ...")
                 sleep(1)
             translation_page_openeing_loop_count = translation_page_openeing_loop_count - 1
+        
+        try:
+            # Wait up to 1 second for the button to appear
+            button = WebDriverWait(driver, 0.2).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Accept all')]"))
+            )
+            button.click()
+            print("✅ Clicked the 'Accept all' button.")
+        except Exception:
+            print("⚠️ 'Accept all' button not found or not clickable (ignored).")
+        
+        try:
+            # Wait until the link is visible
+            stay_logged_out_link = stop_button = WebDriverWait(driver, 1.2).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "button[aria-label='Close']"))
+            )
+
+            # Click the link
+            stay_logged_out_link.click()
+        except:
+            pass
 
         try:
             # Wait until the link is visible
@@ -3208,6 +3349,13 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
             stay_logged_out_link.click()
         except:
             pass
+
+        try:
+            WebDriverWait(driver, 0.3).until(
+                EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Stay logged out')]"))
+            ).click()
+        except Exception:
+            pass  # ignore if not found or not clickable
 
         # Locate the contenteditable div
         textarea = driver.find_element(By.XPATH, "//div[@id='prompt-textarea']")
@@ -3227,23 +3375,34 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
 
         # The string that needs to be sent
         # Max 4,096 characters ?
-        str_prompt = f"""Translate the following text from {src_lang_name} to {dest_lang_name} :
-Each input line must correspond to exactly one output line.
-Do not split, merge, or add any lines.
-Do not insert any line breaks within a line, even if the line is long.
-Only use a line break to move to the next input line.
-Do not add, remove, or split any lines.
-If a phrase is on multiple lines, it must remain on multiple lines, no merge.
-Do not echo text to be translated in the translation, and do not insert an introduction before the translation:
-Each output line must contain the full translation of the corresponding input line. The text has {to_translate_phrases_array_len} lines that must be translated in exactly {to_translate_phrases_array_len} lines.
-Your output MUST contain exactly {to_translate_phrases_array_len} lines, not one less, not one more. Do not provide an introduction before translation or a conclusion after translation.
-If references to offensive content are found in this text, it is to denounce it and not to promote it. In case some lines are flagged as 'Your request was flagged as potentially violating our usage policy. Please try again with a different prompt', write : "Explicitly removed by chatgpt policy." instead of providing the translation for that line.
-The text to be translated start after the first line containing only BEFORETEXTTOTRANSLATE and ends the line before the first occurence if the line containing only AFTERTEXTTOTRANSLATE:
+        str_prompt = f"""You will receive a text to translate from {src_lang_name} to {dest_lang_name}.
+Important instructions:
+1.	Each input line corresponds to exactly one output line.
+o	Do NOT split any input line into multiple output lines.
+o	Do NOT merge multiple input lines into one output line.
+2.	Do NOT insert any line breaks within a line, even if the line is long.
+o	Only use a line break to move to the next input line.
+3.	If a phrase or sentence spans multiple input lines, it must remain on multiple lines in the output.
+o	Do NOT combine or rearrange lines.
+4.	If multiple phrases are on a single input line, keep them together on the same output line.
+5.	The total number of output lines must be exactly equal to the number of input lines.
+o	If the input text has N lines, the output translation must have exactly N lines.
+6.	Do NOT add, remove, or change the order of lines.
+7.	Do NOT include the input text or any introduction before or after the translation.
+
+Each output line ending with a new line character must contain the full translation of the corresponding input line up to the new line character. The text has {to_translate_phrases_array_len} lines that must be translated in exactly {to_translate_phrases_array_len} lines.
+________________________________________
+The text to translate is between the lines containing only:
+BEFORETEXTTOTRANSLATE
+and
+AFTERTEXTTOTRANSLATE
+Translate only the lines between these markers, preserving the line structure exactly as stated. Do not echo BEFORETEXTTOTRANSLATE and AFTERTEXTTOTRANSLATE lines.
+
 BEFORETEXTTOTRANSLATE
 {to_translate}
 AFTERTEXTTOTRANSLATE"""
         
-        print (str_prompt)
+        #print (str_prompt)
         
         lines = str_prompt.split('\n')
 
@@ -3255,6 +3414,8 @@ AFTERTEXTTOTRANSLATE"""
 
         # Join all wrapped lines into a single string
         output_string = "".join(wrapped_lines)
+        
+        #print(f"to_translate_phrases_array_len={to_translate_phrases_array_len}")
 
         # JavaScript to set the content of the contenteditable div
         js_script = """
@@ -3300,8 +3461,13 @@ AFTERTEXTTOTRANSLATE"""
 
         # Set a timeout value for waiting for the element
         timeout = 1  # Timeout after 10 seconds if not found
+        found_stop_streaming_button = False
+        
+        max_wait_time = 40  # Maximum number of seconds to wait
+        start_time = time.time()
+        found_stop_streaming_button = False
 
-        while True:
+        while time.time() - start_time < max_wait_time:
             try:
                 # Search for the button with aria-label="Stop streaming"
                 stop_button = WebDriverWait(driver, timeout).until(
@@ -3309,30 +3475,73 @@ AFTERTEXTTOTRANSLATE"""
                 )
                 
                 # Element found, perform action (if any)
-                print("Found the 'Stop streaming' button!")
+                if not found_stop_streaming_button:
+                    #print("Found the 'Stop streaming' button. Waiting for the stop steaming button to disappear")
+                    found_stop_streaming_button = True
+                    
                 
                 # Sleep for 0.5 seconds before checking again
                 time.sleep(0.25)
                 
                 try:
-                    button = driver.find_element(By.CSS_SELECTOR, "button[data-testid='answer-mode-tabs-tab-search']")
-                    button.click()
+                    close_button = WebDriverWait(driver, 0.01).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "button[data-testid='answer-mode-tabs-tab-search']"))
+                    )
+
+                    close_button = driver.find_element(By.CSS_SELECTOR, "button[data-testid='answer-mode-tabs-tab-search']")
 
                     # Send PAGE_DOWN to the body (or active element)
                     driver.find_element(By.TAG_NAME, "body").send_keys(Keys.PAGE_DOWN)
-                    print("Button clicked and PAGE_DOWN sent")
+                    #print("Button clicked and PAGE_DOWN sent")
                 except:
                     try:
                         body = driver.find_element(By.TAG_NAME, "body")
                         body.send_keys(Keys.PAGE_DOWN)
                     except:
-                        print("Cannot find html body...")
+                        #print("Cannot find html body...")
                         pass
                 
+                try:
+                    # Wait until the link is visible
+                    stay_logged_out_link = WebDriverWait(driver, 0.01).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "button[aria-label='Close']"))
+                    )
+
+                    # Click the link
+                    stay_logged_out_link.click()
+                except:
+                    pass
+
+                try:
+                    WebDriverWait(driver, 0.3).until(
+                        EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Stay logged out')]"))
+                    ).click()
+                except Exception:
+                    pass  # ignore if not found or not clickable
+                    
+                try:
+                    # Wait briefly (0.5s) for the Close button to appear and be clickable
+                    close_button = WebDriverWait(driver, 0.05).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='close-button']"))
+                    )
+                    close_button.click()
+                    print("✅ Clicked the 'Close' button.")
+                except Exception:
+                    print("⚠️ 'Close' button not found or not clickable (ignored).")
+                    
+                # Scroll down the page to see the translation
+                try:
+                    button = driver.find_element(
+                        By.CSS_SELECTOR,
+                        "button.cursor-pointer.absolute.z-30.rounded-full.bg-clip-padding.border.text-token-text-secondary"
+                    )
+                    button.click()
+                except Exception:
+                    pass  # Ignore if not found or not clickable
                 
             except Exception as e:
                 # If the element is no longer found or any other exception occurs
-                print("Element not found or timeout reached. Stopping the loop.")
+                #print("Element not found or timeout reached. Stopping the loop.")
                 
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 break
@@ -3400,32 +3609,38 @@ AFTERTEXTTOTRANSLATE"""
                 lines = markdown_text_with_delimiter.split("\n")
                 
             lines = [line.replace('\n', '') for line in lines]
-            print(lines)
-            print("after print lines")
+            #print("to_translate")
+            #print(to_translate)
+            #print(lines)
+            #print("after print lines")
 
         else:
-            print("No div with class 'markdown' found.")
+            print("Error : No div with class 'markdown' found.")
 
         translated_phrases_array = lines
         translated_phrases_array_len = len(translated_phrases_array)
+        #print(f"translated_phrases_array_len={translated_phrases_array_len}")
         
         input_nb_lines = len(to_translate.replace("\r", "").split("\n"))
         # for pos_remove in range(0,translated_phrases_array_len - to_translate_phrases_array_len):
         if translated_phrases_array_len >= to_translate_phrases_array_len:
-            print(f"input_nb_lines={input_nb_lines}")
+            #print(f"input_nb_lines={input_nb_lines}")
             translated_phrases_array = translated_phrases_array[:input_nb_lines]
             #print("input_nb_lines: %s" % (input_nb_lines))
             #print("array: %s" % (translated_phrases_array))
             res = "\n".join(translated_phrases_array)
-            if translated_phrases_array_len > to_translate_phrases_array_len + 1:
+            if translated_phrases_array_len > to_translate_phrases_array_len:
+                print("Too many lines found in translation...")
+                res = ""
+                translated_phrases_array = ""
+                translated_phrases_array_len = 0
                 print("Found %s lines out of %s lines" % (translated_phrases_array_len, to_translate_phrases_array_len))
 
         if translated_phrases_array_len < to_translate_phrases_array_len:
             res = ""
-            print("Error, not enough lines")
+            print("Error, not enough lines foud in translation. Retrying.")
             print("Cleaning up chatgpt cookies...")
             driver.delete_all_cookies()
-            sleep(1)
 
         translation = "\n".join(lines)
         #input("After markdown text")
@@ -3460,12 +3675,127 @@ AFTERTEXTTOTRANSLATE"""
             
     except Exception:
         var = traceback.format_exc()
-        print(var)
-        sleep(1)
-        # sys.exit(0)
-    return True, translation
+        try:
+            if "Your request was flagged as potentially violating our usage policy. Please try again with a different prompt." in driver.page_source:
+                print("Chatgpt returned an error : Your request was flagged as potentially violating our usage policy. Please try again with a different prompt.")
+            else:
+                print(var)
+        except:
+            pass
+    if res is not None and res != "":
+        return True, translation
+    else:
+        return False, ""
+
+def click_verify_human_checkbox_if_present(driver, timeout=50):
+    """
+    If a DIV containing the text "Verify you are human" has an input[type=checkbox] inside,
+    scroll it into view and click it. Ignore errors and return True if clicked, False otherwise.
+    """
+    
+    try:
+        WebDriverWait(driver, 20).until(EC.frame_to_be_available_and_switch_to_it((By.CSS_SELECTOR,"iframe[title='Widget containing a Cloudflare security challenge']")))
+        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='checkbox']"))).click()
+    except:
+        input("Did not find checkbox")
+        
+    return
+
+    # Wait for iframe to load (Cloudflare Turnstile usually has "cf-chl-widget" or similar in its ID)
+    iframe = WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[src*='challenges.cloudflare.com']"))
+    )
+
+    # Switch into the iframe
+    driver.switch_to.frame(iframe)
+
+    # Now find the checkbox inside the iframe
+    checkbox = WebDriverWait(driver, timeout).until(
+        EC.element_to_be_clickable((By.XPATH, "//input[@type='checkbox']"))
+    )
+    checkbox.click()
+
+    # Switch back to main page
+    driver.switch_to.default_content()
+    return
+    
+    xpath = "//div[contains(., 'Verify you are human')]//input[@type='checkbox']"
+    try:
+        # wait briefly for presence (not necessarily visible/clickable)
+        checkbox = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.XPATH, xpath))
+        )
+    except TimeoutException:
+        input("Didn't find checkbox")
+        return False
+
+    try:
+        # Scroll into view
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'center'});", checkbox)
+    except WebDriverException:
+        # ignore scrolling errors
+        pass
+
+    try:
+        # Use JS click for maximum reliability (avoids overlay / intercepted click issues)
+        driver.execute_script("arguments[0].click();", checkbox)
+        return True
+    except (JavascriptException, WebDriverException):
+        # fallback to normal click if JS click fails
+        try:
+            checkbox.click()
+            return True
+        except Exception:
+            return False
 
 
+def perplexity_close_messages():
+    """
+    Closes all common Deepl popups, messages, and dialogs.
+    No parameters needed.
+    """
+    global closed_cookies_accept_message_bool, close_install_extension_message_bool, driver
+    
+    close_install_extension_message_bool = False
+
+    # List of XPaths/CSS selectors for popups/messages
+    xpath_selectors = [
+       "//*/text()[normalize-space(.)='Accept All Cookies']/parent::*"
+    ]
+    css_selectors = [
+        "div.relative.w-full.overflow-hidden.rounded-lg",
+        "button[data-testid='floating-signup-close-button']",
+        "button[data-testid='floating-card-upsell-dismiss']"
+    ]
+
+    # Close elements by XPath
+    for selector in xpath_selectors:
+        try:
+            el = WebDriverWait(driver, 0.01).until(EC.presence_of_element_located((By.XPATH, selector)))
+            driver.execute_script("arguments[0].scrollIntoView();", el)
+            el.click()
+            # Mark cookies/extension as closed if relevant
+            if "cookies" in selector.lower():
+                closed_cookies_accept_message_bool = True
+            if "w-6" in selector:
+                close_install_extension_message_bool = True
+        except:
+            continue
+
+    # Close elements by CSS selector
+    for selector in css_selectors:
+        try:
+            el = WebDriverWait(driver, 0.01).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+            driver.execute_script("arguments[0].scrollIntoView();", el)
+            el.click()
+            close_install_extension_message_bool = True
+        except:
+            continue
+    
+    if close_install_extension_message_bool:
+        #Call another time in case some messages because layers order
+        deepl_close_messages()
+    
 
 def selenium_chrome_perplexity_translate(to_translate, retry_count, max_try_count):
     global logged_into_chatgpt, src_lang_name, dest_lang_name, chrome_options, bloc_number, service, chrome_options
@@ -3514,23 +3844,58 @@ AFTERTEXTTOTRANSLATE"""
     to_translate_phrases_array_len = len(to_translate_phrases_array)
 
     set_chrome_window_2_3_screen()
+    
 
     try:
         translation_page_openeing_loop_count = 4
         translation_page_opened = False
         
-        # Open ChatGPT translation page
-        while translation_page_opened == False and translation_page_openeing_loop_count > 0:
-            #print(f"{translation_page_openeing_loop_count} trying left")
-            try:
-                driver.get("https://www.perplexity.ai/")
-                #sleep(1)
+       # 1️ Open Google homepage
+        driver.get("https://www.google.com/?hl=en&gl=us")
 
-                translation_page_opened = True
-            except:
-                print("Waiting for https://www.perplexity.ai/ ...")
-                sleep(1)
-            translation_page_openeing_loop_count = translation_page_openeing_loop_count - 1
+        # 2 Try to click "Accept all" if it exists
+        try:
+            wait = WebDriverWait(driver, 0.2)
+            accept_button = wait.until(
+                EC.presence_of_element_located((By.XPATH, "//div[normalize-space()='Accept all']/ancestor::button"))
+            )
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//div[normalize-space()='Accept all']/ancestor::button")))
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", accept_button)
+            
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.PAGE_DOWN)
+            
+            consent_div = wait.until(
+                EC.presence_of_element_located((By.XPATH, "//div[h1[text()='Before you continue to Google']]"))
+            )
+            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight;", consent_div)
+            
+            accept_button.click()
+            #print("✅ Clicked 'Accept all'")
+        except TimeoutException:
+            #print("ℹ️ 'Accept all' button not found, continuing...")
+            pass
+
+        # 3️ Open Google search results for 'perplexity ai'
+        driver.get("https://www.google.com/search?q=perplexity+ai")
+
+        # 4️ Try to find and click a link to perplexity.ai
+        # Scroll into view first
+        # wait for the link to appear
+        try:
+            perplexity_link = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "a[href='https://www.perplexity.ai/']"))
+            )
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", perplexity_link)
+            # Optional small pause for smoothness
+            time.sleep(0.2)
+            # Click using JS for maximum reliability
+            driver.execute_script("arguments[0].click();", perplexity_link)
+        except:
+            pass
+        
+        current_url = driver.current_url
+        if not current_url.startswith("https://perplexity.ai"):
+            driver.get("https://www.perplexity.ai/")
         
         # Close "Try Comet brower" annoying layer
         try:
@@ -3547,12 +3912,20 @@ AFTERTEXTTOTRANSLATE"""
             pass
         
         # Locate the contenteditable div
-        textarea = WebDriverWait(driver, 1).until(
-            EC.presence_of_element_located((By.XPATH, "//*[@id='ask-input']"))
-        )
+        try:
+            textarea = WebDriverWait(driver, 1).until(
+                EC.presence_of_element_located((By.XPATH, "//*[@id='ask-input']"))
+            )
 
-        # Send text to the element
-        textarea.click()
+            # Send text to the element
+            textarea.click()
+        except:
+            textarea = WebDriverWait(driver, 1).until(
+                EC.presence_of_element_located((By.XPATH, "//*[@id='ask-input']"))
+            )
+
+            # Send text to the element
+            textarea.click()
         
         # Assuming you already have a WebDriver instance (driver)
         #textarea = driver.find_element(By.ID, "ask-input")
@@ -3577,31 +3950,33 @@ AFTERTEXTTOTRANSLATE"""
         driver.execute_script(js_script)
         
         
-        #Click accept all cookies if found
+        #Click and close all annoyances messages
+        perplexity_close_messages()
+
+        #"""Click the floating card dismiss button if it exists."""
         try:
-            accept_all_cookies = WebDriverWait(driver, 0.1).until(
-                EC.presence_of_element_located((By.XPATH, "//*/text()[normalize-space(.)='Accept All Cookies']/parent::*"))
+            # Wait until the button is present
+            timeout=1
+            button = WebDriverWait(driver, timeout).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "button[data-testid='floating-card-upsell-dismiss']"))
             )
-        except TimeoutException:
-            accept_all_cookies = None  # Element not found, continue program
+            
+            # Scroll into view before clicking
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", button)
 
-        # Now you can check:
-        if accept_all_cookies:
-            accept_all_cookies.click()
+            # Try JS click (avoids intercepted click errors)
+            driver.execute_script("arguments[0].click();", button)
+            print("✅ Dismiss button clicked.")
         
-        #Close login dialog if found
-        try:
-            close_signin_button = WebDriverWait(driver, 0.1).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='floating-signup-close-button']"))
-            )
         except TimeoutException:
-            close_signin_button = None  # Element not found, continue program
-
-        # Now you can check:
-        if close_signin_button:
-            close_signin_button.click()
+            #print("❌ Dismiss button not found within timeout.")
+            pass
+        except WebDriverException as e:
+            #print(f"⚠️ Click failed: {e}")
+            pass
         
-
+        perplexity_close_messages()
+        
         submit_button = WebDriverWait(driver, 1).until(
             EC.presence_of_element_located((By.XPATH, '//button[@data-testid="submit-button"]'))
         )
@@ -3756,12 +4131,12 @@ AFTERTEXTTOTRANSLATE"""
         ##################################################
         # Delete this chat from perplexity AI history
         try:
-            wait = WebDriverWait(driver, 10)
+            wait = WebDriverWait(driver, 1)
 
             # 1. Click the three-dot (⋯) menu icon
             dots_button = wait.until(EC.element_to_be_clickable((
-                By.CSS_SELECTOR,
-                'svg.tabler-icon-dots'
+                By.XPATH,
+                "//button[@data-testid='thread-dropdown-menu']"
             )))
             dots_button.click()
 
@@ -3773,13 +4148,13 @@ AFTERTEXTTOTRANSLATE"""
             delete_button.click()
 
             # Wait for the Confirm button and click it
-            confirm_button = WebDriverWait(driver, 10).until(
+            confirm_button = WebDriverWait(driver, 1).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="thread-delete-confirm"]'))
             )
             confirm_button.click()
         except:
             print("Unable to delete conversation")
-            
+        
         # Close "Try Comet brower" annoying layer, ignore if the layer is not present
         try:
             # Locate the div by CSS selector
@@ -4877,7 +5252,7 @@ def create_webdriver():
         print("\nStarting translation using engine : %s" % (translation_engine.title()))
 
     driver_path = ""
-
+    
     if use_api == False and not splitonly:
         print(f"Starting Chrome browser\n")
         service = Service()
@@ -4902,11 +5277,15 @@ def create_webdriver():
         try:
             if driver_path != "":
                 print("Please wait while patching chrome driver to help prevent robot detections...")
+                #chrome_options.add_argument(f"--proxy-server=http://37.120.133.137:3128")
                 driver = webdriver.Chrome(service=service, options=chrome_options, executable_path=driver_path)
+                #driver.get("https://whatismyipaddress.com/")
+                #input("waiting for page to open")
             else:
                 driver = webdriver.Chrome(service=service, options=chrome_options)
-                
         except:
+            var = traceback.format_exc()
+            print(var)
             print("An error occured during launching chrome. This may happen during google chrome automatic updates or if Google Chrome is not installed.")
             print("You may start google chrome and open the menu Help -> About Google Chrome to see if there is an update running and retry machine translation after the update.")
             print("Exiting, please retry.")
@@ -5916,7 +6295,7 @@ def run_statistics():
             
                                                                
             driver = webdriver.Chrome(service=service, options=chrome_options)
-            service = Service()                                
+            service = Service()
         
         query_params = {
             "program_version" : PROGRAM_VERSION,
@@ -6291,7 +6670,7 @@ def get_robot_usage_comment():
             if use_api or splitonly:
                 print("\nCreating a new browser for stats")
                 
-                service = Service()                                
+                service = Service()
                 driver = webdriver.Chrome(service=service, options=chrome_options)
 
             query_params = {
