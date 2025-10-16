@@ -271,7 +271,7 @@ class MachineTranslationApp:
         self.engine_label = tk.Label(root, text="Engine")
         self.engine_label.grid(row=6, column=0)
 
-        engines = ["Deepl", "Google","Perplexity"]
+        engines = ["Deepl", "Google","Perplexity", "Chatgpt"]
         self.engine = tk.StringVar(root)
         self.engine.set(engines[0])
         self.engine_combo = tk.OptionMenu(root, self.engine, *engines)
@@ -531,8 +531,8 @@ class MachineTranslationApp:
             
     def auto_select_engine(self, *args):
         # Always-available engines
-        engines = ["Google", "Perplexity"]
-
+        engines = ["Chatgpt", "Google", "Perplexity"]
+        
         # Add Deepl only if both source & target are supported
         if (self.source_language.get() in self.deepl_languages and
             self.target_language.get() in self.deepl_languages):
@@ -547,7 +547,10 @@ class MachineTranslationApp:
             self.show_browser_checkbox.config(state="normal")
             if self.source_language.get() not in self.deepl_languages:
                 self.target_language.set(self.languages[0])
-
+        
+        # ✅ Sort the engines alphabetically (case-insensitive)
+        engines = sorted(engines, key=str.lower)
+        
         # Update OptionMenu with the new engine list
         menu = self.engine_combo["menu"]
         menu.delete(0, "end")
@@ -557,8 +560,6 @@ class MachineTranslationApp:
                 command=lambda value=engine: self.engine.set(value)
             )
 
-
-    
     def auto_select_font(self, *args):
         # List of font for the selected language
 

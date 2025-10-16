@@ -3324,9 +3324,9 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
                 EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Accept all')]"))
             )
             button.click()
-            print("✅ Clicked the 'Accept all' button.")
+            #print("✅ Clicked the 'Accept all' button.")
         except Exception:
-            print("⚠️ 'Accept all' button not found or not clickable (ignored).")
+            #print("⚠️ 'Accept all' button not found or not clickable (ignored).")
         
         try:
             # Wait until the link is visible
@@ -5308,8 +5308,7 @@ def create_webdriver():
         else:
             set_chrome_window_2_3_screen()
             #driver.set_window_size(400, 650)
-
-
+            
     numerrors_deepl = 0
     numerrors_googletranslate= 0
 
@@ -6822,50 +6821,70 @@ def save_docx_file():
                 "\n\nERROR: File saving failed. Please close microsoft word or other program and press enter to save the translated document.\n")
 
 def cleanup_selenium_chrome_temp_folders():
-    root_path = r"C:\\Program Files"
-
     delete_patterns = [
         r"scoped_dir\d{3,}_\d{6,}",
         r"chrome_BITS_\d{3,}_\d{6,}",
         r"chrome_PuffinComponentUnpacker_BeginUnzipping\d{3,}_\d{7,}",
         r"chrome_url_fetcher_\d{3,}_\d{7,}"
     ]
-
-    if platform.system().lower() == 'windows':
-        print("\nCleaning selenium chrome temporary folders")    
     
-        # 24 hours ago
-        cutoff_time = time.time() - 24 * 60 * 60
-
-        # Get only immediate subfolders in root_path
-        folders = [f for f in os.listdir(root_path) if os.path.isdir(os.path.join(root_path, f))]
-
-        def is_folder_inactive(folder_path):
-            for dirpath, _, filenames in os.walk(folder_path):
-                for filename in filenames:
-                    filepath = os.path.join(dirpath, filename)
-                    try:
-                        if os.path.getmtime(filepath) > cutoff_time:
-                            return False  # File modified recently
-                    except Exception:
-                        continue  # Skip inaccessible files
-            return True
-
+    if platform.system().lower() != 'windows':
+        return  # Only relevant on Windows
+    
+    print("\n🧹 Cleaning Selenium/Chrome temporary folders...")
+    
+    # Directories to scan
+    candidate_dirs = [r"C:\Program Files"]
+    
+    # Add TEMP and TMP environment paths if valid
+    for var in ("TEMP", "TMP"):
+        path = os.environ.get(var)
+        if path and os.path.isdir(path):
+            candidate_dirs.append(path)
+    
+    # 24 hours ago
+    cutoff_time = time.time() - 24 * 60 * 60
+    
+    def is_folder_inactive(folder_path):
+        """Check if all files inside a folder are older than cutoff_time."""
+        for dirpath, _, filenames in os.walk(folder_path):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                try:
+                    if os.path.getmtime(filepath) > cutoff_time:
+                        return False
+                except Exception:
+                    continue  # Skip inaccessible files
+        return True
+    
+    for root_path in candidate_dirs:
+        print(f"\n📂 Checking in: {root_path}")
+        
+        try:
+            folders = [
+                f for f in os.listdir(root_path)
+                if os.path.isdir(os.path.join(root_path, f))
+            ]
+        except Exception as e:
+            print(f"⚠️ Cannot access {root_path}: {e}")
+            continue
+        
         for folder in folders:
             folder_path = os.path.join(root_path, folder)
-
+            
             if any(re.fullmatch(pattern, folder) for pattern in delete_patterns):
                 if is_folder_inactive(folder_path):
-                    print(f"⚠️ DELETING (unsused >24h): {folder_path}")
+                    print(f"🗑️ Deleting (unused >24h): {folder_path}")
                     try:
                         shutil.rmtree(folder_path, ignore_errors=True)
                     except Exception as e:
-                        print(f"Error deleting {folder_path}: {e}")
+                        print(f"❌ Error deleting {folder_path}: {e}")
                 else:
-                    print(f"⏳ ACTIVE: Skipping recently modified folder {folder_path}")
-            else:
-                #print(f"✅ SAFE: Skipping non-matching folder {folder_path}")
-                pass
+                    print(f"⏳ Active: Skipping recently modified folder {folder_path}")
+            # else:  # optional if you want verbose safe skips
+            #     print(f"✅ Safe: Skipping {folder_path}")
+    
+    print("\n✅ Cleanup completed.\n")
 
 def main() -> int:
     global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl, viewdocx, word_file_to_translate_save_as_path
