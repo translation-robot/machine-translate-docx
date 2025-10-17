@@ -273,14 +273,36 @@ Var FontHandle
 ;---------------------------------------
 ; Detect and uninstall previous version
 Function .onInit
+    ; ------------------------------------------------
+    ; Check if Windows version is 10 or later
+    ; ------------------------------------------------
+    System::Call 'kernel32::GetVersion() i.s'  ; returns DWORD
+    Pop $0
+    IntOp $1 $0 & 0xFF           ; major version
+    IntOp $2 $0 & 0xFF00
+    IntOp $2 $2 >> 8             ; minor version
+
+    ; Windows 10 = major 10, minor 0
+    IntCmp $1 10 ok_version too_old
+    IntCmp $1 10 ok_version too_old
+    IntCmp $2 0 ok_version too_old
+
+too_old:
+    MessageBox MB_ICONSTOP "This installer requires Windows 10 or later. Installation aborted."
+    Abort
+
+ok_version:
+    ; ------------------------------------------------
+    ; Continue with previous uninstall check
+    ; ------------------------------------------------
     ReadRegStr $R0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString"
     StrCmp $R0 "" no_old_install
     MessageBox MB_YESNO|MB_ICONQUESTION \
       "A previous version of ${APP_NAME} is installed. Do you want to uninstall it first?" \
       IDNO no_old_install
     ExecWait '$R0 _?=$INSTDIR'
-no_old_install:
 
+no_old_install:
     ; Create bold font for info page
     System::Call 'gdi32::CreateFont(i 16, i 0, i 0, i 0, i 700, i 0, i 0, i 0, i 1, i 0, i 0, i 0, i 0, t "Arial") i .r0'
     StrCpy $FontHandle $0
@@ -366,6 +388,9 @@ SectionEnd
 ;---------------------------------------
 ; After successful install
 Function .onInstSuccess
+    ; Step 4.c: Run shortcut fixer again after all installs (silent)
+    ExecWait '"$INSTDIR\bin\updtlnk.exe"'
+	
     MessageBox MB_YESNO|MB_ICONQUESTION "Would you like to launch ${APP_NAME} now?" IDYES Launch IDNO NoLaunch
 Launch:
     Exec "$INSTDIR\bin\machine_translate_gui.exe"
