@@ -1,7 +1,7 @@
 [Setup]
 AppId={{5418D107-9E34-4BB5-A055-C7852C20B082}
 AppName=Machine Translation Robot
-AppVersion=0.1
+AppVersion=1.0.0
 AppPublisher=Blue Sun
 AppPublisherURL=https://github.com/translation-robot/machine-translate-docx
 AppSupportURL=https://github.com/translation-robot/machine-translate-docx

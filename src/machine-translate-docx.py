@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-10-17"
+PROGRAM_VERSION="2025-10-18"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -384,7 +384,7 @@ DefaultJsonConfiguration = """{
 	},
 	"perplexity": {
 		"account": {
-			"maximum_character_block": 1500
+			"maximum_character_block": 950
 		}
 	},
 	"chatgpt": {
@@ -6864,88 +6864,95 @@ import shutil
 import time
 import platform
 
+import os
+import re
+import time
+import shutil
+import psutil
+import platform
+import sys
+
+import os
+import re
+import time
+import shutil
+import psutil
+import platform
+import sys
+
 def cleanup_selenium_chrome_temp_folders():
-    # 24 hours ago
-    cutoff_time = time.time() - 1.5 * 60 * 60
-
+    """
+    Cleans up Selenium/Chrome temporary folders:
+      - Windows: Program Files + TEMP/TMP
+      - Linux/macOS: /tmp
+    Deletes only folders that were last modified more than 2 hours ago.
+    """
+    
     system = platform.system().lower()
-    print(f"\n🧹 Running cleanup for {system}...")
-
-    def is_folder_inactive(folder_path):
-        """Check if all files inside a folder are older than cutoff_time."""
-        for dirpath, _, filenames in os.walk(folder_path):
-            for filename in filenames:
-                filepath = os.path.join(dirpath, filename)
-                try:
-                    if os.path.getmtime(filepath) > cutoff_time:
-                        return False
-                except Exception:
-                    continue  # Skip inaccessible files
-        return True
-
-    # Windows cleanup
+    cutoff_time = time.time() - 1 * 60 * 60  # 1 hours
+    print("\n🧹 Cleaning Selenium/Chrome temp folders (older than 1 hour)")
+    
+    tmp_8char_pattern = re.compile(r'^tmp[a-zA-Z0-9_]{8}$')  # tmpXXXXXXXX
+    
     if system == 'windows':
         delete_patterns = [
             r"scoped_dir\d{3,}_\d{6,}",
             r"chrome_BITS_\d{3,}_\d{6,}",
             r"chrome_PuffinComponentUnpacker_BeginUnzipping\d{3,}_\d{7,}",
-            r"chrome_url_fetcher_\d{3,}_\d{7,}"
+            r"chrome_url_fetcher_\d{3,}_\d{7,}",
+            tmp_8char_pattern.pattern
         ]
-
-        candidate_dirs = [r"C:\Program Files"]
-        for var in ("TEMP", "TMP"):
-            path = os.environ.get(var)
-            if path and os.path.isdir(path):
-                candidate_dirs.append(path)
-
-        for root_path in candidate_dirs:
-            print(f"\n📂 Checking in: {root_path}")
+        
+        paths_to_check = [r"C:\Program Files"]
+        for env_var in ["TEMP", "TMP"]:
+            tmp_dir = os.environ.get(env_var)
+            if tmp_dir and os.path.isdir(tmp_dir):
+                paths_to_check.append(tmp_dir)
+        
+        for root_path in paths_to_check:
             try:
                 folders = [f for f in os.listdir(root_path) if os.path.isdir(os.path.join(root_path, f))]
-            except Exception as e:
-                print(f"⚠️ Cannot access {root_path}: {e}")
+            except PermissionError:
                 continue
-
+            
             for folder in folders:
                 folder_path = os.path.join(root_path, folder)
-                if any(re.fullmatch(pattern, folder) for pattern in delete_patterns):
-                    if is_folder_inactive(folder_path):
-                        print(f"🗑️ Deleting (unused >24h): {folder_path}")
-                        try:
-                            shutil.rmtree(folder_path, ignore_errors=True)
-                        except Exception as e:
-                            print(f"❌ Error deleting {folder_path}: {e}")
-                    else:
-                        print(f"⏳ Active: Skipping recently modified folder {folder_path}")
-
-    # Linux or macOS cleanup
-    elif system in ('linux', 'darwin'):
-        tmp_dir = '/tmp'
-        prefixes = [".org.chromium.Chromium.", ".com.google.Chrome."]
-
-        print(f"\n📂 Checking in: {tmp_dir}")
-        try:
-            folders = [f for f in os.listdir(tmp_dir) if os.path.isdir(os.path.join(tmp_dir, f))]
-        except Exception as e:
-            print(f"⚠️ Cannot access {tmp_dir}: {e}")
-            return
-
-        for folder in folders:
-            folder_path = os.path.join(tmp_dir, folder)
-            if any(folder.startswith(prefix) for prefix in prefixes):
-                if is_folder_inactive(folder_path):
-                    print(f"🗑️ Deleting (unused >24h): {folder_path}")
+                if any(re.fullmatch(p, folder) for p in delete_patterns):
                     try:
+                        last_mod = os.path.getmtime(folder_path)
+                        if last_mod < cutoff_time:
+                            print(f"⚠️  DELETING: {folder_path}")
+                            shutil.rmtree(folder_path, ignore_errors=True)
+                        else:
+                            # Skip folders modified within last 2 hours
+                            continue
+                    except Exception:
+                        continue
+    
+    elif system in ('linux', 'darwin'):
+        tmp_path = "/tmp"
+        try:
+            folders = [f for f in os.listdir(tmp_path) if os.path.isdir(os.path.join(tmp_path, f))]
+        except PermissionError:
+            folders = []
+        
+        for folder in folders:
+            if folder.startswith((".org.chromium.Chromium.", ".com.google.Chrome.")) or tmp_8char_pattern.fullmatch(folder):
+                folder_path = os.path.join(tmp_path, folder)
+                try:
+                    last_mod = os.path.getmtime(folder_path)
+                    if last_mod < cutoff_time:
+                        print(f"⚠️  DELETING: {folder_path}")
                         shutil.rmtree(folder_path, ignore_errors=True)
-                    except Exception as e:
-                        print(f"❌ Error deleting {folder_path}: {e}")
-                else:
-                    print(f"⏳ Active: Skipping recently modified folder {folder_path}")
-
+                    else:
+                        continue
+                except Exception:
+                    continue
+    
     else:
-        print(f"⚠️ OS '{system}' not supported for Selenium temp cleanup.")
+        print(f"Unsupported OS: {system}")
 
-    print("\n✅ Cleanup completed.\n")
+
 
 
 def main() -> int:
@@ -7021,7 +7028,6 @@ def main() -> int:
     print("\nTranslation ended, file saved. Elasped time: %s (h:mm:ss.mmm)" % (elapsed_time))
     print("\nSaved file name: %s" % (word_file_to_translate_save_as_path))
     
-    cleanup_selenium_chrome_temp_folders()
     
     get_robot_usage_comment()
 
@@ -7058,6 +7064,8 @@ def main() -> int:
             print("WARNING: Target language name for %s not found. Translation may have have failed." % (dest_lang))
             print("*********************************************************************************\n")
 
+    cleanup_selenium_chrome_temp_folders()
+    
     print("\nDeveloper: %s" % (E_mail_str))
     print("Program version: %s\n" % (PROGRAM_VERSION))
     if not exitonsuccess and not silent:
@@ -7072,6 +7080,7 @@ def main() -> int:
     devnull = open(os.devnull, 'w')
     sys.stderr = devnull
     sys.__stderr__ = devnull
+    
     
     return 0
 
