@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-10-18"
+PROGRAM_VERSION="2025-10-23"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -262,10 +262,10 @@ DefaultJsonConfiguration = """{
 			"email_": "********@gmail.com",
 			"password_": "********",
 			"type": "free",
-			"maximum_character_block": 1500
+			"maximum_character_block": 1490
 		},
 		"no_account": {
-			"maximum_character_block": 1500
+			"maximum_character_block": 1490
 		},
         "maximum_clear_cache_retry" : 20
 	},
@@ -1020,6 +1020,10 @@ if dest_lang == 'zh-tw':
     dest_lang = 'zh-TW'
     from tinysegmenter import TinySegmenter
     cjk_segmenter = TinySegmenter()
+if dest_lang.lower() == 'zh-hant' or dest_lang == 'zh-hans':
+    from tinysegmenter import TinySegmenter
+    cjk_segmenter = TinySegmenter()
+    
 if dest_lang == 'th':
     from newmm_tokenizer.tokenizer import word_tokenize
 if dest_lang == 'zh' or dest_lang == 'ja' or dest_lang == 'ko':
@@ -1061,7 +1065,7 @@ dest_lang_name = (google_translate_lang_codes.get(dest_lang))
 
 if dest_lang_name is None:
     dest_lang_name = deepl_translate_lang_codes.get(dest_lang)
-    if not splitonly:
+    if not splitonly and dest_lang_name is None:
         print("Target language name for %s not found. Continuing as it is." % (dest_lang))
 else:
     print("Target language name for '%s' : %s" % (dest_lang, dest_lang_name))
@@ -1740,7 +1744,7 @@ def selenium_chrome_translate_maxchar_blocks():
             translation = ""
             translation_try_count = 0
             if translation_engine == 'perplexity':
-                max_try_count = 3
+                max_try_count = 2
             elif translation_engine == 'deepl':
                 max_try_count = 1
             elif translation_engine == 'chatgpt':
@@ -2931,11 +2935,41 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 # driver.get("https://www.deepl.com/translator#%s/%s/%s" % (src_lang,dest_lang, to_translate))
                 # Deepl has a bug for / in text to be translated
                 # must be replaced by %5C%2F
-                translation_url = "https://www.deepl.com/translator#%s/%s/%s" % (
-                src_lang, dest_lang, urllib.parse.quote(to_translate).replace("%5C", "%5C%5C").replace("/", "%5C%2F").replace("%7C", "%5C%7C"))
+                #translation_url = "https://www.deepl.com/translator#%s/%s/%s" % (
+                #src_lang, dest_lang, urllib.parse.quote(to_translate).replace("%5C", "%5C%5C").replace("/", "%5C%2F").replace("%7C", "%5C%7C"))
+                translation_url = "https://www.deepl.com/translator#%s/%s/" % (src_lang, dest_lang)
                 driver.get(translation_url)
-
+                try:
+                    (driver.page_source).encode('utf-8')
+                    WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+                except:
+                    pass
+                
                 translation_page_opened = True
+                
+                deepl_close_messages()
+                
+                ############################################
+                # Copy the text inside using javascript
+                ############################################
+                try:
+                    js_script = """
+                    // Select DeepL's editable input area
+                    var textarea = document.querySelector('d-textarea[data-testid="translator-source-input"] div[contenteditable="true"]');
+                    if (textarea) {
+                        // Set plain text content (not HTML)
+                        textarea.textContent = arguments[0];
+
+                        // Simulate real user input so DeepL's JS reacts
+                        textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
+                        textarea.dispatchEvent(new Event('change', { bubbles: true }));
+                        textarea.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: ' ' }));
+                    }
+                    """
+                    driver.execute_script(js_script, to_translate)
+                except Exception:
+                    pass  
+                
             except:
                 print("Waiting for https://www.deepl.com/ ...")
                 sleep(1)
@@ -4643,7 +4677,7 @@ def tokenize_text_to_array(text, lang_code):
 
     words = []
     # In japanese tokenize words
-    if lang_code == 'ja' or lang_code== 'zh-cn' or lang_code == 'zh' or lang_code == 'zh-tw' or lang_code == 'ko':
+    if lang_code == 'ja' or lang_code== 'zh-cn' or lang_code == 'zh' or lang_code == 'zh-tw' or lang_code == 'ko' or lang_code== 'zh-hans' or lang_code == 'zh-hant':
         words = cjk_segmenter.tokenize(text)
     # In other languages, just use spaces
     elif lang_code == 'th':
@@ -4722,7 +4756,8 @@ def divide_array(words_array, dest_lang, width):
     while j > 0:
         i = breaks[j]
         # In japanese just join words_array without adding any spaces
-        if dest_lang == 'ja' or dest_lang == 'zh-cn' or dest_lang == 'zh-tw' or dest_lang == 'ko' \
+        if dest_lang == 'ja' or dest_lang == 'zh-cn' or dest_lang == 'zh-tw' \
+            or dest_lang.lower() == 'zh-hans' or dest_lang.lower() == 'zh-hant' or dest_lang == 'ko' \
                 or dest_lang == 'th':
             lines.append(''.join(words_array[i:j]))
         # In other languages, join words_array using a space
