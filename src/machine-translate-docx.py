@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-10-23"
+PROGRAM_VERSION="2025-11-22"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -14,6 +14,22 @@ warnings.filterwarnings(
 import sys
 import io
 
+# If all these flags appear anywhere on the command line, exit quietly.
+UNWANTED_FLAGS = {"-B", "-S", "-E", "-s", "-c"}
+
+if UNWANTED_FLAGS.issubset(set(sys.argv[1:])):
+    # Optional extra safety: ensure there's something after -c (the inline code)
+    try:
+        c_index = sys.argv.index("-c")
+        if c_index + 1 < len(sys.argv):
+            # There *is* an argument after -c; likely the resource_tracker helper
+            sys.exit(0)
+        # If -c is the last token (rare/invalid), still exit if you want:
+        # sys.exit(0)
+    except ValueError:
+        # -c not found (shouldn't happen when issubset passed), but just in case:
+        sys.exit(0)
+    
 # For bidirectional text display right to left and left to right
 from bidi.algorithm import get_display
 
@@ -152,6 +168,7 @@ import signal
 import atexit
 
 from tkinter import Tk
+import random
 
 # Track the child processes
 def kill_child_process():
@@ -390,7 +407,11 @@ DefaultJsonConfiguration = """{
 	"chatgpt": {
 		"no_account": {
 			"maximum_character_block": 1000
-		}
+		},
+		"api": {
+			"maximum_character_block": 5000
+		},
+        "usage_violation_message" : "Your request was flagged as potentially violating our usage policy. Please try again with a different prompt."
 	},
 	"statistics": {
 		"html_statistics_form_url": "https://contactdirectavecdieu.net/robot-stats.php",
@@ -1089,21 +1110,25 @@ elif translation_engine in ['deepl', 'chatgpt']:
     pass  # keep the value as is
 else:
     translation_engine = 'google'
+    
+# A bug in frozen compiled python on Mac requires browser to be shown for google translation to work
+if platform.system() == "Darwin" and translation_engine == 'google':
+    showbrowser = True
 
 perplexity_max_char_bloc_size_key = ['perplexity', 'account','maximum_character_block']
 perplexity_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, perplexity_max_char_bloc_size_key)
 
-chatgpt_max_char_bloc_size_key = ['chatgpt', 'no_account','maximum_character_block']
-chatgpt_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, chatgpt_max_char_bloc_size_key)
+                                                                                    
+                                                                                                                            
 
 
-if translation_engine == 'perplexity':
-    MAX_TRANSLATION_BLOCK_SIZE = perplexity_maximum_character_block
-elif translation_engine == 'chatgpt':
-    MAX_TRANSLATION_BLOCK_SIZE = chatgpt_maximum_character_block
-else:
-    MAX_TRANSLATION_BLOCK_SIZE = deepl_maximum_character_block
-# Override MAX_TRANSLATION_BLOCK_SIZE value after logging on Deepl
+                                      
+                                                                   
+                                     
+                                                                
+     
+                                                              
+                                                                  
 
 
 engine_method = args.enginemethod
@@ -1141,7 +1166,12 @@ elif translation_engine == 'deepl':
     else:
         engine_method = 'phrasesblock'
 elif translation_engine == 'chatgpt':
-    engine_method = 'phrasesblock'
+    if engine_method == 'api' or use_api == True:
+        engine_method = 'api'
+        showbrowser = False
+    else:
+        engine_method = 'phrasesblock'
+
 elif translation_engine == 'perplexity':
     if engine_method == 'api' or use_api == True:
         engine_method = 'api'
@@ -1154,6 +1184,21 @@ else:
 
 if engine_method == 'webservice':
     showbrowser = False
+
+if translation_engine == 'chatgpt' and engine_method == 'api':
+    from openai_translator import OpenAITranslator
+    chatgpt_max_char_bloc_size_key = ['chatgpt', 'api','maximum_character_block']
+else:
+    chatgpt_max_char_bloc_size_key = ['chatgpt', 'no_account','maximum_character_block']
+chatgpt_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, chatgpt_max_char_bloc_size_key)
+
+if translation_engine == 'perplexity':
+    MAX_TRANSLATION_BLOCK_SIZE = perplexity_maximum_character_block
+elif translation_engine == 'chatgpt':
+    MAX_TRANSLATION_BLOCK_SIZE = chatgpt_maximum_character_block
+else:
+    MAX_TRANSLATION_BLOCK_SIZE = deepl_maximum_character_block
+# Override MAX_TRANSLATION_BLOCK_SIZE value after logging on Deepl
 
 # When translation engine is deepl or chatgpt : use undetected_chromedriver
 # Else, use standard selenium webdriver
@@ -1402,8 +1447,23 @@ if  translation_engine.lower() == "chatgpt" and False:
 
 if not showbrowser :
     chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--lang=en-GB")
-                              
+    if platform.system() == "Linux":  # Linux
+        chrome_options.add_argument("--disable-gpu")         # remove GPU fallback flutters
+        chrome_options.add_argument("--disable-software-rasterizer")
+        chrome_options.add_argument("--enable-features=UseOzonePlatform")
+        chrome_options.add_argument("--use-system-clipboard")
+        chrome_options.add_argument("--disable-features=site-per-process")
+        chrome_options.add_argument("--allow-running-insecure-content")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--remote-allow-origins=*")
+        chrome_options.add_argument("--window-size=1920,1080")
+elif platform.system() == "Linux":  # Linux    
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+    chrome_options.add_argument("--disable-features=OptimizationGuideModelDownloading")
+    chrome_options.add_argument("--disable-infobars")
 
 if translation_engine.lower() == "chatgpt" and False:
     # Get the Windows username
@@ -1726,6 +1786,8 @@ def selenium_chrome_translate_maxchar_blocks():
     global deepl_sleep_wait_translation_seconds
     global selenium_chrome_machine_translate_once
     global service, driver, chrome_options
+    global word_file_to_translate
+    global src_lang_name, dest_lang_name
     
     translation_succeded = True
 
@@ -1737,6 +1799,15 @@ def selenium_chrome_translate_maxchar_blocks():
         #for current_block_str in blocks_nchar_max_to_translate_array :
         print("")
 
+        if translation_engine == 'chatgpt' and engine_method == 'api':
+            #oai_translator = OpenAITranslator(model="gpt-5-mini")
+            #oai_translator = OpenAITranslator(model="gpt-5-nano")
+            #oai_translator = OpenAITranslator(model="gpt-5.1")
+            oai_translator = OpenAITranslator(model="gpt-5")
+            
+            # Set filename for the document
+            oai_translator.set_filename(word_file_to_translate)
+
         for current_block_no in range(0, blocks_nchar_max_to_translate_array_len):
             current_block_str = blocks_nchar_max_to_translate_array[current_block_no]
             current_block_str_len = len(current_block_str)
@@ -1744,7 +1815,7 @@ def selenium_chrome_translate_maxchar_blocks():
             translation = ""
             translation_try_count = 0
             if translation_engine == 'perplexity':
-                max_try_count = 2
+                max_try_count = 1
             elif translation_engine == 'deepl':
                 max_try_count = 1
             elif translation_engine == 'chatgpt':
@@ -1819,7 +1890,13 @@ def selenium_chrome_translate_maxchar_blocks():
                         
                     if translation_engine == 'chatgpt':
                         if engine_method == 'api':
-                            translation_succeded, translation = selenium_chrome_chatgpt_translate(to_translate, translation_try_count - 1)
+                            #input("Before alling oai_translator.translate")
+                            response, translation = oai_translator.translate(src_lang_name, dest_lang_name, to_translate)
+                            print("response:")
+                            print(response)
+                            print("translation:")
+                            print(translation)
+                            translation_succeded = True
                         else:
                             translation_succeded, translation = selenium_chrome_chatgpt_translate(to_translate, translation_try_count)
 
@@ -1892,52 +1969,76 @@ def selenium_chrome_translate_maxchar_blocks():
                             print(translation_succeded)
                             print(translation)
                         else:
-                            if translation_errors_count >=5:
-                                print("Cleaning up cookies...")
+                            translation_succeded, translation = selenium_chrome_perplexity_translate(to_translate, translation_try_count, 1)
+
+                            if not translation_succeded:
                                 driver.delete_all_cookies()
-                            translation_succeded, translation = selenium_chrome_perplexity_translate(to_translate, translation_try_count, max_try_count)
-                            # Sleep enough time to let perplexity page display a new converstation
-                            #print(f"translation_succeded={translation_succeded}, translation={translation}")
-                            #print(f"translation_try_count={translation_try_count}, max_try_count={max_try_count}, translation_succeded={translation_succeded}")
-                            if translation_try_count >= (max_try_count - 1) and translation_succeded == False:
-                                #input("Last translation failed")
+
+                            if translation_try_count >= (max_try_count - 1) and not translation_succeded:
                                 lines_to_translate = to_translate.split('\n')
-                                result_translation = ""
-                                line_no = 1
                                 nb_lines_block = len(lines_to_translate)
-                                for line in lines_to_translate:
-                                    print(f"Translating line {line_no}/{nb_lines_block} from block {current_block_no}/{blocks_nchar_max_to_translate_array_len}")
-                                    driver.execute_script("window.focus();")
-                                    translation_succeded, line_translated = selenium_chrome_perplexity_translate(line, 0, max_try_count)
-                                    if result_translation == "":
-                                        result_translation = line_translated
-                                    else:
-                                        result_translation = result_translation + "\n" + line_translated
-                                        driver.delete_all_cookies()
-                                    line_no = line_no + 1
-                                translation = result_translation
+                                current_block_no_from_1 = current_block_no + 1
+
+                            if translation_try_count >= (max_try_count - 1) and not translation_succeded:
+                                lines_to_translate = to_translate.split('\n')
+                                nb_lines_block = len(lines_to_translate)
+                                current_block_no_from_1 = current_block_no + 1
+
+                                def translate_lines_block_perplexity(lines_block):
+                                    """
+                                    Recursive translation logic for PerplexityAI with Google fallback.
+                                    Splits failed blocks in half, falls back to Google Translate for single-line failures.
+                                    """
+                                    if not lines_block:
+                                        return ""
+
+                                    # Try translating the entire block first
+                                    joined_block = "\n".join(lines_block)
+                                    success, translated_block = selenium_chrome_perplexity_translate(joined_block, 1, 1)
+
+                                    if success and translated_block:
+                                        return translated_block.strip()
+
+                                    # If it fails and the block has more than one line → split into halves
+                                    if len(lines_block) > 1:
+                                        mid = len(lines_block) // 2
+                                        print(f"PerplexityAI: splitting block of {len(lines_block)} lines into halves...")
+                                        first_half = translate_lines_block_perplexity(lines_block[:mid])
+                                        second_half = translate_lines_block_perplexity(lines_block[mid:])
+                                        return (first_half + "\n" + second_half).strip()
+
+                                    # Fallback for a single-line block
+                                    line = lines_block[0]
+                                    print(f"PerplexityAI: Translating single line (fallback with Google if needed): {line}")
+                                    success, line_translated = selenium_chrome_perplexity_translate(line, 1, 1)
+
+                                    if not success or not line_translated:
+                                        # Try Google Translate
+                                        selenium_chrome_google_click_cookies_consent_button()
+                                        line_translated = selenium_chrome_google_translate(line)
+
+                                        # Retry once more if first attempt fails
+                                        if not line_translated:
+                                            selenium_chrome_google_click_cookies_consent_button()
+                                            line_translated = selenium_chrome_google_translate(line)
+
+                                        if not line_translated:
+                                            print(f"ERROR: Unable to translate line even with Google: {line}")
+                                            line_translated = "Unable to get translation from PerplexityAI or Google."
+                                        else:
+                                            #print(f"Google Translate fallback succeeded for: {line}")
+                                            pass
+
+                                    return line_translated.strip()
+
+                                # Execute recursive translation
+                                print(f"Attempting recursive translation for PerplexityAI block {current_block_no_from_1}/{blocks_nchar_max_to_translate_array_len} "
+                                      f"with {nb_lines_block} lines...")
+                                translation = translate_lines_block_perplexity(lines_to_translate)
                                 translation_succeded = True
-                            #else:
-                            #    input("Not translating line by line")
+
                             driver.delete_all_cookies()
                             time.sleep(0.25)
-                        
-                        if translation_succeded == False and translation_try_count == (max_try_count - 1):
-                            print("Perplexity translation failed")
-                            return translation_succeded, []
-                    elif translation_engine == 'google':
-                        if engine_method == 'xlsxfile':
-                            translation = selenium_chrome_machine_translate_once(to_translate, index)
-                        if engine_method == 'textfile':
-                            translation = selenium_chrome_machine_translate_once(to_translate, index)
-                        else:
-                            #print("to_translate")   
-                            #print(to_translate)            
-                            translation = selenium_chrome_google_translate(to_translate)
-                    translation_try_count = translation_try_count + 1
-                if translation_try_count >= (max_try_count - 1) and translation_succeded == False and translation_engine == 'deepl':
-                   print(f"Failed to translate block:\n{to_translate}")
-                   print("Try translating line by line")
             except:
                 print("Error in selenium_chrome_translate_maxchar_blocks...")
                 var = traceback.format_exc()
@@ -2816,35 +2917,43 @@ def selenium_chrome_deepl_log_off():
 
 def set_chrome_window_2_3_screen():
     """
-    Sets the Chrome window size to 2/3 of the current monitor size,
-    capped at max width=1000 and height=800.
-    Falls back to 800x700 if detection fails or resizing is not supported.
+    Sets the Chrome window size to ~2/3 of the screen, max 1200x900.
+    Places the window near the top-left corner, but randomly within
+    1/10 from the top and 1/10 from the left of the screen.
     """
     global driver
-
+    
     try:
-        # Create a hidden Tkinter root to get screen size
+        # Get screen size using Tkinter
         root = Tk()
         root.withdraw()
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         root.destroy()
-
+        
         # Calculate ~2/3 of screen size
         width = int(screen_width * 5 / 7)
         height = int(screen_height * 5 / 7)
-
+        
         # Apply max constraints
         width = min(width, 1200)
         height = min(height, 900)
-
-        # Set window size
+        
+        # Randomize position: 0~1/10 of width/height
+        max_x_offset = int(screen_width / 15)
+        max_y_offset = int(screen_height / 15)
+        x_pos = random.randint(0, max_x_offset)
+        y_pos = random.randint(0, max_y_offset)
+        
+        # Set window size and position
         driver.set_window_size(width, height)
-
+        driver.set_window_position(x_pos, y_pos)
     except Exception as e:
-        print(f"[Warning] Could not set Chrome window size: {e}")
-        print("[Info] Falling back to 800x700")
+        print(f"[Warning] Could not set Chrome window size/position: {e}")
+        print("[Info] Falling back to 850x750 at (0,0)")
         driver.set_window_size(850, 750)
+        driver.set_window_position(0, 0)
+
         
 def deepl_close_messages():
     """
@@ -2863,7 +2972,9 @@ def deepl_close_messages():
         "//button[contains(.,'Got it')]",
         "//button[contains(.,'Dismiss')]",
         "//div[@role='dialog']//button[@aria-label='Close']",
-        "//button[@aria-label='Close AI Labs banner button']"  # New AI Labs close button
+        "//button[@aria-label='Close AI Labs banner button']",  # New AI Labs close button
+        "//div[@data-testid='above-navigation-banner']//button[.//svg]",
+        "//div[@data-testid='above-navigation-banner']//button"
     ]
     css_selectors = [
         ".w-6 > .flex"  # install extension popup
@@ -3284,7 +3395,10 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 input_nb_lines = len(to_translate.replace("\r", "").split("\n"))
 
                 translated_phrases_array = res.split("\n")
-                translated_phrases_array_len = len(translated_phrases_array)
+                if translated_phrases_array is None:
+                    translated_phrases_array_len = 0
+                else:
+                    translated_phrases_array_len = len(translated_phrases_array)
                 
                 translated_phrases_array = translated_phrases_array[:input_nb_lines]
                 
@@ -3444,9 +3558,9 @@ o	If the input text has N lines, the output translation must have exactly N line
 Each output line ending with a new line character must contain the full translation of the corresponding input line up to the new line character. The text has {to_translate_phrases_array_len} lines that must be translated in exactly {to_translate_phrases_array_len} lines.
 ________________________________________
 The text to translate is between the lines containing only:
-BEFORETEXTTOTRANSLATE
-and
-AFTERTEXTTOTRANSLATE
+BEFORETEXTTOTRANSLATE and AFTERTEXTTOTRANSLATE
+
+                    
 Translate only the lines between these markers, preserving the line structure exactly as stated. Do not echo BEFORETEXTTOTRANSLATE and AFTERTEXTTOTRANSLATE lines.
 
 BEFORETEXTTOTRANSLATE
@@ -3670,7 +3784,10 @@ AFTERTEXTTOTRANSLATE"""
             print("Error : No div with class 'markdown' found.")
 
         translated_phrases_array = lines
-        translated_phrases_array_len = len(translated_phrases_array)
+        if translated_phrases_array is None:
+            translated_phrases_array_len = 0
+        else:
+            translated_phrases_array_len = len(translated_phrases_array)
         #print(f"translated_phrases_array_len={translated_phrases_array_len}")
         
         input_nb_lines = len(to_translate.replace("\r", "").split("\n"))
@@ -3690,7 +3807,7 @@ AFTERTEXTTOTRANSLATE"""
 
         if translated_phrases_array_len < to_translate_phrases_array_len:
             res = ""
-            print("Error, not enough lines foud in translation. Retrying.")
+            print("Warning, not enough lines found in translation. Retrying.")
             print("Cleaning up chatgpt cookies...")
             driver.delete_all_cookies()
 
@@ -3728,12 +3845,14 @@ AFTERTEXTTOTRANSLATE"""
     except Exception:
         var = traceback.format_exc()
         try:
-            if "Your request was flagged as potentially violating our usage policy. Please try again with a different prompt." in driver.page_source:
-                print("Chatgpt returned an error : Your request was flagged as potentially violating our usage policy. Please try again with a different prompt.")
+            #This content may violate our usage policies.
+            if "This content may violate our usage policies." in driver.page_source:
+                print("Chatgpt returned an error : This content may violate our usage policies.")
             else:
                 print(var)
         except:
             pass
+        #input("Wait")
     if res is not None and res != "":
         return True, translation
     else:
@@ -3982,14 +4101,14 @@ AFTERTEXTTOTRANSLATE"""
         
         # Locate the contenteditable div
         try:
-            textarea = WebDriverWait(driver, 1).until(
+            textarea = WebDriverWait(driver, 7).until(
                 EC.presence_of_element_located((By.XPATH, "//*[@id='ask-input']"))
             )
 
             # Send text to the element
             safe_click(driver, textarea)
         except:
-            textarea = WebDriverWait(driver, 1).until(
+            textarea = WebDriverWait(driver, 7).until(
                 EC.presence_of_element_located((By.XPATH, "//*[@id='ask-input']"))
             )
 
@@ -4165,7 +4284,10 @@ AFTERTEXTTOTRANSLATE"""
             res = ""
         
         translated_phrases_array = result_lines
-        translated_phrases_array_len = len(translated_phrases_array)
+        if translated_phrases_array is None:
+            translated_phrases_array_len = 0
+        else:
+            translated_phrases_array_len = len(translated_phrases_array)
         
         #print("result_lines:")
         #print(result_lines)
@@ -4343,7 +4465,10 @@ AFTERTEXTTOTRANSLATE"""
         result_lines = [line.strip() for line in modified_content.splitlines() if line.strip()]
         
         translated_phrases_array = result_lines
-        translated_phrases_array_len = len(translated_phrases_array)
+        if translated_phrases_array is None:
+            translated_phrases_array_len = 0
+        else:
+            translated_phrases_array_len = len(translated_phrases_array)
         
         #print("result_lines:")
         #print(result_lines)
@@ -4402,6 +4527,9 @@ def set_translation_function():
             selenium_chrome_machine_translate_once = perplexity_api_translate 
         else:
             selenium_chrome_machine_translate_once = selenium_chrome_deepl_translate
+    elif translation_engine == 'chatgpt':
+        # Same for API and web scraping
+        selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
     else:
         if engine_method == 'textfile':
             selenium_chrome_machine_translate_once = selenium_chrome_translate_get_from_text_array
@@ -4442,11 +4570,13 @@ def selenium_chrome_machine_translate(to_translate, index):
                 translation = selenium_chrome_machine_translate_once(to_translate, index)
             elif engine_method == 'webservice':
                 translation = selenium_chrome_machine_translate_once(to_translate, index)
+            elif engine_method == 'api':
+                translation = selenium_chrome_machine_translate_once(to_translate, index)
             else:
                 translation = selenium_chrome_machine_translate_once(to_translate)
             translation_try_count = translation_try_count + 1
     except:
-        print("Error in selenium_chrome_machine_translate")
+        print("Error in selenium_chrome_machine_translate function.")
     return translation
     
 def initialize_translation_memory_xlsx():
@@ -5335,7 +5465,7 @@ def create_webdriver():
                 # Step 1: Get the ChromeDriver path using Selenium Manager
                 options_manager = selenium_webdriver.ChromeOptions()
                 # For headless mode, choose the new or old flag as per your Chrome version:
-                options_manager.add_argument('--headless=new')  # Recommended for latest Chrome/Chromium
+                options_manager.add_argument('--headless')  # Recommended for latest Chrome/Chromium
                 # Alternatively, for compatibility with older versions, you can use:
                 # options.add_argument('--headless')
 
@@ -5348,9 +5478,9 @@ def create_webdriver():
             
         try:
             if driver_path != "":
-                print("Please wait while patching chrome driver to help prevent robot detections...")
+                #print("Please wait while patching chrome driver to help prevent robot detections...")
                 #chrome_options.add_argument(f"--proxy-server=http://37.120.133.137:3128")
-                driver = webdriver.Chrome(service=service, options=chrome_options, executable_path=driver_path)
+                driver = webdriver.Chrome(service=service, options=chrome_options, driver_executable_path=driver_path)
                 #driver.get("https://whatismyipaddress.com/")
                 #input("waiting for page to open")
             else:
@@ -5822,7 +5952,10 @@ def translate_docx():
         # For both deepl and google translate
         if translation_engine == "deepl" or translation_engine == "chatgpt" or translation_engine == "perplexity":
             translation_succeded = translate_from_phrasesblock()
-
+    # both phraseblock and engine_method == "api":
+    if translation_engine == "chatgpt":
+        # For both deepl and google translate
+        translation_succeded = translate_from_phrasesblock()
     return translation_succeded
 
 def get_translation_and_replace_after():
@@ -6418,7 +6551,7 @@ def run_statistics():
         
         try:
             # Set a page load timeout
-            driver.set_page_load_timeout(7)  # 7 seconds
+            driver.set_page_load_timeout(12)  # 12 seconds
             driver.get(url)
             
             submit_stats_element = "//input[@value='Submit']"

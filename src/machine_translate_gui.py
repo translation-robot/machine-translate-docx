@@ -531,10 +531,7 @@ class MachineTranslationApp:
             
     def auto_select_engine(self, *args):
         # Always-available engines
-        if platform.system() == 'Darwin':
-            engines = ["Google"]
-        else:
-            engines = ["Chatgpt", "Google", "Perplexity"]
+        engines = ["Chatgpt", "Google", "Perplexity"]
         
         # Add Deepl only if both source & target are supported
         if (self.source_language.get() in self.deepl_languages and
