@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-11-22"
+PROGRAM_VERSION="2025-12-17"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -575,6 +575,7 @@ parser.add_argument('--srclang', '-sl', required = False, help="Specify the defa
 parser.add_argument('--destlang', '--dl', required = False, help="Specify the destination language with 2 letter code (hi,ja,ru,de,ru,hi,ja,in, etc)")
 parser.add_argument('--engine', '-e', required = False, help="Specify the translation engine (google, deepl, yandex, chatgpt, perplexity)")
 parser.add_argument('--enginemethod', '-m', required = False, help="Specify the method (javascript, phrasesblock, singlephrase, xlsxfile, textfile )")
+parser.add_argument('--aimodel', '-am', required = False, help="Specify the ai model when applicable")
 parser.add_argument('--docxfile', '-d', required = False, help="Input file name")
 parser.add_argument('--xlsxreplacefile', '-x', required = False, help="Excel xlsx search and replace file")
 parser.add_argument('--destfont', '-f', required = False, help="Destination font name")
@@ -1110,26 +1111,9 @@ elif translation_engine in ['deepl', 'chatgpt']:
     pass  # keep the value as is
 else:
     translation_engine = 'google'
-    
-# A bug in frozen compiled python on Mac requires browser to be shown for google translation to work
-if platform.system() == "Darwin" and translation_engine == 'google':
-    showbrowser = True
 
 perplexity_max_char_bloc_size_key = ['perplexity', 'account','maximum_character_block']
 perplexity_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, perplexity_max_char_bloc_size_key)
-
-                                                                                    
-                                                                                                                            
-
-
-                                      
-                                                                   
-                                     
-                                                                
-     
-                                                              
-                                                                  
-
 
 engine_method = args.enginemethod
 engine_method = "%s" % engine_method
@@ -1247,7 +1231,9 @@ def safe_click(driver, element):
         driver.execute_script("arguments[0].click();", element)
     except WebDriverException:
         # fallback for headless/minimized/hidden elements
-        #driver.execute_script("arguments[0].click();", element)
+        print(f"Failed to click element: {e}")
+        # Optional: take a screenshot for debugging
+        # driver.save_screenshot("error.png")
         pass
 
 if not os.path.exists(word_file_to_translate) :
@@ -1802,8 +1788,8 @@ def selenium_chrome_translate_maxchar_blocks():
         if translation_engine == 'chatgpt' and engine_method == 'api':
             #oai_translator = OpenAITranslator(model="gpt-5-mini")
             #oai_translator = OpenAITranslator(model="gpt-5-nano")
-            #oai_translator = OpenAITranslator(model="gpt-5.1")
-            oai_translator = OpenAITranslator(model="gpt-5")
+            #oai_translator = OpenAITranslator(model="gpt-5")
+            oai_translator = OpenAITranslator(model="gpt-5.1")
             
             # Set filename for the document
             oai_translator.set_filename(word_file_to_translate)
@@ -1951,7 +1937,8 @@ def selenium_chrome_translate_maxchar_blocks():
                                             pass
 
                                     return line_translated.strip()
-
+                                    
+                            else:
                                 # Execute recursive translation
                                 print(f"Attempting recursive translation for ChatGPT block {current_block_no_from_1}/{blocks_nchar_max_to_translate_array_len} "
                                       f"with {nb_lines_block} lines...")
@@ -2684,7 +2671,6 @@ def selenium_chrome_deepl_log_in():
     deepl_account_enabled_key = ['deepl', 'account', 'enabled']
     deepl_account_enabled = get_nested_value_from_json_array(json_configuration_array, deepl_account_enabled_key)
     
-    set_chrome_window_2_3_screen()
     #driver.maximize_window()
 
     try:
@@ -2874,8 +2860,6 @@ def selenium_chrome_perplexity_wait_log_in():
 
 def selenium_chrome_deepl_log_off():
     global json_configuration_array, MAX_TRANSLATION_BLOCK_SIZE
-    
-    set_chrome_window_2_3_screen()
 
     try:
         driver.get("https://www.deepl.com/")
@@ -2984,7 +2968,7 @@ def deepl_close_messages():
     for selector in xpath_selectors:
         try:
             el = WebDriverWait(driver, 0.01).until(EC.presence_of_element_located((By.XPATH, selector)))
-            driver.execute_script("arguments[0].scrollIntoView();", el)
+            driver.execute_script("arguments[0].scrollIntoView({block: 'start', behavior: 'auto'});", el)
             safe_click(driver, el)
             # Mark cookies/extension as closed if relevant
             if "cookies" in selector.lower():
@@ -2998,7 +2982,7 @@ def deepl_close_messages():
     for selector in css_selectors:
         try:
             el = WebDriverWait(driver, 0.01).until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-            driver.execute_script("arguments[0].scrollIntoView();", el)
+            driver.execute_script("arguments[0].scrollIntoView({block: 'start', behavior: 'auto'});", el)
             safe_click(driver, el)
             close_install_extension_message_bool = True
         except:
@@ -3127,7 +3111,15 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                         (By.CSS_SELECTOR, deepl_translation_section_element)
                     )
                 )
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", deepl_translation_section)
+                is_visible = driver.execute_script("""
+                    const r = arguments[0].getBoundingClientRect();
+                    return (r.top >= 0 && r.bottom <= window.innerHeight);
+                """, copy_translation_button)
+                if not is_visible:
+                    driver.execute_script(
+                        "arguments[0].scrollIntoView({block: 'end'});",
+                        copy_translation_button
+                    )
             except:
                 pass
             
@@ -3253,7 +3245,10 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
         # Scroll the browser to the element's Y position
         try:
-            driver.execute_script("arguments[0].scrollIntoView();", copy_translation_button)
+            driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'end'});",
+                copy_translation_button
+            )
         except:
             pass
 
@@ -4166,7 +4161,7 @@ AFTERTEXTTOTRANSLATE"""
         perplexity_close_messages()
         
         submit_button = WebDriverWait(driver, 1).until(
-            EC.presence_of_element_located((By.XPATH, '//button[@data-testid="submit-button"]'))
+            EC.presence_of_element_located((By.XPATH, '//button[@aria-label="Submit"]'))
         )
         safe_click(driver, submit_button)
 
@@ -5506,7 +5501,6 @@ def create_webdriver():
         if translation_engine == 'yandex' or translation_engine == 'deepl':
             driver.set_window_position(0, 100)
             set_chrome_window_2_3_screen()
-            set_chrome_window_2_3_screen()
         else:
             set_chrome_window_2_3_screen()
             #driver.set_window_size(400, 650)
@@ -6032,10 +6026,6 @@ def get_translation_and_replace_after():
                         if translation_engine == 'yandex' and driver is not None:
                             driver.set_window_position(100, 100)
                             driver.set_window_size(800, 700)
-
-                        if translation_engine == 'deepl' and driver is not None:
-                            driver.set_window_position(100, 100)
-                            set_chrome_window_2_3_screen()
 
                         print("phrase_no = %d" % phrase_no)
                         web_translation_separators = selenium_chrome_machine_translate(item_searched_and_replaced_before, phrase_no)
