@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-12-17"
+PROGRAM_VERSION="2025-12-25"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -976,7 +976,7 @@ COUNTRY_QUERY_HTTP_TIMEOUT = 3
 # Maximum 5000 characters on the free version
 # but only 1500 if not logged on to deepl with free version
 deepl_max_char_bloc_size_key = ['deepl', 'no_account','maximum_character_block']
-deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key)
+deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key)- 1
 
 deepl_sleep_wait_translation_seconds = 0.1
 translation_errors_count = 0
@@ -1764,326 +1764,141 @@ def selenium_chrome_google_translate(to_translate):
     return translation
 
 
+
 def selenium_chrome_translate_maxchar_blocks():
-    global found_google_cookies_consent_button
-    global google_translate_first_page_loaded
-    global docxfile_table_number_of_phrases
     global translation_errors_count
     global deepl_sleep_wait_translation_seconds
-    global selenium_chrome_machine_translate_once
-    global service, driver, chrome_options
+    global driver
     global word_file_to_translate
     global src_lang_name, dest_lang_name
     
     translation_succeded = True
-
-    try:
+    translated_blocks = []
+    
+    # ------------------------------------------------------------------
+    # Engine-agnostic single attempt
+    # ------------------------------------------------------------------
+    def translate_once(engine, method, text, attempt):
+        if engine == "deepl":
+            return selenium_chrome_deepl_translate(text, attempt)
         
-        blocks_nchar_max_to_translate_array_len = len(blocks_nchar_max_to_translate_array)
-        
-        text_translated_document_str = ""
-        #for current_block_str in blocks_nchar_max_to_translate_array :
-        print("")
-
-        if translation_engine == 'chatgpt' and engine_method == 'api':
-            #oai_translator = OpenAITranslator(model="gpt-5-mini")
-            #oai_translator = OpenAITranslator(model="gpt-5-nano")
-            #oai_translator = OpenAITranslator(model="gpt-5")
-            oai_translator = OpenAITranslator(model="gpt-5.1")
-            
-            # Set filename for the document
-            oai_translator.set_filename(word_file_to_translate)
-
-        for current_block_no in range(0, blocks_nchar_max_to_translate_array_len):
-            current_block_str = blocks_nchar_max_to_translate_array[current_block_no]
-            current_block_str_len = len(current_block_str)
-            print("Translating block %d/%d, %d characters..." % (current_block_no + 1, blocks_nchar_max_to_translate_array_len, current_block_str_len))
-            translation = ""
-            translation_try_count = 0
-            if translation_engine == 'perplexity':
-                max_try_count = 1
-            elif translation_engine == 'deepl':
-                max_try_count = 1
-            elif translation_engine == 'chatgpt':
-                max_try_count = 1
+        if engine == "chatgpt":
+            if method == "api":
+                response, translated = oai_translator.translate(
+                    src_lang_name, dest_lang_name, text
+                )
+                success = (
+                    translated
+                    and len(translated.split("\n")) == len(text.split("\n"))
+                )
+                return success, translated
             else:
-                max_try_count = 4
-            
-            #print("--index-- : %d" % index)
-            #to_translate_str = str(to_translate)
-            to_translate = current_block_str
-            try:
-                while translation_try_count < max_try_count and translation == "":
-                    if translation_try_count >= 1:
-                        print("Retrying to translate again (%d)..." % (translation_try_count))
-                        translation_errors_count = translation_errors_count + 1
-                        deepl_sleep_wait_translation_seconds  = deepl_sleep_wait_translation_seconds * 1.1
-                        print("%d translation retry so far..." % (translation_errors_count))
-                        driver.execute_script("window.focus();")
-                        
-                    if translation_engine == 'deepl':
-                        translation_succeded, translation = selenium_chrome_deepl_translate(to_translate, translation_try_count - 1)
-
-                        if not translation_succeded:
-                            print("Deepl translation permitted limit exceeded or wrong number of phrases received from Deepl.")
-                            driver.delete_all_cookies()
-
-                        if translation_try_count >= (max_try_count - 1) and not translation_succeded:
-                            lines_to_translate = to_translate.split('\n')
-                            nb_lines_block = len(lines_to_translate)
-                            current_block_no_from_1 = current_block_no + 1
-
-                            def translate_lines_block(lines_block):
-                                """
-                                Try to translate a block of lines.
-                                If translation fails, split into halves (if possible),
-                                else translate line-by-line.
-                                """
-                                # Nothing to translate
-                                if not lines_block:
-                                    return ""
-
-                                # Try translating the entire block first
-                                joined_block = "\n".join(lines_block)
-                                success, translated_block = selenium_chrome_deepl_translate(joined_block, 1)
-
-                                if success and translated_block:
-                                    return translated_block.strip()
-
-                                # If it fails and block has more than one line → split
-                                if len(lines_block) > 1:
-                                    mid = len(lines_block) // 2
-                                    print(f"Splitting block of {len(lines_block)} lines into halves...")
-                                    first_half = translate_lines_block(lines_block[:mid])
-                                    second_half = translate_lines_block(lines_block[mid:])
-                                    return (first_half + "\n" + second_half).strip()
-                                else:
-                                    # Fallback: single line translation
-                                    line = lines_block[0]
-                                    print(f"Translating single line: {line}")
-                                    success, line_translated = selenium_chrome_deepl_translate(line, 1)
-                                    if not success or not line_translated:
-                                        line_translated = "Unable to get translation from Deepl."
-                                        print(f"ERROR: Unable to get translation for: {line}")
-                                    return line_translated.strip()
-
-                            # Main execution
-                            print(f"Attempting recursive translation for block {current_block_no_from_1}/{blocks_nchar_max_to_translate_array_len} "
-                                  f"with {nb_lines_block} lines...")
-                            translation = translate_lines_block(lines_to_translate)
-                            translation_succeded = True
-                        driver.delete_all_cookies()
-                        
-                    if translation_engine == 'chatgpt':
-                        if engine_method == 'api':
-                            #input("Before alling oai_translator.translate")
-                            response, translation = oai_translator.translate(src_lang_name, dest_lang_name, to_translate)
-                            print("response:")
-                            print(response)
-                            print("translation:")
-                            print(translation)
-                            translation_succeded = True
-                        else:
-                            translation_succeded, translation = selenium_chrome_chatgpt_translate(to_translate, translation_try_count)
-
-                            if translation_try_count >= (max_try_count - 1) and not translation_succeded:
-                                lines_to_translate = to_translate.split('\n')
-                                nb_lines_block = len(lines_to_translate)
-                                current_block_no_from_1 = current_block_no + 1
-
-                                def translate_lines_block_chatgpt(lines_block):
-                                    """
-                                    Recursive translation logic for ChatGPT with Google fallback.
-                                    Splits failed blocks in half, falls back to Google Translate for single-line failures.
-                                    """
-                                    if not lines_block:
-                                        return ""
-
-                                    # Try translating the entire block first
-                                    joined_block = "\n".join(lines_block)
-                                    success, translated_block = selenium_chrome_chatgpt_translate(joined_block, 1)
-
-                                    if success and translated_block:
-                                        return translated_block.strip()
-
-                                    # If it fails and the block has more than one line → split into halves
-                                    if len(lines_block) > 1:
-                                        mid = len(lines_block) // 2
-                                        print(f"ChatGPT: splitting block of {len(lines_block)} lines into halves...")
-                                        first_half = translate_lines_block_chatgpt(lines_block[:mid])
-                                        second_half = translate_lines_block_chatgpt(lines_block[mid:])
-                                        return (first_half + "\n" + second_half).strip()
-
-                                    # Fallback for a single-line block
-                                    line = lines_block[0]
-                                    print(f"ChatGPT: Translating single line (fallback with Google if needed): {line}")
-                                    success, line_translated = selenium_chrome_chatgpt_translate(line, 1)
-
-                                    if not success or not line_translated:
-                                        # Try Google Translate
-                                        selenium_chrome_google_click_cookies_consent_button()
-                                        line_translated = selenium_chrome_google_translate(line)
-
-                                        # Retry once more if first attempt fails
-                                        if not line_translated:
-                                            selenium_chrome_google_click_cookies_consent_button()
-                                            line_translated = selenium_chrome_google_translate(line)
-
-                                        if not line_translated:
-                                            print(f"ERROR: Unable to translate line even with Google: {line}")
-                                            line_translated = "Unable to get translation from ChatGPT or Google."
-                                        else:
-                                            #print(f"Google Translate fallback succeeded for: {line}")
-                                            pass
-
-                                    return line_translated.strip()
-                                    
-                            else:
-                                # Execute recursive translation
-                                print(f"Attempting recursive translation for ChatGPT block {current_block_no_from_1}/{blocks_nchar_max_to_translate_array_len} "
-                                      f"with {nb_lines_block} lines...")
-                                translation = translate_lines_block_chatgpt(lines_to_translate)
-                                translation_succeded = True
-
-                            driver.delete_all_cookies()
-                            time.sleep(0.25)
-                    
-                    if translation_engine == 'perplexity':
-                        if engine_method == 'api':
-                            translation_succeded, translation = perplexity_api_translate(to_translate, translation_try_count - 1)
-                        if engine_method == 'webservice':
-                            translation_succeded, translation = selenium_webservice_perplexity_translate(to_translate, translation_try_count - 1)
-                            print(translation_succeded)
-                            print(translation)
-                        else:
-                            translation_succeded, translation = selenium_chrome_perplexity_translate(to_translate, translation_try_count, 1)
-
-                            if not translation_succeded:
-                                driver.delete_all_cookies()
-
-                            if translation_try_count >= (max_try_count - 1) and not translation_succeded:
-                                lines_to_translate = to_translate.split('\n')
-                                nb_lines_block = len(lines_to_translate)
-                                current_block_no_from_1 = current_block_no + 1
-
-                            if translation_try_count >= (max_try_count - 1) and not translation_succeded:
-                                lines_to_translate = to_translate.split('\n')
-                                nb_lines_block = len(lines_to_translate)
-                                current_block_no_from_1 = current_block_no + 1
-
-                                def translate_lines_block_perplexity(lines_block):
-                                    """
-                                    Recursive translation logic for PerplexityAI with Google fallback.
-                                    Splits failed blocks in half, falls back to Google Translate for single-line failures.
-                                    """
-                                    if not lines_block:
-                                        return ""
-
-                                    # Try translating the entire block first
-                                    joined_block = "\n".join(lines_block)
-                                    success, translated_block = selenium_chrome_perplexity_translate(joined_block, 1, 1)
-
-                                    if success and translated_block:
-                                        return translated_block.strip()
-
-                                    # If it fails and the block has more than one line → split into halves
-                                    if len(lines_block) > 1:
-                                        mid = len(lines_block) // 2
-                                        print(f"PerplexityAI: splitting block of {len(lines_block)} lines into halves...")
-                                        first_half = translate_lines_block_perplexity(lines_block[:mid])
-                                        second_half = translate_lines_block_perplexity(lines_block[mid:])
-                                        return (first_half + "\n" + second_half).strip()
-
-                                    # Fallback for a single-line block
-                                    line = lines_block[0]
-                                    print(f"PerplexityAI: Translating single line (fallback with Google if needed): {line}")
-                                    success, line_translated = selenium_chrome_perplexity_translate(line, 1, 1)
-
-                                    if not success or not line_translated:
-                                        # Try Google Translate
-                                        selenium_chrome_google_click_cookies_consent_button()
-                                        line_translated = selenium_chrome_google_translate(line)
-
-                                        # Retry once more if first attempt fails
-                                        if not line_translated:
-                                            selenium_chrome_google_click_cookies_consent_button()
-                                            line_translated = selenium_chrome_google_translate(line)
-
-                                        if not line_translated:
-                                            print(f"ERROR: Unable to translate line even with Google: {line}")
-                                            line_translated = "Unable to get translation from PerplexityAI or Google."
-                                        else:
-                                            #print(f"Google Translate fallback succeeded for: {line}")
-                                            pass
-
-                                    return line_translated.strip()
-
-                                # Execute recursive translation
-                                print(f"Attempting recursive translation for PerplexityAI block {current_block_no_from_1}/{blocks_nchar_max_to_translate_array_len} "
-                                      f"with {nb_lines_block} lines...")
-                                translation = translate_lines_block_perplexity(lines_to_translate)
-                                translation_succeded = True
-
-                            driver.delete_all_cookies()
-                            time.sleep(0.25)
-            except:
-                print("Error in selenium_chrome_translate_maxchar_blocks...")
-                var = traceback.format_exc()
-                print(var)
-                print("Error in selenium_chrome_machine_translate")
-                
-            if ((current_block_no) % 2) == 1 and (translation_engine == "perplexity" or translation_engine == "chatgpt"):
-                print("Cleaning up cookies...")
-                driver.delete_all_cookies()
-                
-            if current_block_no == 0:
-                text_translated_document_str = translation
+                return selenium_chrome_chatgpt_translate(text, attempt)
+        
+        if engine == "perplexity":
+            if method == "api":
+                return perplexity_api_translate(text, attempt)
+            elif method == "webservice":
+                return selenium_webservice_perplexity_translate(text, attempt)
             else:
-                text_translated_document_str = text_translated_document_str + "\n" + translation
-                
-            translation_try_count = translation_try_count + 1
-
-            #print("Translation block (%d):" % (len(translation.split('\n'))))
-            #print(translation)
-            #input("Enter go on after viewing translated block")
+                return selenium_chrome_perplexity_translate(text, attempt, 1)
+        
+        raise ValueError(f"Unknown translation engine: {engine}")
+    
+    # ------------------------------------------------------------------
+    # ONE recursive algorithm for ALL engines
+    # ------------------------------------------------------------------
+    def translate_lines_block(lines, engine, method, attempt=1):
+        if not lines:
+            return ""
+        
+        joined = "\n".join(lines)
+        success, translated = translate_once(engine, method, joined, attempt)
+        
+        if success and translated:
+            return translated.strip()
+        
+        # Split block if possible
+        if len(lines) > 1:
+            mid = len(lines) // 2
+            print(f"Splitting block of {len(lines)} lines...")
+            left = translate_lines_block(lines[:mid], engine, method, attempt)
+            right = translate_lines_block(lines[mid:], engine, method, attempt)
+            return (left + "\n" + right).strip()
+        
+        # Single-line fallback
+        line = lines[0]
+        print(f"Single-line fallback: {line}")
+        
+        success, translated = translate_once(engine, method, line, attempt)
+        if success and translated:
+            return translated.strip()
+        
+        # Google fallback (last resort)
+        selenium_chrome_google_click_cookies_consent_button()
+        translated = selenium_chrome_google_translate(line)
+        if translated:
+            return translated.strip()
+        
+        print(f"ERROR: Unable to translate line: {line}")
+        return "Unable to get translation."
+    
+    # ------------------------------------------------------------------
+    # ChatGPT API setup
+    # ------------------------------------------------------------------
+    if translation_engine == "chatgpt" and engine_method == "api":
+        # "gpt-5-mini", "gpt-5-nano", "gpt-5", etc
+        oai_translator = OpenAITranslator(model="gpt-5.2")
+        oai_translator.set_filename(word_file_to_translate)
+    
+    # ------------------------------------------------------------------
+    # Main loop
+    # ------------------------------------------------------------------
+    for i, block in enumerate(blocks_nchar_max_to_translate_array):
+        print(
+            f"Translating block {i + 1}/{len(blocks_nchar_max_to_translate_array)} "
+            f"({len(block)} chars)"
+        )
+        
+        success, translated = translate_once(
+            translation_engine, engine_method, block, attempt=0
+        )
+        
+        if not success:
+            print("Initial translation failed → recursive fallback")
+            translation_errors_count += 1
+            deepl_sleep_wait_translation_seconds *= 1.1
             
+            translated = translate_lines_block(
+                block.split("\n"),
+                translation_engine,
+                engine_method
+            )
         
-        #print("text_translated_document_str:///////////////////////////////////////")
-        #print(text_translated_document_str)
-        #print("/////////////////////////////////////////")
-        #input("Press enter")
+        translated_blocks.append(translated)
         
-        #text_translated_document_str = html.unescape(text_translated_document_str)
-        
-        translation_array = text_translated_document_str.split('\n')
-        
-        text_translated_document_str_nb_lines = len(translation_array)
-        
-        #print ("text_translated_document_str_nb_linestext_translated_document_str_nb_lines: %s" % text_translated_document_str_nb_lines)
-        #print ("docxfile_table_number_of_phrases: %s" % docxfile_table_number_of_phrases)
-        
-        if docxfile_table_number_of_phrases == text_translated_document_str_nb_lines:
-            #print("OK, we got the right number of translated lines !")
-            #input("Here")
-            pass
-        else:
-            print("oups ! we got %s translated lines out of %s" % (text_translated_document_str_nb_lines, docxfile_table_number_of_phrases))
-            translation_succeded = False
-
-        
-        #input("finished translating")
-        
-        #print("text_translated_document_str:")
-        #print(text_translated_document_str)
-        
-    except Exception:
-        print("Error getting google translation from google form online.")
-        var = traceback.format_exc()
-        print(var)
-        sys.exit(5)
+        if i % 2 == 1 and translation_engine in ("chatgpt", "perplexity"):
+            print("Cleaning up cookies...")
+            driver.delete_all_cookies()
+    
+    # ------------------------------------------------------------------
+    # Final validation
+    # ------------------------------------------------------------------
+    full_text = "\n".join(translated_blocks)
+    translation_array = full_text.split("\n")
+    
+    if len(translation_array) != docxfile_table_number_of_phrases:
+        print(
+            f"Line count mismatch: {len(translation_array)} != "
+            f"{docxfile_table_number_of_phrases}"
+        )
+        translation_succeded = False
+    
     print(translation_succeded)
     print(translation_array)
+    
     return translation_succeded, translation_array
+
 
 def selenium_chrome_google_click_cookies_consent_button():
     global found_google_cookies_consent_button
@@ -2805,7 +2620,7 @@ def selenium_chrome_deepl_log_in():
             
             # Success change block size if value exists
             deepl_max_char_bloc_size_key = ['deepl', 'account','maximum_character_block']
-            deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key)
+            deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key) - 1
             
             if isinstance(deepl_maximum_character_block, int):
                 if deepl_maximum_character_block > MAX_TRANSLATION_BLOCK_SIZE:
@@ -5925,32 +5740,42 @@ def translate_from_phrasesblock():
         pass
     return translation_succeded
 
-
-
 def translate_docx():
-    translation_array = []
     translation_succeded = True
 
-    if engine_method == 'textfile':
+    # ------------------------------------------------------------------
+    # Engine-method specific translators
+    # ------------------------------------------------------------------
+    if engine_method == "textfile":
         google_translate_from_text_file()
+        return translation_succeded
 
-    if engine_method == 'javascript':
-        translation_array = google_translate_from_html_javascript()
-        #print (translation_array)
+    if engine_method == "javascript":
+        google_translate_from_html_javascript()
+        return translation_succeded
 
-    if engine_method == 'xlsxfile':
+    if engine_method == "xlsxfile":
         google_translate_from_html_xlsxfile()
+        return translation_succeded
 
-    # For both deepl and google translate
-    if engine_method == "phrasesblock" or engine_method == "webservice":
-        # For both deepl and google translate
-        if translation_engine == "deepl" or translation_engine == "chatgpt" or translation_engine == "perplexity":
-            translation_succeded = translate_from_phrasesblock()
-    # both phraseblock and engine_method == "api":
+    # ------------------------------------------------------------------
+    # Phrase-block logic (centralized, no duplication)
+    # ------------------------------------------------------------------
+    use_phrasesblock = False
+
     if translation_engine == "chatgpt":
-        # For both deepl and google translate
+        # ChatGPT always uses phrase-block logic
+        use_phrasesblock = True
+    elif translation_engine in ("deepl", "perplexity"):
+        # Deepl & Perplexity only for these methods
+        use_phrasesblock = engine_method in ("phrasesblock", "webservice")
+
+    if use_phrasesblock:
         translation_succeded = translate_from_phrasesblock()
+
     return translation_succeded
+
+
 
 def get_translation_and_replace_after():
     global from_text_by_phrase_separator_table, to_text_by_phrase_separator_table, numerrors_deepl, use_api
