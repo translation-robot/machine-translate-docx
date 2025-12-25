@@ -121,7 +121,7 @@ class OpenAITranslator:
             f"Line-by-line constraints:\n"
             f"- Translate line by line: produce exactly one output line for each input line.\n"
             f"- Do NOT merge, split, add, remove, or repeat lines.\n"
-            f"- Use natural, spoken-style {dest_lang} but always keep all the information.\n"
+            f"- Use formal, standard and natural {dest_lang} (non-colloquial);preserve all information.\n"
             f"- But the wording inside each line is allowed to become a bit shorter or longer in order to produce natural {dest_lang}.\n"
             f"- Preserve the input line order.\n"
             f"- Parentheses and multiple sentences within a line belong to that same line.\n"
