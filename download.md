@@ -1,7 +1,7 @@
 
 # Download binaries for the machine translation robot.
 
-The latest version of the translation robot is 2025-10-23
+The latest version of the translation robot is 2025-12-27
 
 ## Windows version
 Require Chrome browser installed. No other software required. Download google chrome here :
@@ -10,7 +10,7 @@ https://www.google.com/chrome/
 
 ### Download the binaries for windows 10 and 11 (64 bits) here:
 
-https://smch.ir/binaries/Machine%20Translation%20Robot%20Setup_2025-10-23.exe
+https://smch.ir/binaries/Machine%20Translation%20Robot%20Setup_2025-12-27.exe
 
 ### Download the binaries for windows 7, 8, 8.1 (32 bits, compatible 64 bits) here:
 
@@ -26,7 +26,7 @@ Download the binaries for macos here:
 
 Mac OS X dmg installer:
 
-https://smch.ir/binaries/MachineTranslator_2025-10-23.dmg
+https://smch.ir/binaries/MachineTranslator_2025-12-27.dmg
 
 Before installing the DMG installer, disable mac Gatekeeper:
 1. From Launchpad open the Term App
