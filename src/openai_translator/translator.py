@@ -133,7 +133,7 @@ class OpenAITranslator:
             f"- End each output line with a single newline character also known as line feed or LF (do not add extra blank lines between translated lines in the output).\n"
         )
         
-        if dest_lang.lower() == 'persian' and False:
+        if dest_lang.lower() == 'persian':
             prompt += (
                 "- When writing decimal numbers in Persian, use a dot as the decimal separator, e.g. write \u00ab\u06F1\u06F2.\u06F5\u00bb not \u00ab\u06F1\u06F2/\u06F5\u00bb (and not \u00ab\u06F1\u06F2,\u06F5\u00bb).\n"
                 "- Do NOT add diacritics (no short vowels or tashkeel such as \u064E \u0650 \u064F \u0651 \u064C \u064B \u064D),  unless a rare word would be ambiguous without them.\n"

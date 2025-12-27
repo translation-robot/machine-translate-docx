@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-12-25"
+PROGRAM_VERSION="2025-12-27"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -3350,32 +3350,8 @@ def selenium_chrome_chatgpt_translate(to_translate, retry_count):
 
         # The string that needs to be sent
         # Max 4,096 characters ?
-        str_prompt = f"""You will receive a text to translate from {src_lang_name} to {dest_lang_name}.
-Important instructions:
-1.	Each input line corresponds to exactly one output line.
-o	Do NOT split any input line into multiple output lines.
-o	Do NOT merge multiple input lines into one output line.
-2.	Do NOT insert any line breaks within a line, even if the line is long.
-o	Only use a line break to move to the next input line.
-3.	If a phrase or sentence spans multiple input lines, it must remain on multiple lines in the output.
-o	Do NOT combine or rearrange lines.
-4.	If multiple phrases are on a single input line, keep them together on the same output line.
-5.	The total number of output lines must be exactly equal to the number of input lines.
-o	If the input text has N lines, the output translation must have exactly N lines.
-6.	Do NOT add, remove, or change the order of lines.
-7.	Do NOT include the input text or any introduction before or after the translation.
-
-Each output line ending with a new line character must contain the full translation of the corresponding input line up to the new line character. The text has {to_translate_phrases_array_len} lines that must be translated in exactly {to_translate_phrases_array_len} lines.
-________________________________________
-The text to translate is between the lines containing only:
-BEFORETEXTTOTRANSLATE and AFTERTEXTTOTRANSLATE
-
-                    
-Translate only the lines between these markers, preserving the line structure exactly as stated. Do not echo BEFORETEXTTOTRANSLATE and AFTERTEXTTOTRANSLATE lines.
-
-BEFORETEXTTOTRANSLATE
-{to_translate}
-AFTERTEXTTOTRANSLATE"""
+        
+        str_prompt = build_translation_prompt(src_lang_name, dest_lang_name, to_translate)
         
         #print (str_prompt)
         
@@ -3729,6 +3705,48 @@ def click_verify_human_checkbox_if_present(driver, timeout=50):
         except Exception:
             return False
 
+def build_translation_prompt(source_lang, dest_lang, text):
+    lines = text.split("\n")
+    numbered_lines = [f"Line {i+1}: {line}" for i, line in enumerate(lines)]
+    numbered_text = "\n".join(numbered_lines)
+    
+    prompt = (
+        f"You are a professional subtitling translator.\n"
+        f"Your task is to translate {source_lang} into {dest_lang}.\n\n"
+        f"Overall context and style:\n"
+        f"- Read all lines first so you understand the full context.\n"
+        f"- Treat the entire input as one coherent text when choosing tone and terminology.\n"
+        f"- Ensure consistent translations for recurring terms, names, and concepts across all lines.\n"
+        f"- If part of the text to translate is already in {dest_lang}, treat it as a translation memory and keep it literal.\n"
+        f"Line-by-line constraints:\n"
+        f"- Translate line by line: produce exactly one output line for each input line.\n"
+        f"- Do NOT merge, split, add, remove, or repeat lines.\n"
+        f"- Use formal, standard and natural {dest_lang} (non-colloquial);preserve all information.\n"
+        f"- But the wording inside each line is allowed to become a bit shorter or longer in order to produce natural {dest_lang}.\n"
+        f"- Preserve the input line order.\n"
+        f"- Parentheses and multiple sentences within a line belong to that same line.\n"
+        f"- Only translate lines that start with 'Line ' followed by a number and a semicolon.\n"
+        f"- For each such line, translate only the TEXT after the first semicolon.\n"
+        f"- After translation, do NOT include 'Line N:' in the output; only output the translated TEXT.\n"
+        f"- Output only {dest_lang} text, with no explanations or comments.\n"
+        f"- Produce exactly {len(lines)} output lines, in the same order as the input, there should be no blank lines.\n"
+        f"- End each output line with a single newline character also known as line feed or LF (do not add extra blank lines between translated lines in the output).\n"
+    )
+    
+    if dest_lang.lower() == 'persian':
+        prompt += (
+            "- When writing decimal numbers in Persian, use a dot as the decimal separator, e.g. write \u00ab\u06F1\u06F2.\u06F5\u00bb not \u00ab\u06F1\u06F2/\u06F5\u00bb (and not \u00ab\u06F1\u06F2,\u06F5\u00bb).\n"
+            "- Do NOT add diacritics (no short vowels or tashkeel such as \u064E \u0650 \u064F \u0651 \u064C \u064B \u064D),  unless a rare word would be ambiguous without them.\n"
+            "- Apply the following fixed terminology rules whenever these English forms appear:\n"
+            "  - \"animal-person\" / \"animal-people\"  \u2192  \u00ab\u0634\u062E\u0635-\u062D\u06CC\u0648\u0627\u0646\u00bb / \u00ab\u0627\u0634\u062E\u0627\u0635-\u062D\u06CC\u0648\u0627\u0646\u00bb\n"
+            "  - \"tiger-person\" / \"tiger-people\"    \u2192  \u00ab\u0634\u062E\u0635-\u0628\u0628\u0631\u00bb   / \u00ab\u0627\u0634\u062E\u0627\u0635-\u0628\u0628\u0631\u00bb\n"
+            "  - \"cow-person\" / \"cow-people\"        \u2192  \u00ab\u0634\u062E\u0635-\u06AF\u0627\u0648\u00bb   / \u00ab\u0627\u0634\u062E\u0627\u0635-\u06AF\u0627\u0648\u00bb\n"
+            "  (Do NOT translate them as ordinary “animal(s) / tiger(s) / cow(s)”.)\n"
+        )
+    
+    prompt += f"Here is the text to translate:\n{numbered_text}\n"
+
+    return prompt
 
 def perplexity_close_messages():
     """
@@ -3810,23 +3828,8 @@ def selenium_chrome_perplexity_translate(to_translate, retry_count, max_try_coun
     
     if retry_count >= 1:
         print(f"Retrying perplexity translation : {retry_count}/{max_try_count} time")
-
-
-    str_prompt = f"""Translate the following text from {src_lang_name} to {dest_lang_name} :
-Each input line must correspond to exactly one output line.
-Do not split, merge, or add any lines.
-Do not insert any line breaks within a line, even if the line is long.
-Only use a line break to move to the next input line.
-Do not add, remove, or split any lines.
-If a phrase is on multiple lines, it must remain on multiple lines, no merge.
-Do not echo text to be translated in the translation, and do not insert an introduction before the translation:
-Each output line must contain the full translation of the corresponding input line. The text has {to_translate_phrases_array_len} lines that must be translated in exactly {to_translate_phrases_array_len} lines.
-Your output MUST contain exactly {to_translate_phrases_array_len} lines, not one less, not one more. Do not provide an introduction before translation or a conclusion after translation.
-
-The text to be translated start after the first line containing only BEFORETEXTTOTRANSLATE and ends the line before the first occurence if the line containing only AFTERTEXTTOTRANSLATE:
-BEFORETEXTTOTRANSLATE
-{to_translate}
-AFTERTEXTTOTRANSLATE"""
+        
+    str_prompt = build_translation_prompt(src_lang_name, dest_lang_name, to_translate)
     
     #print(str_prompt)
     
@@ -6024,6 +6027,91 @@ def document_split_phrases():
                 print("  ERROR:%s<br>" % (var))
 
 
+MAX_CHARS = 750
+
+def create_translation_split_prompts():
+    """
+    Groups source phrases into blocks of max 750 characters (without breaking phrases)
+    and prints AI prompts in the requested subtitle format.
+    """
+
+    current_block = []
+    current_length = 0
+    block_index = 1
+
+    for phrase in from_text_table:
+        phrase = phrase.strip()
+        if not phrase:
+            continue
+
+        phrase_length = len(phrase)
+
+        # If adding this phrase would exceed the max size, finalize current block
+        if current_length + phrase_length > MAX_CHARS and current_block:
+            print_prompt_block(block_index, current_block)
+            block_index += 1
+            current_block = []
+            current_length = 0
+
+        current_block.append(phrase)
+        current_length += phrase_length
+
+    # Print last block if any
+    if current_block:
+        print_prompt_block(block_index, current_block)
+
+
+def print_prompt_block(block_index, block_phrases):
+    """
+    Prints a single AI prompt for one block of phrases in the desired format.
+    """
+
+    # Prepare source text lines with numbering
+    source_lines = "\n".join([f"Input {i+1}:{line}" for i, line in enumerate(block_phrases)])
+    num_lines = len(block_phrases)
+
+    prompt = f"""
+You are given subtitle text in a source language and its translation in a destination language.
+
+Source Text ({num_lines} lines):
+{source_lines}
+
+Destination Text (translation):
+# Insert your translation here, line by line
+
+Task:
+
+Reformat the translated text so that it has exactly the same number of lines as the source text, preserving the line structure of the source.
+
+Rules:
+
+- Each line in the source corresponds in order to the translated text.
+- If a source sentence is split across multiple lines, the translation must also be split naturally across the same number of lines.
+- Do not change any words or punctuation in the translation.
+- Each phrase ending with a full stop in the source should preserve its line count in the translation.
+- In case the target language grammar is different from the input language grammar, the lines do not need to match the source, but the phrase full stop should determine the number of lines to be split for a phrase(s) from the input.
+- Output only the translated text, line by line, with no numbers or labels.
+
+Example:
+
+Source sample (English):
+
+I’ve always had a terrible  
+aversion to bullfighting.
+
+Translation sample (French):
+
+J'ai toujours eu une aversion terrible
+pour la corrida.
+"""
+
+    print(f"\n{'=' * 80}")
+    print(f"PROMPT BLOCK #{block_index}")
+    print(f"{'=' * 80}")
+    print(prompt.strip())
+
+
+    
 def print_html_program_result():
     if use_html :
         print("<table border=1 bgcolor=""#EEEEEE"">")
@@ -6979,6 +7067,9 @@ def main() -> int:
 
     minimize_browser()
 
+    #input("before create_translation_split_prompts")
+    #create_translation_split_prompts()
+    #input("after create_translation_split_prompts")
     document_split_phrases()
 
     write_destination_language_in_docx_cell()
