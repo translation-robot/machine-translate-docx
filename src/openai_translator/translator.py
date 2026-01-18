@@ -112,86 +112,120 @@ class OpenAITranslator:
         
         prompt = (
             f"You are a professional subtitling translator.\n"
-            f"Your task is to translate {source_lang} into {dest_lang}.\n\n"
+            f"Your task is to translate {source_lang} into high-quality {dest_lang} suitable for television subtitles.\n"
+
             f"Overall context and style:\n"
-            f"- Read all lines first so you understand the full context.\n"
-            f"- Treat the entire input as one coherent text when choosing tone and terminology.\n"
-            f"- Ensure consistent translations for recurring terms, names, and concepts across all lines.\n"
-            f"- If part of the text to translate is already in {dest_lang}, treat it as a translation memory and keep it literal.\n"
+            f"Read all lines first so you understand the full context, intent, and information hierarchy.\n"
+            f"Treat the entire input as one coherent text when choosing tone, terminology, and phrasing.\n"
+            f"This global understanding is only for lexical choice, tone, and consistency; "
+            f"do NOT redistribute, move, or re-balance information across lines.\n"
+            f"Ensure consistent translations for recurring terms, names, and concepts across all lines.\n"
+            f"If part of the text to translate is already in {dest_lang}, treat it as authoritative translation memory and keep it literal.\n"
+
             f"Line-by-line constraints:\n"
-            f"- Translate line by line: produce exactly one output line for each input line.\n"
-            f"- Do NOT merge, split, add, remove, or repeat lines.\n"
-            f"- Use formal, standard and natural {dest_lang} (non-colloquial);preserve all information.\n"
-            f"- But the wording inside each line is allowed to become a bit shorter or longer in order to produce natural {dest_lang}.\n"
-            f"- Preserve the input line order.\n"
-            f"- Parentheses and multiple sentences within a line belong to that same line.\n"
-            f"- Only translate lines that start with 'Line ' followed by a number and a semicolon.\n"
-            f"- For each such line, translate only the TEXT after the first semicolon.\n"
-            f"- After translation, do NOT include 'Line N:' in the output; only output the translated TEXT.\n"
-            f"- Output only {dest_lang} text, with no explanations or comments.\n"
-            f"- Produce exactly {len(lines)} output lines, in the same order as the input, there should be no blank lines.\n"
-            f"- End each output line with a single newline character also known as line feed or LF (do not add extra blank lines between translated lines in the output).\n"
+            f"Translate line by line: produce exactly one output line for each input line.\n"
+            f"Do NOT merge, split, add, remove, or repeat lines.\n"
+            f"Preserve the input line order.\n"
+            f"Parentheses and multiple sentences within a line belong to that same line.\n"
+
+            f"Stylistic and linguistic rules:\n"
+            f"Use a formal, standard, and natural register appropriate for broadcast media; "
+            f"avoid colloquial speech and overly literary or archaic language, while preserving all core information.\n"
+            f"The wording inside each line may become slightly shorter or longer to produce natural {dest_lang}.\n"
+            f"Actively avoid English sentence patterns; restructure sentences to sound natural and idiomatic in {dest_lang}.\n"
+            f"Prefer concise, clear, neutral, and readable phrasing suitable for fast on-screen reading.\n"
+            f"Avoid stiffness, redundancy, and word-for-word translation.\n"
+
+            f"Selection and output rules:\n"
+            f"Only translate lines that start with 'Line ' followed by a number and a semicolon.\n"
+            f"For each such line, translate only the TEXT after the first semicolon.\n"
+            f"After translation, do NOT include 'Line N:' in the output; only output the translated TEXT.\n"
+            f"Output only {dest_lang} text, with no explanations or comments.\n"
+            f"Produce exactly {len(lines)} output lines, in the same order as the input; there should be no blank lines.\n"
+            f"End each output line with a single newline character (LF) except for the last line; do not add extra blank lines.\n"
+
+            f"Verb tense handling:\n"
+            f"When translating verb tenses, prefer simple, natural, and commonly used {dest_lang} tenses; avoid unnecessary preservation of English tense complexity unless it carries essential meaning.\n"
+
+            f"Handling idioms and cultural references:\n"
+            f"Apply adaptation only when an idiom or reference would be unclear or misleading if translated literally.\n"
         )
-        
-        if dest_lang.lower() == 'persian':
+
+        # ─────────────────────────────────────────────
+        # Persian-specific rules
+        # ─────────────────────────────────────────────
+        if dest_lang.lower() == "persian":
             prompt += (
-                "- When writing decimal numbers in Persian, use a dot as the decimal separator, e.g. write \u00ab\u06F1\u06F2.\u06F5\u00bb not \u00ab\u06F1\u06F2/\u06F5\u00bb (and not \u00ab\u06F1\u06F2,\u06F5\u00bb).\n"
-                "- Do NOT add diacritics (no short vowels or tashkeel such as \u064E \u0650 \u064F \u0651 \u064C \u064B \u064D),  unless a rare word would be ambiguous without them.\n"
-                "- Apply the following fixed terminology rules whenever these English forms appear:\n"
-                "  - \"animal-person\" / \"animal-people\"  \u2192  \u00ab\u0634\u062E\u0635-\u062D\u06CC\u0648\u0627\u0646\u00bb / \u00ab\u0627\u0634\u062E\u0627\u0635-\u062D\u06CC\u0648\u0627\u0646\u00bb\n"
-                "  - \"tiger-person\" / \"tiger-people\"    \u2192  \u00ab\u0634\u062E\u0635-\u0628\u0628\u0631\u00bb   / \u00ab\u0627\u0634\u062E\u0627\u0635-\u0628\u0628\u0631\u00bb\n"
-                "  - \"cow-person\" / \"cow-people\"        \u2192  \u00ab\u0634\u062E\u0635-\u06AF\u0627\u0648\u00bb   / \u00ab\u0627\u0634\u062E\u0627\u0635-\u06AF\u0627\u0648\u00bb\n"
-                "  (Do NOT translate them as ordinary “animal(s) / tiger(s) / cow(s)”.)\n"
+                f"Language-specific rules for {dest_lang}:\n"
+                f"- Numbers: Use a dot for decimals (12.5) and preserve commas for thousands (12,000).\n"
+                f"- Thousand rule: Convert “X,000” to “X هزار” ONLY for approximate or descriptive quantities; "
+                f"do NOT convert years, IDs, codes, exact prices, or technical measurements.\n"
+                f"- Do NOT add diacritics (short vowels or tashkeel), unless a rare word would be ambiguous without them.\n"
+                f"- Use phonetic transliteration for foreign terms when there is no well-established {dest_lang} equivalent.\n"
+                f"- Use Latin script only for news agency names.\n"
+
+                f"\nMANDATORY NATIVE AUTHOR GATE (FINAL – NON-NEGOTIABLE)\n"
+                f"This gate overrides all stylistic intuition and operates on violation detection.\n"
+
+                f"\nFor EACH line, perform the following two-step test:\n"
+
+                f"\nSTEP 1 — COLLOCATION & EXPRESSION VIOLATION SCAN\n"
+                f"Ask explicitly:\n"
+                f"\"Does this line contain ANY phrase, metaphor, abstraction, or verb–noun pairing "
+                f"that would be understandable in Persian "
+                f"BUT would NOT naturally appear in modern Persian TV scripts "
+                f"written originally in Persian by a professional TV editor?\"\n"
+
+                f"\nRED FLAG VIOLATIONS INCLUDE (but are not limited to):\n"
+                f"- Literal or semi-literal English metaphors\n"
+                f"- Abstract nouns acting as subjects or objects of vague verbs\n"
+                f"- Overuse of nominalizations where Persian prefers verb-based structures\n"
+                f"- Expressive but unspecific phrasing that sounds literary or contemplative\n"
+                f"- Sentences that feel polished yet lack concrete spoken logic\n"
+
+                f"\nIMPORTANT:\n"
+                f"Comprehensibility is NOT a defense.\n"
+                f"Expressiveness is NOT a defense.\n"
+                f"\"If it sounds fine\" is NOT a defense.\n"
+
+                f"\nIf ANY violation is detected → the line is INVALID.\n"
+
+                f"\nSTEP 2 — NATIVE AUTHOR CONFIRMATION (ONLY IF STEP 1 PASSES)\n"
+                f"Ask:\n"
+                f"\"Would a professional Persian TV editor, writing directly in Persian with no English source, "
+                f"naturally produce this exact structure and phrasing?\"\n"
+
+                f"- If YES with full confidence → keep the line unchanged.\n"
+                f"- If NO, uncertain, or requires justification → the line is INVALID.\n"
+
+                f"\nMANDATORY REWRITE RULES (ONLY FOR INVALID LINES)\n"
+                f"- Preserve the exact meaning and intent\n"
+                f"- Avoid simplification, explanation, or generalization\n"
+                f"- Rewrite ONLY by:\n"
+                f"  • replacing non-native collocations\n"
+                f"  • grounding abstractions into concrete Persian verbs\n"
+                f"  • restructuring the sentence into natural Persian SOV flow\n"
+
+                f"DO NOT:\n"
+                f"- Keep a sentence because it sounds elegant\n"
+                f"- Add interpretive clarity\n"
+                f"- Beautify language\n"
+
+                f"\nFINAL QUALITY LOOP (SINGLE PASS)\n"
+                f"Before outputting, check each line:\n"
+                f"1. Register: Strictly formal broadcast Persian (no broken or spoken forms).\n"
+                f"2. Syntax: Fully Persian sentence logic, no English residue.\n"
+                f"3. Entity integrity: Names, roles, references, and personhood preserved exactly.\n"
+                f"4. Native density: Zero traces of translated cleverness.\n"
+
+                f"If a line passes ALL → output unchanged.\n"
+                f"If it fails ANY → rewrite once, then output.\n"
             )
-       
-        
-        if dest_lang.lower() == 'persian':
-            prompt = (
-                f"You are a professional subtitling translator.\n"
-                f"Your task is to translate {source_lang} into high-quality {dest_lang} suitable for television subtitles.\n"
-                f"Overall context and style:\n"
-                f"Read all lines first so you understand the full context, intent, and information hierarchy.\n"
-                f"Treat the entire input as one coherent text when choosing tone, terminology, and phrasing.\n"
-                f"This global understanding is only for lexical choice, tone,and consistency; do NOT redistribute, move, or re-balance information across lines.\n"
-                f"Ensure consistent translations for recurring terms, names, and concepts across all lines.\n"
-                f"If part of the text to translate is already in {dest_lang}, treat it as a authoritative translation memory and keep it literal.\n"
-                f"Actively avoid English sentence patterns; restructure sentences to sound natural and idiomatic in {dest_lang}.\n"
-                f"Line-by-line constraints:\n"
-                f"Translate line by line: produce exactly one output line for each input line.\n"
-                f"Do NOT merge, split, add, remove, or repeat lines.\n"
-                f"Use formal, standard, and natural {dest_lang} (رسمیِ رسانه‌ای، غیرمحاوره‌ای، غیرادبیِ سنگین); preserve all core information.\n"
-                f"But the wording inside each line is allowed to become a bit shorter or longer in order to produce natural {dest_lang}.\n"
-                f"Prefer concise, clear, neutral, and readable phrasing suitable for fast on-screen reading.\n"
-                f"Avoid stiffness, redundancy, and word-for-word translation.\n"
-                f"When both Imperial and Metric units appear, translate and keep ONLY Metric units standard in {dest_lang} usage (km, kg, °C, etc.).\n"
-                f"Preserve the input line order.\n"
-                f"Parentheses and multiple sentences within a line belong to that same line.\n"
-                f"Only translate lines that start with 'Line ' followed by a number and a semicolon.\n"
-                f"For each such line, translate only the TEXT after the first semicolon.\n"
-                f"After translation, do NOT include 'Line N:' in the output; only output the translated TEXT.\n"
-                f"Output only {dest_lang} text, with no explanations or comments.\n"
-                f"Produce exactly {len(lines)} output lines, in the same order as the input; there should be no blank lines.\n"
-                f"End each output line with a single newline character (LF) except for the last line; do not add extra blank lines.\n"
-                f"Use a dot as the decimal separator  (e.g. «۱۲.۵», not «۱۲/۵» or «۱۲,۵»).\n"
-                f"Do NOT add diacritics (short vowels or tashkeel such as َُِ ًٌٍ), unless a rare word would be ambiguous without them.\n"
-                f"Use Pinglish ({dest_lang} phonetic spelling) for non-{dest_lang} terms when there is no well-established {dest_lang} equivalent.\n"
-                f"Use Latin script only for news agency names.\n"
-                f"When translating verb tenses, prefer simple, natural, and\n"
-                f"commonly used {dest_lang} tenses;\n"
-                f"avoid unnecessary preservation of English tense complexity\n"
-                f"unless it carries essential meaning.\n"
-                f"Handling idioms and cultural references:\n"
-                f"Apply adaptation only when an idiom or reference would be unclear or misleading if translated literally.\n"
-                f"Perform this check after translating all lines and before producing the final output:\n"
-                f"Confirm each line is natural {dest_lang} with correct syntax and verb placement, not English-based.\n"
-                f"Verify all core meaning is preserved and terminology is\n"
-                f"consistent with prior lines and translation memory.\n"
-                f"Ensure the line is concise, readable on screen, and\n"
-                f"compliant with standard television subtitle readability constraints.\n"
-                f"If a line still feels translated, rewrite it before output.\n"
-           )
-        
-        prompt += f"Here is the text to translate:\n{numbered_text}\n"
+
+        # ─────────────────────────────────────────────
+        # Text payload
+        # ─────────────────────────────────────────────
+        prompt += f"\nHere is the text to translate:\n{numbered_text}\n"
 
         return prompt
 
