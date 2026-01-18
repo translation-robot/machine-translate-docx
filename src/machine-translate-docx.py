@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-12-27"
+PROGRAM_VERSION="2025-01-18"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -409,7 +409,7 @@ DefaultJsonConfiguration = """{
 			"maximum_character_block": 1000
 		},
 		"api": {
-			"maximum_character_block": 5000
+			"maximum_character_block": 220000
 		},
         "usage_violation_message" : "Your request was flagged as potentially violating our usage policy. Please try again with a different prompt."
 	},
@@ -1865,6 +1865,10 @@ def selenium_chrome_translate_maxchar_blocks():
         )
         
         if not success:
+            if translation_engine == 'deepl':
+                print("Cleaning up cookies...")
+                driver.delete_all_cookies()
+                
             print("Initial translation failed → recursive fallback")
             translation_errors_count += 1
             deepl_sleep_wait_translation_seconds *= 1.1

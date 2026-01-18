@@ -143,6 +143,53 @@ class OpenAITranslator:
                 "  - \"cow-person\" / \"cow-people\"        \u2192  \u00ab\u0634\u062E\u0635-\u06AF\u0627\u0648\u00bb   / \u00ab\u0627\u0634\u062E\u0627\u0635-\u06AF\u0627\u0648\u00bb\n"
                 "  (Do NOT translate them as ordinary “animal(s) / tiger(s) / cow(s)”.)\n"
             )
+       
+        
+        if dest_lang.lower() == 'persian':
+            prompt = (
+                f"You are a professional subtitling translator.\n"
+                f"Your task is to translate {source_lang} into high-quality {dest_lang} suitable for television subtitles.\n"
+                f"Overall context and style:\n"
+                f"Read all lines first so you understand the full context, intent, and information hierarchy.\n"
+                f"Treat the entire input as one coherent text when choosing tone, terminology, and phrasing.\n"
+                f"This global understanding is only for lexical choice, tone,and consistency; do NOT redistribute, move, or re-balance information across lines.\n"
+                f"Ensure consistent translations for recurring terms, names, and concepts across all lines.\n"
+                f"If part of the text to translate is already in {dest_lang}, treat it as a authoritative translation memory and keep it literal.\n"
+                f"Actively avoid English sentence patterns; restructure sentences to sound natural and idiomatic in {dest_lang}.\n"
+                f"Line-by-line constraints:\n"
+                f"Translate line by line: produce exactly one output line for each input line.\n"
+                f"Do NOT merge, split, add, remove, or repeat lines.\n"
+                f"Use formal, standard, and natural {dest_lang} (رسمیِ رسانه‌ای، غیرمحاوره‌ای، غیرادبیِ سنگین); preserve all core information.\n"
+                f"But the wording inside each line is allowed to become a bit shorter or longer in order to produce natural {dest_lang}.\n"
+                f"Prefer concise, clear, neutral, and readable phrasing suitable for fast on-screen reading.\n"
+                f"Avoid stiffness, redundancy, and word-for-word translation.\n"
+                f"When both Imperial and Metric units appear, translate and keep ONLY Metric units standard in {dest_lang} usage (km, kg, °C, etc.).\n"
+                f"Preserve the input line order.\n"
+                f"Parentheses and multiple sentences within a line belong to that same line.\n"
+                f"Only translate lines that start with 'Line ' followed by a number and a semicolon.\n"
+                f"For each such line, translate only the TEXT after the first semicolon.\n"
+                f"After translation, do NOT include 'Line N:' in the output; only output the translated TEXT.\n"
+                f"Output only {dest_lang} text, with no explanations or comments.\n"
+                f"Produce exactly {len(lines)} output lines, in the same order as the input; there should be no blank lines.\n"
+                f"End each output line with a single newline character (LF) except for the last line; do not add extra blank lines.\n"
+                f"Use a dot as the decimal separator  (e.g. «۱۲.۵», not «۱۲/۵» or «۱۲,۵»).\n"
+                f"Do NOT add diacritics (short vowels or tashkeel such as َُِ ًٌٍ), unless a rare word would be ambiguous without them.\n"
+                f"Use Pinglish ({dest_lang} phonetic spelling) for non-{dest_lang} terms when there is no well-established {dest_lang} equivalent.\n"
+                f"Use Latin script only for news agency names.\n"
+                f"When translating verb tenses, prefer simple, natural, and\n"
+                f"commonly used {dest_lang} tenses;\n"
+                f"avoid unnecessary preservation of English tense complexity\n"
+                f"unless it carries essential meaning.\n"
+                f"Handling idioms and cultural references:\n"
+                f"Apply adaptation only when an idiom or reference would be unclear or misleading if translated literally.\n"
+                f"Perform this check after translating all lines and before producing the final output:\n"
+                f"Confirm each line is natural {dest_lang} with correct syntax and verb placement, not English-based.\n"
+                f"Verify all core meaning is preserved and terminology is\n"
+                f"consistent with prior lines and translation memory.\n"
+                f"Ensure the line is concise, readable on screen, and\n"
+                f"compliant with standard television subtitle readability constraints.\n"
+                f"If a line still feels translated, rewrite it before output.\n"
+           )
         
         prompt += f"Here is the text to translate:\n{numbered_text}\n"
 
@@ -200,7 +247,8 @@ class OpenAITranslator:
             print("[WARNING] Line count mismatch!")
             print(f"Input lines: {len(in_lines)}, Output lines: {len(out_lines)}")
             if len(out_lines) > len(in_lines):
-                out_lines = out_lines[:len(in_lines)]
+                out_lines = "\n".join(out_lines)
+                print("Error in openai translation, too many lines")
             else:
                 out_lines.extend(["Translation line missing from OpenAI"] * (len(in_lines) - len(out_lines)))
             translated_text = "\n".join(out_lines)
