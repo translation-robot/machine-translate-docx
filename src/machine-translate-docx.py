@@ -5566,8 +5566,7 @@ def generate_xlsx_file_from_phrases(xlsx_file_path):
         
         
 def generate_char_blocks_array_from_phrases(text_file_path):
-    global dest_lang_name
-    global docxfile_table_number_of_phrases
+    global dest_lang_name, translation_engine, docxfile_table_number_of_phrases
     global xtm
     global blocks_nchar_max_to_translate_array
     docxfile_table_number_of_phrases = 0

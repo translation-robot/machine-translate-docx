@@ -368,6 +368,7 @@ SectionEnd
 
 Section "Uninstall" SEC_UNINSTALL
     RMDir /r "$INSTDIR\bin"
+    RMDir /r "$INSTDIR\WindowsTerminal"
     RMDir /r "$INSTDIR\source_code"
     RMDir /r "$INSTDIR\ConEmuPack"
     RMDir "$INSTDIR"
