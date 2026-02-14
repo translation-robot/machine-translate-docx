@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-01-24"
+PROGRAM_VERSION="2025-01-18"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -436,7 +436,7 @@ DefaultJsonConfiguration = """{
     },
     "document": {
       "microsoft_colors_link_reference" : "https://learn.microsoft.com/en-us/office/vba/api/word.wdcolor",
-      "shading_color_ignore_text" : ['D9D9D9', 'BFBFBF', 'A6A6A6', '808080', 'FF00FF', 'FF0000', 'F3F3F3', 'E6E6E6', 'E0E0E0', 'CCCCCC', 'C0C0C0', 'B3B3B3', 'A0A0A0', '999999', '8C8C8C',  '737373', '666666', '606060', '595959', '4C4C4C', '404040', '333333', '262626', '202020', '191919', '0C0C0C', '002060', '000080', 'FFCCFF', 'CC99FF']
+      "shading_color_ignore_text" : ['FFD320', 'D9D9D9', 'BFBFBF', 'A6A6A6', '808080', 'FF00FF', 'FF0000', 'F3F3F3', 'E6E6E6', 'E0E0E0', 'CCCCCC', 'C0C0C0', 'B3B3B3', 'A0A0A0', '999999', '8C8C8C',  '737373', '666666', '606060', '595959', '4C4C4C', '404040', '333333', '262626', '202020', '191919', '0C0C0C', '002060', '000080', 'FFCCFF', 'CC99FF']
     }
 }"""
 
@@ -4484,116 +4484,119 @@ def get_run_shading_color(xml_run_str):
     return attrib_fill
 
 # Return cell_non_greyed_text (string), cell_is_gray (integer for boolean)
-
-def get_cell_data(cell, row_n):
+def get_cell_data(cell,row_n):
     global from_text_nb_lines_in_cell
-
     cell_is_gray = None
     cell_is_red = None
     cell_non_greyed_text = ''
-
+    
+    re_enter = re.compile('enter')
+    re_newline = re.compile('\n')
+    
+    n_paragraph = 0
     n_cell_lines = 1
-
+    
+    
     for paragraph in cell.paragraphs:
-
+        paragraphs_text = ""
+        n_paragraph = n_paragraph + 1
+        
+        #print("paragraph:", paragraph._p.xml)
+            
+        root = etree.fromstring(paragraph._p.xml)
+        p_shading_color = get_paragraph_shading_color(paragraph._p.xml)
+        
         p_text = paragraph.text
         nb_pause = len(re.findall('(?i)(<pause>)', p_text))
         nb_enter = len(re.findall('(?i)(<enter>)', p_text))
-        n_cell_lines += nb_pause + nb_enter
-
-        # Paragraph shading
-        p_shading_color = get_paragraph_shading_color(paragraph._p.xml)
-        if p_shading_color is not None and p_shading_color in shading_color_ignore_text:
-            continue
-
-        # --------------------------------------------------
-        # Iterate paragraph children IN DOCUMENT ORDER
-        # --------------------------------------------------
-        for child in paragraph._p:
-
-            # -----------------------------
-            # Normal run
-            # -----------------------------
-            if child.tag == qn('w:r'):
-                run_elements = [child]
-
-            # -----------------------------
-            # Hyperlink (contains runs)
-            # -----------------------------
-            elif child.tag == qn('w:hyperlink'):
-                run_elements = child.findall(qn('w:r'))
-
-            else:
+            
+        n_cell_lines = n_cell_lines + nb_pause + nb_enter
+        
+        if p_shading_color is not None:
+            #print(paragraph.text)
+            #input("Found a shaded paragraph")
+            if p_shading_color in shading_color_ignore_text:
                 continue
+        
+        #if n_paragraph > 1:
+        #    print("paragraph %d" % (n_paragraph))
+        previous_run_text = ""
+        for run in paragraph.runs:
+            current_run_text = run.text
+            
+            #print("cell row %d has %d runs," % (row_n, len(paragraph.runs) ))
+            #print(f"current_run_text : '{current_run_text
+            
+            root = etree.fromstring(run.element.xml)
+            run_shading_color = get_run_shading_color(run.element.xml)
+            
+            if run_shading_color is not None:
+                #print(f"run.element.xml : {run.element.xml}")
+                #print(f"current_run_text : {current_run_text}")
+                #input(f"Found a shaded run {run_shading_color}")
+                if run_shading_color in shading_color_ignore_text:
+                    #print(f"Color {run_shading_color} in the list of colors to ignore text")
+                    pass
+            
+            # if re_enter.match(current_run_text):
+                # print("found enter")
 
-            # --------------------------------------------------
-            # Process each run element
-            # --------------------------------------------------
-            for r in run_elements:
-
-                root = etree.fromstring(r.xml)
-
-                # Extract visible text
-                texts = root.findall('.//w:t', namespaces=root.nsmap)
-                current_run_text = ''.join(t.text for t in texts if t.text)
-
-                if not current_run_text:
-                    continue
-
-                # Run shading
-                run_shading_color = get_run_shading_color(r.xml)
-
-                # Red font detection
-                color = root.find('.//w:color', namespaces=root.nsmap)
-                if color is not None and color.get(qn('w:val')) == 'FF0000':
-                    if cell_is_red is None:
-                        cell_is_red = 1
-                else:
-                    if cell_is_red is None:
+            if str(run.font.color.rgb) == "FF0000":
+                if cell_is_red == None:
+                    cell_is_red = 1
+            else:
+                if current_run_text != "":
+                    if cell_is_red == None:
                         cell_is_red = 0
                     else:
-                        cell_is_red *= 0
+                        cell_is_red = cell_is_red * 0
+                
+            if run.font.highlight_color == WD_COLOR_INDEX.RED :
+                pass
 
-                # Highlight / strike detection
-                highlight = root.find('.//w:highlight', namespaces=root.nsmap)
-                strike = root.find('.//w:strike', namespaces=root.nsmap)
-                dstrike = root.find('.//w:dstrike', namespaces=root.nsmap)
-
-                highlight_val = highlight.get(qn('w:val')) if highlight is not None else None
-
-                # Gray / ignored formatting
-                if (
-                    highlight_val in ('gray25', 'gray50', 'pink', 'red') or
-                    strike is not None or
-                    dstrike is not None or
-                    run_shading_color in shading_color_ignore_text
-                ):
-                    cell_non_greyed_text += ' '
-                    if cell_is_gray is None:
-                        cell_is_gray = 1
-
-                else:
-                    cell_non_greyed_text += current_run_text
-                    if cell_is_gray is None:
+            if run.font.highlight_color == WD_COLOR_INDEX.GRAY_25 or run.font.highlight_color == WD_COLOR_INDEX.GRAY_50 or run.font.strike or run.font.double_strike or run.font.highlight_color == WD_COLOR_INDEX.PINK or run.font.highlight_color == WD_COLOR_INDEX.RED or run_shading_color in shading_color_ignore_text:
+                #print("Found GRAY_25")
+                cell_non_greyed_text = cell_non_greyed_text + ' '
+                if cell_is_gray == None:
+                    cell_is_gray = 1
+                
+            else:
+                #print("Not gray")
+                if current_run_text != "":
+                    cell_non_greyed_text = cell_non_greyed_text + current_run_text
+                    if cell_is_gray == None:
                         cell_is_gray = 0
                     else:
-                        cell_is_gray *= 0
+                        cell_is_gray = cell_is_gray * 0
+                    #return cell_is_gray
+            previous_run_text = current_run_text
+        #if (paragraphs_text.upper() == '<ENTER>' or paragraphs_text.upper() == '<PAUSE>'):
+        #    print("Found <ENTER> or <PAUSE>")
+        #    #input("press enter")
+        
+    
+    from_text_nb_lines_in_cell[row_n-1] = n_cell_lines
+    #if n_cell_lines > 1:
+    #    print("%d lines" % (n_cell_lines))
+    #    #input("here")
 
-    # --------------------------------------------------
-    # Line count storage
-    # --------------------------------------------------
-    from_text_nb_lines_in_cell[row_n - 1] = n_cell_lines
-
-    # --------------------------------------------------
-    # Cleanup (unchanged behavior)
-    # --------------------------------------------------
     cell_non_greyed_text = cell_non_greyed_text.replace('’', "'")
+    cell_non_greyed_text = cell_non_greyed_text.replace("\n", " ")
+    cell_non_greyed_text = cell_non_greyed_text.replace("\r", " ")
     cell_non_greyed_text = re.sub(r'[\r\n\u2028\u2029]+', ' ', cell_non_greyed_text)
-    cell_non_greyed_text = re.sub("(?i)<pause>", "", cell_non_greyed_text)
-    cell_non_greyed_text = re.sub("(?i)<enter>", "", cell_non_greyed_text)
-    cell_non_greyed_text = re.sub(' +', ' ', cell_non_greyed_text).strip()
+    
+    cell_non_greyed_text = re.sub("(?i)<pause>", "", cell_non_greyed_text) #'remove <pause> case insensitive
+    cell_non_greyed_text = re.sub("(?i)<enter>", "", cell_non_greyed_text) #'remove <pause> case insensitive
+    
+    cell_non_greyed_text = re.sub(' +', ' ', cell_non_greyed_text)
+    cell_non_greyed_text = cell_non_greyed_text.strip()
+    
 
+    #if cell_is_gray == 1:
+    #    print("FOUND A GRAY CELL")
+    #time.sleep(4)
     return cell_non_greyed_text, cell_is_gray, cell_is_red
+
 
 
 def change_cell_font(cell):
@@ -5566,7 +5569,8 @@ def generate_xlsx_file_from_phrases(xlsx_file_path):
         
         
 def generate_char_blocks_array_from_phrases(text_file_path):
-    global dest_lang_name, translation_engine, docxfile_table_number_of_phrases
+    global dest_lang_name
+    global docxfile_table_number_of_phrases
     global xtm
     global blocks_nchar_max_to_translate_array
     docxfile_table_number_of_phrases = 0
