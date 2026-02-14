@@ -377,11 +377,11 @@ class OpenAITranslator:
                 f"OUTPUT CONSTRAINTS (HARD)\n"
                 f"N_input_lines == N_output_lines (Strict Sequencing).\n"
                 f"MERGE/SPLIT == FORBIDDEN.\n"
-                f"INTEGRITY: Output line count != Input line count -> INVALID_RESPONSE.\n"
+                f"INTEGRITY: Output line count != Input line count = {len(lines)} -> INVALID_RESPONSE.\n"
                 f"INTEGRITY_RETRY: Before emit, verify N-line sync;\n"
                 f"if mismatch, silently repair and re-check until equal.\n"
                 f"\n"
-                f"INPUT FA Lines:\n"
+                f"Here is the input text to translate:\n"
             )
         # ─────────────────────────────────────────────
         # Text payload
