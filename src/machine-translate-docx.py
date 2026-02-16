@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-01-18"
+PROGRAM_VERSION="2025-02-16"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -94,7 +94,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.common.keys import Keys 
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 
 from screeninfo import get_monitors
 
@@ -2718,14 +2719,20 @@ def selenium_chrome_deepl_log_off():
         print("Failed of Deepl, this can be ignored")
         return False
 
+# Module-level cache
+_cached_window_pos = None
+
+
 def set_chrome_window_2_3_screen():
     """
     Sets the Chrome window size to ~2/3 of the screen, max 1200x900.
     Places the window near the top-left corner, but randomly within
     1/10 from the top and 1/10 from the left of the screen.
+    Random position is calculated once and reused.
     """
     global driver
-    
+    global _cached_window_pos
+
     try:
         # Get screen size using Tkinter
         root = Tk()
@@ -2733,24 +2740,32 @@ def set_chrome_window_2_3_screen():
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         root.destroy()
-        
+
         # Calculate ~2/3 of screen size
         width = int(screen_width * 5 / 7)
         height = int(screen_height * 5 / 7)
-        
+
         # Apply max constraints
         width = min(width, 1200)
         height = min(height, 900)
-        
-        # Randomize position: 0~1/10 of width/height
-        max_x_offset = int(screen_width / 15)
-        max_y_offset = int(screen_height / 15)
-        x_pos = random.randint(0, max_x_offset)
-        y_pos = random.randint(0, max_y_offset)
-        
+
+        # ---- Compute random position only once ----
+        if _cached_window_pos is None:
+            max_x_offset = int(screen_width / 15)
+            max_y_offset = int(screen_height / 15)
+
+            x_pos = random.randint(0, max_x_offset)
+            y_pos = random.randint(0, max_y_offset)
+
+            _cached_window_pos = (x_pos, y_pos)
+
+        else:
+            x_pos, y_pos = _cached_window_pos
+
         # Set window size and position
         driver.set_window_size(width, height)
         driver.set_window_position(x_pos, y_pos)
+
     except Exception as e:
         print(f"[Warning] Could not set Chrome window size/position: {e}")
         print("[Info] Falling back to 850x750 at (0,0)")
@@ -2837,7 +2852,58 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
     to_translate_phrases_array_len = len(to_translate_phrases_array)
 
     set_chrome_window_2_3_screen()
+    
+    def ensure_target_language(driver, dest_lang="fr", dest_lang_name="French", timeout=15):
+        try:
+            wait = WebDriverWait(driver, timeout)
 
+            # Retry loop to handle stale references
+            for _ in range(3):
+                try:
+                    # Re-query the element every iteration
+                    lang_elem = wait.until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, '[data-testid="translator-target-lang"]')
+                        )
+                    )
+                    current_code = lang_elem.get_attribute("dl-selected-lang")
+
+                    if current_code == dest_lang:
+                        return  # Already correct
+
+                    # Open selector
+                    wait.until(
+                        EC.element_to_be_clickable(
+                            (By.CSS_SELECTOR, '[data-testid="translator-target-lang-btn"]')
+                        )
+                    ).click()
+
+                    # Select language by visible name
+                    option = wait.until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, f"//button[.//text()[contains(., '{dest_lang_name}')]]")
+                        )
+                    )
+                    option.click()
+
+                    # Verify switch completed
+                    wait.until(
+                        lambda d: d.find_element(
+                            By.CSS_SELECTOR,
+                            '[data-testid="translator-target-lang"]'
+                        ).get_attribute("dl-selected-lang") == dest_lang
+                    )
+
+                    return  # Success
+                except StaleElementReferenceException:
+                    # Element got replaced; retry
+                    continue
+
+            print(f"[WARNING] Failed to ensure target language '{dest_lang_name}' ({dest_lang}): stale element after retries")
+
+        except Exception as e:
+            print(f"[WARNING] Failed to ensure target language '{dest_lang_name}' ({dest_lang}): {e}")
+        
     try:
         translation_page_openeing_loop_count = 4
         translation_page_opened = False
@@ -2859,6 +2925,13 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 except:
                     pass
                 
+                # Make sure the target language matches with the target language code or at least the target language name
+                try:
+                    ensure_target_language(driver, dest_lang=dest_lang, dest_lang_name=dest_lang_name)
+                    WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+                except:
+                    pass
+                    
                 translation_page_opened = True
                 
                 deepl_close_messages()

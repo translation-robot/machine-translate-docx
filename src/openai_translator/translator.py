@@ -441,12 +441,12 @@ class OpenAITranslator:
         if len(in_lines) != len(out_lines):
             print("[WARNING] Line count mismatch!")
             print(f"Input lines: {len(in_lines)}, Output lines: {len(out_lines)}")
+            out_lines = "\n".join(out_lines)
             if len(out_lines) > len(in_lines):
-                out_lines = "\n".join(out_lines)
                 print("Error in openai translation, too many lines")
             else:
-                out_lines.extend(["Translation line missing from OpenAI"] * (len(in_lines) - len(out_lines)))
-            translated_text = "\n".join(out_lines)
+                print("Error in openai translation, too few lines")
+            translated_text = out_lines
 
         # Save query record
         try:
