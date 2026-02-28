@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-02-16"
+PROGRAM_VERSION="2025-02-28"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -168,7 +168,6 @@ import shutil
 import signal
 import atexit
 
-from tkinter import Tk
 import random
 
 # Track the child processes
@@ -280,10 +279,10 @@ DefaultJsonConfiguration = """{
 			"email_": "********@gmail.com",
 			"password_": "********",
 			"type": "free",
-			"maximum_character_block": 1490
+			"maximum_character_block": 1500
 		},
 		"no_account": {
-			"maximum_character_block": 1490
+			"maximum_character_block": 1500
 		},
         "maximum_clear_cache_retry" : 20
 	},
@@ -732,44 +731,123 @@ google_translate_lang_codes = {
     }
 
 deepl_translate_lang_codes = {
+    'ace': 'Acehnese',
+    'af': 'Afrikaans',
+    'sq': 'Albanian',
     'ar': 'Arabic',
+    'an': 'Aragonese',
+    'hy': 'Armenian',
+    'as': 'Assamese',
+    'ay': 'Aymara',
+    'az': 'Azerbaijani',
+    'ba': 'Bashkir',
+    'eu': 'Basque',
+    'be': 'Belarusian',
+    'bn': 'Bengali',
+    'bho': 'Bhojpuri',
+    'bs': 'Bosnian',
+    'br': 'Breton',
     'bg': 'Bulgarian',
+    'my': 'Burmese',
+    'yue': 'Cantonese',
+    'ca': 'Catalan',
+    'ceb': 'Cebuano',
+    'zh-Hans': 'Chinese (simplified)',
+    'zh-Hant': 'Chinese (traditional)',
+    'hr': 'Croatian',
     'cs': 'Czech',
     'da': 'Danish',
-    'de': 'German',
-    'el': 'Greek',
-    'en': 'English',
-    'en-us': 'English (American)',
-    'en-gb': 'English (British)',
-    'es': 'Spanish',
+    'prs': 'Dari',
+    'nl': 'Dutch',
+    'en-US': 'English (American)',
+    'en-GB': 'English (British)',
+    'eo': 'Esperanto',
     'et': 'Estonian',
     'fi': 'Finnish',
     'fr': 'French',
+    'gl': 'Galician',
+    'ka': 'Georgian',
+    'de': 'German',
+    'el': 'Greek',
+    'gn': 'Guarani',
+    'gu': 'Gujarati',
+    'ht': 'Haitian Creole',
+    'ha': 'Hausa',
     'he': 'Hebrew',
+    'hi': 'Hindi',
     'hu': 'Hungarian',
+    'is': 'Icelandic',
+    'ig': 'Igbo',
     'id': 'Indonesian',
+    'ga': 'Irish',
     'it': 'Italian',
     'ja': 'Japanese',
+    'jv': 'Javanese',
+    'pam': 'Kapampangan',
+    'kk': 'Kazakh',
+    'gom': 'Konkani',
     'ko': 'Korean',
-    'lt': 'Lithuanian',
+    'kmr': 'Kurdish (Kurmanji)',
+    'ckb': 'Kurdish (Sorani)',
+    'ky': 'Kyrgyz',
+    'la': 'Latin',
     'lv': 'Latvian',
-    'nb': 'Norwegian',
-    'nl': 'Dutch',
+    'ln': 'Lingala',
+    'lt': 'Lithuanian',
+    'lmo': 'Lombard',
+    'lb': 'Luxembourgish',
+    'mk': 'Macedonian',
+    'mai': 'Maithili',
+    'mg': 'Malagasy',
+    'ms': 'Malay',
+    'ml': 'Malayalam',
+    'mt': 'Maltese',
+    'mi': 'Maori',
+    'mr': 'Marathi',
+    'mn': 'Mongolian',
+    'ne': 'Nepali',
+    'nb': 'Norwegian (bokmål)',
+    'oc': 'Occitan',
+    'om': 'Oromo',
+    'pag': 'Pangasinan',
+    'ps': 'Pashto',
+    'fa': 'Persian',
     'pl': 'Polish',
-    'pt': 'Portuguese',
-    'pt-br': 'Portuguese (Brazilian)',
-    'pt-pt': 'Portuguese (all Portuguese variants excluding Brazilian Portuguese)',
+    'pt-PT': 'Portuguese',
+    'pt-BR': 'Portuguese (Brazilian)',
+    'pa': 'Punjabi',
+    'qu': 'Quechua',
     'ro': 'Romanian',
     'ru': 'Russian',
+    'sa': 'Sanskrit',
+    'sr': 'Serbian',
+    'st': 'Sesotho',
+    'scn': 'Sicilian',
     'sk': 'Slovak',
     'sl': 'Slovenian',
+    'es': 'Spanish',
+    'es-419': 'Spanish (Latin American)',
+    'su': 'Sundanese',
+    'sw': 'Swahili',
     'sv': 'Swedish',
+    'tl': 'Tagalog',
+    'tg': 'Tajik',
+    'ta': 'Tamil',
+    'tt': 'Tatar',
+    'te': 'Telugu',
+    'ts': 'Tsonga',
+    'tn': 'Tswana',
     'tr': 'Turkish',
+    'tk': 'Turkmen',
     'uk': 'Ukrainian',
+    'ur': 'Urdu',
+    'uz': 'Uzbek',
     'vi': 'Vietnamese',
-    'zh': 'Chinese (Simplified)',
-    'zh-hans': 'Chinese (Simplified)',
-    'zh-hant': 'Chinese (Traditional)',
+    'cy': 'Welsh',
+    'wo': 'Wolof',
+    'xh': 'Xhosa',
+    'yi': 'Yiddish',
+    'zu': 'Zulu'
 }
 
 # This is to set docx document language for spelling
@@ -1655,6 +1733,8 @@ def selenium_chrome_google_translate(to_translate):
             copy_translation_element = "//i[contains(.,'content_copy')]"
             copy_translation_element = "//button[contains(., 'Copy translation')]"
             copy_translation_element = "//button[@aria-label='Copy translation']"
+            copy_translation_element = "//button[@aria-label='Copy to clipboard' and not(@disabled)]"
+            copy_translation_element = "//button[@aria-label='Copy to clipboard' and not(@disabled) and (@aria-disabled='false' or not(@aria-disabled))]"
             
             copy_translation_button = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, copy_translation_element)))
         except :
@@ -1864,6 +1944,9 @@ def selenium_chrome_translate_maxchar_blocks():
         success, translated = translate_once(
             translation_engine, engine_method, block, attempt=0
         )
+        #print(success)
+        #print(translated)
+        #input("Wait")
         
         if not success:
             if translation_engine == 'deepl':
@@ -1898,9 +1981,6 @@ def selenium_chrome_translate_maxchar_blocks():
             f"{docxfile_table_number_of_phrases}"
         )
         translation_succeded = False
-    
-    print(translation_succeded)
-    print(translation_array)
     
     return translation_succeded, translation_array
 
@@ -2722,47 +2802,30 @@ def selenium_chrome_deepl_log_off():
 # Module-level cache
 _cached_window_pos = None
 
-
 def set_chrome_window_2_3_screen():
-    """
-    Sets the Chrome window size to ~2/3 of the screen, max 1200x900.
-    Places the window near the top-left corner, but randomly within
-    1/10 from the top and 1/10 from the left of the screen.
-    Random position is calculated once and reused.
-    """
     global driver
     global _cached_window_pos
 
     try:
-        # Get screen size using Tkinter
-        root = Tk()
-        root.withdraw()
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        root.destroy()
+        # Get screen size directly from browser
+        screen_width = driver.execute_script("return screen.availWidth;")
+        screen_height = driver.execute_script("return screen.availHeight;")
 
-        # Calculate ~2/3 of screen size
-        width = int(screen_width * 5 / 7)
-        height = int(screen_height * 5 / 7)
+        width = min(int(screen_width * 5 / 7), 1200)
+        height = min(int(screen_height * 5 / 7), 900)
 
-        # Apply max constraints
-        width = min(width, 1200)
-        height = min(height, 900)
-
-        # ---- Compute random position only once ----
         if _cached_window_pos is None:
             max_x_offset = int(screen_width / 15)
             max_y_offset = int(screen_height / 15)
 
+            import random
             x_pos = random.randint(0, max_x_offset)
             y_pos = random.randint(0, max_y_offset)
 
             _cached_window_pos = (x_pos, y_pos)
-
         else:
             x_pos, y_pos = _cached_window_pos
 
-        # Set window size and position
         driver.set_window_size(width, height)
         driver.set_window_position(x_pos, y_pos)
 
@@ -2771,7 +2834,6 @@ def set_chrome_window_2_3_screen():
         print("[Info] Falling back to 850x750 at (0,0)")
         driver.set_window_size(850, 750)
         driver.set_window_position(0, 0)
-
         
 def deepl_close_messages():
     """
@@ -2796,6 +2858,7 @@ def deepl_close_messages():
     ]
     css_selectors = [
         ".w-6 > .flex"  # install extension popup
+        #"button[data-testid='side-panel-collapse-button']"
     ]
 
     # Close elements by XPath
@@ -2853,6 +2916,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
     set_chrome_window_2_3_screen()
     
+    
     def ensure_target_language(driver, dest_lang="fr", dest_lang_name="French", timeout=15):
         try:
             wait = WebDriverWait(driver, timeout)
@@ -2867,6 +2931,8 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                         )
                     )
                     current_code = lang_elem.get_attribute("dl-selected-lang")
+                    if current_code is not None:
+                        current_code = current_code.lower()
 
                     if current_code == dest_lang:
                         return  # Already correct
@@ -2903,7 +2969,70 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
         except Exception as e:
             print(f"[WARNING] Failed to ensure target language '{dest_lang_name}' ({dest_lang}): {e}")
-        
+            
+    def ensure_target_language_new_error(driver,
+                           dest_lang="zh-hans",
+                           dest_lang_name="Chinese (Simplified)",
+                           timeout=15):
+
+        wait = WebDriverWait(driver, timeout)
+
+        dest_lang = dest_lang.lower()
+        dest_lang_name = dest_lang_name.lower()
+
+        try:
+            # 1️⃣ Check if already selected (avoid opening dropdown)
+            current = wait.until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, '[data-testid="translator-target-lang"]')
+                )
+            ).get_attribute("dl-selected-lang")
+
+            if current and current.lower() == dest_lang:
+                return
+
+            # 2️⃣ Open dropdown
+            wait.until(
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, '[data-testid="translator-target-lang-btn"]')
+                )
+            ).click()
+
+            # 3️⃣ Try direct click by data-testid (MOST STABLE)
+            normalized_code = dest_lang.replace("-hans", "-Hans").replace("-hant", "-Hant").replace("-br", "-BR")
+
+            try:
+                locator = (By.CSS_SELECTOR,
+                           f'[data-testid="translator-lang-option-{normalized_code}"]')
+
+                wait.until(EC.element_to_be_clickable(locator)).click()
+
+            except TimeoutException:
+                # 4️⃣ Fallback: match by visible text (case insensitive)
+                xpath = (
+                    "//button[@role='option' and "
+                    "contains(translate(normalize-space(string(.)), "
+                    "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+                    "'abcdefghijklmnopqrstuvwxyz'), "
+                    f"'{dest_lang_name}')]"
+                )
+
+                wait.until(EC.element_to_be_clickable((By.XPATH, xpath))).click()
+
+            # 5️⃣ Wait until switch confirmed
+            wait.until(
+                lambda d: d.find_element(
+                    By.CSS_SELECTOR,
+                    '[data-testid="translator-target-lang"]'
+                ).get_attribute("dl-selected-lang").lower() == dest_lang
+            )
+
+        except Exception as e:
+            #var = traceback.format_exc()
+            #print(var)
+            return False
+            #print(f"[WARNING] Failed to ensure target language '{dest_lang_name}' ({dest_lang}): {e}")
+            
     try:
         translation_page_openeing_loop_count = 4
         translation_page_opened = False
@@ -3068,6 +3197,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
         busybox_innerhtml = ""
         timeout_busy_translating = 50
+        
         try:
             busybox = WebDriverWait(driver, 0.3).until(EC.presence_of_element_located((By.CSS_SELECTOR, busy_element)))
             attrs = driver.execute_script(
@@ -3128,7 +3258,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 deepl_nb_clear_cached_times = deepl_nb_clear_cached_times + 1
                 logged_into_deepl = selenium_chrome_deepl_log_in()
                 return selenium_chrome_deepl_translate(to_translate, retry_count)
-                
+              
 
         #print("Scroll to copy_translation_button")
         actions = ActionChains(driver)
@@ -3164,15 +3294,15 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 sleep(0.05)
                 # driver.set_window_size(800, 700)
                 page_source_str = driver.page_source
-                # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
-                # with open('before.html', 'w', encoding="utf-8") as f:
+                #print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+                #with open('before.html', 'w', encoding="utf-8") as f:
                 #    f.write(page_source_str)
-                # f.close()
+                #    f.close()
                 wait_translation_finish_try = 400
                 block_translation_percent_done = 0
                 while page_source_str.find(still_translating_html_str) > 0 and wait_translation_finish_try > 0:
                     sleep(0.05)
-                    #print("Still translating...")
+                    print("Still translating...")
                     page_source_str = driver.page_source
                     # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::")
                     # print(driver.page_source)
@@ -3194,7 +3324,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                             pass
 
                     # input("of characters translated")
-
+                
                 if bar is not None:
                     bar.update(100)
                     bar = None
@@ -3231,21 +3361,35 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     res = ""
                     try:
                         try:
-                            #inner_html_translation_xpath_element = '//div[@contenteditable="true" and @role="textbox" and @aria-labelledby="translation-results-heading"]'
-                            inner_html_translation_xpath_element = "//div[contains(@aria-labelledby, 'translation-target-heading')]"
-                            InnerHTMLTranslationElement = WebDriverWait(driver, 1).until(
-                                EC.presence_of_element_located((By.XPATH, inner_html_translation_xpath_element)))
-                            
-                            if InnerHTMLTranslationElement:
-                                # Get the plain text from the element
-                                translation_from_plain_text = InnerHTMLTranslationElement.text
-                                #print("Plain Text: %s " % (translation_from_plain_text))
-                            else:
-                                print("Element not found")
-                            res = translation_from_plain_text
+                            translation_box = WebDriverWait(driver, 5).until(
+                                EC.presence_of_element_located(
+                                    (By.CSS_SELECTOR,
+                                     "d-textarea[data-testid='translator-target-input'] div[contenteditable='true']")
+                                )
+                            )
+
+                            res = translation_box.get_attribute("innerText")
                         except:
                             var = traceback.format_exc()
                             print(var)
+                            res = ""
+                        
+                        #try:
+                        #    #inner_html_translation_xpath_element = '//div[@contenteditable="true" and @role="textbox" and @aria-labelledby="translation-results-heading"]'
+                        #    inner_html_translation_xpath_element = "//div[contains(@aria-labelledby, 'translation-target-heading')]"
+                        #    InnerHTMLTranslationElement = WebDriverWait(driver, 1).until(
+                        #        EC.presence_of_element_located((By.XPATH, inner_html_translation_xpath_element)))
+                        #    
+                        #    if InnerHTMLTranslationElement:
+                        #        # Get the plain text from the element
+                        #        translation_from_plain_text = InnerHTMLTranslationElement.text
+                        #        #print("Plain Text: %s " % (translation_from_plain_text))
+                        #    else:
+                        #        print("Element not found")
+                        #    res = translation_from_plain_text
+                        #except:
+                        #    var = traceback.format_exc()
+                        #    print(var)
                     
                         # Added on version 2022-05-31
                         #copy_translation_element = '//*[@id="headlessui-tabs-panel-7"]/div/div[1]/section/div/div[2]/div[3]/section/div[2]/div[3]/span[2]/span/span/button'
@@ -3277,9 +3421,10 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 # id="target-dummydiv"
                 # contains the translation
                 res = res.replace("\r", "")
+                res = re.sub(r"\n+", "\n", res)
                 res = remove_span_tag(res)
                 
-                input_nb_lines = len(to_translate.replace("\r", "").split("\n"))
+                input_nb_lines = len(re.sub(r"\n+", "\n", to_translate).replace("\r", "").split("\n"))
 
                 translated_phrases_array = res.split("\n")
                 if translated_phrases_array is None:
@@ -3289,14 +3434,21 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 
                 translated_phrases_array = translated_phrases_array[:input_nb_lines]
                 
+                to_translate_phrases_array_len = input_nb_lines
+                
+                #print(input_nb_lines)
+                #print(re.sub(r"\n+", "\n", to_translate).replace("\r", "").split("\n"))
+                #print(translated_phrases_array_len)
+                #print(translated_phrases_array)
+                #print(translated_phrases_array_len)
+                #print(to_translate_phrases_array_len)
+                #input("Wait")
+                
                 # for pos_remove in range(0,translated_phrases_array_len - to_translate_phrases_array_len):
-                if translated_phrases_array_len >= to_translate_phrases_array_len:
-                    translated_phrases_array = translated_phrases_array[:input_nb_lines]
-                    #print("input_nb_lines: %s" % (input_nb_lines))
-                    #print("array: %s" % (translated_phrases_array))
+                if translated_phrases_array_len == to_translate_phrases_array_len:
                     res = "\n".join(translated_phrases_array)
                     
-                if translated_phrases_array_len < to_translate_phrases_array_len:
+                if translated_phrases_array_len < to_translate_phrases_array_len or translated_phrases_array_len > to_translate_phrases_array_len:
                     res = ""
 
             except:
@@ -3306,7 +3458,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     #var = traceback.format_exc()
                     #print(var)
             copy_button_clicked_loop_count = copy_button_clicked_loop_count - 1
-
+        
         # translation = res
         translation = "\n".join(translated_phrases_array)
         # print("translation=%s" % (translation))
@@ -5640,9 +5792,16 @@ def generate_xlsx_file_from_phrases(xlsx_file_path):
             var = traceback.format_exc()
             txt_readline = input("\n\nERROR: File saving failed. Please close microsoft excel or other program and press enter to save the xlsx document.\n")
         
-        
+
+def deepl_double_linefeed_between_phrases(dest_lang):
+    single_linefeed_phrase_separator_langs = ('ar', 'bg', 'cs', 'da', 'de', 'el', 'en', 'en-us', 'en-gb',
+                       'es', 'et', 'fi', 'fr', 'he', 'hu', 'id', 'it', 'ja', 'ko',
+                       'lt', 'lv', 'nb', 'nl', 'pl', 'pt', 'pt-br', 'pt-pt',
+                       'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi')
+    return dest_lang not in single_linefeed_phrase_separator_langs
+
 def generate_char_blocks_array_from_phrases(text_file_path):
-    global dest_lang_name
+    global dest_lang_name, dest_lang, translation_engine
     global docxfile_table_number_of_phrases
     global xtm
     global blocks_nchar_max_to_translate_array
@@ -5654,6 +5813,15 @@ def generate_char_blocks_array_from_phrases(text_file_path):
     text_to_translate = ''
     text_to_translate_array = []
     blocks_nchar_max_to_translate_array = []
+    
+    double_linefeed_between_phrases = False
+    phrase_separator = "\n"
+    phrase_separator_len = 1
+    if translation_engine == 'deepl':
+        if deepl_double_linefeed_between_phrases(dest_lang):
+            double_linefeed_between_phrases = False
+            phrase_separator = "\n\n"
+            phrase_separator_len = 2
     
     for i, line in enumerate(from_text_table):
         item = from_text_by_phrase_separator_table[i]
@@ -5696,15 +5864,16 @@ def generate_char_blocks_array_from_phrases(text_file_path):
         #print("%d : '%s'" % (index, text_to_translate_array[index]))
         current_phrase_str = text_to_translate_array[index]
         
-        if current_text_block_len + len(current_phrase_str) <= MAX_TRANSLATION_BLOCK_SIZE:
+        if current_text_block_len + len(current_phrase_str) <= MAX_TRANSLATION_BLOCK_SIZE + phrase_separator_len:
             if len(current_text_block) == 0:
                 current_text_block = current_phrase_str
                 current_text_block_len = len(current_text_block)
                 #print(current_phrase_str)
                 #input("adding first phrase")
             else:
-                current_text_block = current_text_block + "\n" + current_phrase_str
-                current_text_block_len = current_text_block_len + len(current_phrase_str) + 1
+               
+                current_text_block = current_text_block + phrase_separator + current_phrase_str
+                current_text_block_len = current_text_block_len + len(current_phrase_str) + phrase_separator_len
                 #print(current_phrase_str)
                 #print("current_text_block")
                 #print(current_text_block)
