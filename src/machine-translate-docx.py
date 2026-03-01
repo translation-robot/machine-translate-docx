@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2025-02-28"
+PROGRAM_VERSION="2026-03-01"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -1055,7 +1055,7 @@ COUNTRY_QUERY_HTTP_TIMEOUT = 3
 # Maximum 5000 characters on the free version
 # but only 1500 if not logged on to deepl with free version
 deepl_max_char_bloc_size_key = ['deepl', 'no_account','maximum_character_block']
-deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key)- 1
+deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key)
 
 deepl_sleep_wait_translation_seconds = 0.1
 translation_errors_count = 0
@@ -2705,7 +2705,7 @@ def selenium_chrome_deepl_log_in():
             
             # Success change block size if value exists
             deepl_max_char_bloc_size_key = ['deepl', 'account','maximum_character_block']
-            deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key) - 1
+            deepl_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, deepl_max_char_bloc_size_key)
             
             if isinstance(deepl_maximum_character_block, int):
                 if deepl_maximum_character_block > MAX_TRANSLATION_BLOCK_SIZE:
@@ -2917,13 +2917,15 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
     set_chrome_window_2_3_screen()
     
     
-    def ensure_target_language(driver, dest_lang="fr", dest_lang_name="French", timeout=15):
+    def ensure_target_language(driver, dest_lang="fr", dest_lang_name="French", timeout=20):
         try:
             wait = WebDriverWait(driver, timeout)
 
             # Retry loop to handle stale references
             for _ in range(3):
                 try:
+                    deepl_close_messages()
+                    
                     # Re-query the element every iteration
                     lang_elem = wait.until(
                         EC.presence_of_element_located(
