@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2026-03-01"
+PROGRAM_VERSION="2026-03-04"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -752,15 +752,15 @@ deepl_translate_lang_codes = {
     'yue': 'Cantonese',
     'ca': 'Catalan',
     'ceb': 'Cebuano',
-    'zh-Hans': 'Chinese (simplified)',
-    'zh-Hant': 'Chinese (traditional)',
+    'zh-hans': 'Chinese (simplified)',
+    'zh-hant': 'Chinese (traditional)',
     'hr': 'Croatian',
     'cs': 'Czech',
     'da': 'Danish',
     'prs': 'Dari',
     'nl': 'Dutch',
-    'en-US': 'English (American)',
-    'en-GB': 'English (British)',
+    'en-us': 'English (American)',
+    'en-gb': 'English (British)',
     'eo': 'Esperanto',
     'et': 'Estonian',
     'fi': 'Finnish',
@@ -813,8 +813,8 @@ deepl_translate_lang_codes = {
     'ps': 'Pashto',
     'fa': 'Persian',
     'pl': 'Polish',
-    'pt-PT': 'Portuguese',
-    'pt-BR': 'Portuguese (Brazilian)',
+    'pt-pt': 'Portuguese',
+    'pt-br': 'Portuguese (Brazilian)',
     'pa': 'Punjabi',
     'qu': 'Quechua',
     'ro': 'Romanian',
@@ -5799,7 +5799,7 @@ def deepl_double_linefeed_between_phrases(dest_lang):
     single_linefeed_phrase_separator_langs = ('ar', 'bg', 'cs', 'da', 'de', 'el', 'en', 'en-us', 'en-gb',
                        'es', 'et', 'fi', 'fr', 'he', 'hu', 'id', 'it', 'ja', 'ko',
                        'lt', 'lv', 'nb', 'nl', 'pl', 'pt', 'pt-br', 'pt-pt',
-                       'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi')
+                       'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi', 'zh-hant', 'zh-hans')
     return dest_lang not in single_linefeed_phrase_separator_langs
 
 def generate_char_blocks_array_from_phrases(text_file_path):
@@ -6381,7 +6381,13 @@ def print_html_program_result():
 
 def write_destination_language_in_docx_cell():
     if not splitonly:
-        docxdoc.tables[0].cell(1, 2).text = dest_lang_name
+        try:
+            docxdoc.tables[0].cell(1, 2).text = dest_lang_name
+        except:
+            try:
+                docxdoc.tables[0].cell(1, 2).text = dest_lang
+            except:
+                pass
 
 
 def print_console_docx_file_translated():
