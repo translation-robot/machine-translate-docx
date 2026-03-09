@@ -1929,7 +1929,7 @@ def selenium_chrome_translate_maxchar_blocks():
     # ------------------------------------------------------------------
     if translation_engine == "chatgpt" and engine_method == "api":
         # "gpt-5-mini", "gpt-5-nano", "gpt-5", etc
-        oai_translator = OpenAITranslator(model="gpt-5.2")
+        oai_translator = OpenAITranslator()
         oai_translator.set_filename(word_file_to_translate)
     
     # ------------------------------------------------------------------
@@ -6718,6 +6718,7 @@ def run_statistics():
                 #time.sleep(1)
                 submited_div_element = "//div[@id='form_post_submitted']"
                 submited_div = WebDriverWait(driver, 4).until(EC.presence_of_element_located((By.XPATH, submited_div_element)))
+                
                 #print("statistics updated")
             except:
                 print("Warning failed to update stats, you can ignore this.")
