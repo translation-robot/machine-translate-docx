@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2026-03-04"
+PROGRAM_VERSION="2026-03-28"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -301,9 +301,9 @@ DefaultJsonConfiguration = """{
         'bg': 'Bulgarian',
         'ca': 'Catalan',
         'ceb': 'Cebuano',
-        'zh': 'Chinese (Simplified)',
-        'zh-CN': 'Chinese (Simplified)',
-        'zh-TW': 'Chinese (Traditional)',
+        'zh': 'Chinese (simplified)',
+        'zh-CN': 'Chinese (simplified)',
+        'zh-TW': 'Chinese (traditional)',
         'co': 'Corsican',
         'hr': 'Croatian',
         'cs': 'Czech',
@@ -581,6 +581,7 @@ parser.add_argument('--xlsxreplacefile', '-x', required = False, help="Excel xls
 parser.add_argument('--destfont', '-f', required = False, help="Destination font name")
 parser.add_argument('--useapi', '-a', required = False, help="Use api to get translation, lower quality but faster", action='store_true')
 parser.add_argument('--split', '-s', required = False, help="Split web translation into cells", action='store_true')
+parser.add_argument('--splitengine', '-p', required = False, help="Specify AI split engine (openai)")
 parser.add_argument('--splitonly', required = False, help="Split translation into lines only, do not translate.", action='store_true')
 parser.add_argument('--showbrowser', '-b', required = False, help="Show browser", action='store_true')
 parser.add_argument('--exitonsuccess', '-t', required = False, help="Exit progream on success", action='store_true')
@@ -636,9 +637,9 @@ google_translate_lang_codes = {
     'bg': 'Bulgarian',
     'ca': 'Catalan',
     'ceb': 'Cebuano',
-    'zh': 'Chinese (Simplified)',
-    'zh-CN': 'Chinese (Simplified)',
-    'zh-TW': 'Chinese (Traditional)',
+    'zh': 'Chinese (simplified)',
+    'zh-CN': 'Chinese (simplified)',
+    'zh-TW': 'Chinese (traditional)',
     'co': 'Corsican',
     'hr': 'Croatian',
     'cs': 'Czech',
@@ -1068,6 +1069,14 @@ client_ip = args.clientip
 xlsxreplacefile = args.xlsxreplacefile
 dest_font = args.destfont
 split_translation = args.split
+
+split_engine = args.splitengine
+if split_engine is not None:
+    split_engine = split_engine.lower()
+    if split_engine != 'openai':
+        print(f"Unknown split engine, accepted values : openai. Defaulting to non AI line splitting.")
+        split_engine = None
+
 use_api = args.useapi
 #use_browser = args.useapi
 
@@ -1191,6 +1200,9 @@ elif translation_engine in ['deepl', 'chatgpt']:
 else:
     translation_engine = 'google'
 
+if use_api and translation_engine != 'chatgpt':
+    use_api = False 
+    
 perplexity_max_char_bloc_size_key = ['perplexity', 'account','maximum_character_block']
 perplexity_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, perplexity_max_char_bloc_size_key)
 
@@ -1249,12 +1261,15 @@ if engine_method == 'webservice':
     showbrowser = False
 
 if translation_engine == 'chatgpt' and engine_method == 'api':
-    from openai_translator import OpenAITranslator
+    from openai_tools import OpenAITranslator
     chatgpt_max_char_bloc_size_key = ['chatgpt', 'api','maximum_character_block']
 else:
     chatgpt_max_char_bloc_size_key = ['chatgpt', 'no_account','maximum_character_block']
 chatgpt_maximum_character_block = get_nested_value_from_json_array(json_configuration_array, chatgpt_max_char_bloc_size_key)
 
+# Load openai line splitting package
+from openai_tools import OpenAISubtitleSplitter
+    
 if translation_engine == 'perplexity':
     MAX_TRANSLATION_BLOCK_SIZE = perplexity_maximum_character_block
 elif translation_engine == 'chatgpt':
@@ -5499,7 +5514,8 @@ def create_webdriver():
 
     driver_path = ""
     
-    if use_api == False and not splitonly:
+    #if use_api == False and not splitonly:
+    if True:
         print(f"Starting Chrome browser\n")
         service = Service()
         
@@ -6029,7 +6045,7 @@ def translate_docx():
 
 
 def get_translation_and_replace_after():
-    global from_text_by_phrase_separator_table, to_text_by_phrase_separator_table, numerrors_deepl, use_api
+    global driver, from_text_by_phrase_separator_table, to_text_by_phrase_separator_table, numerrors_deepl, use_api
     phrase_no = 0
 
     p_remove_pause = re.compile('(?i)<pause>')
@@ -6066,14 +6082,14 @@ def get_translation_and_replace_after():
                 elif use_api:
                     try:
                         web_translation_separators = ""
-                        if use_api:
-                            translation = translator.translate(item_searched_and_replaced_before, src=src_lang, dest=dest_lang)
-                            web_translation_separators = translation.text
+                        #if use_api:
+                        #    translation = oai_translator.translate(item_searched_and_replaced_before, src=src_lang, dest=dest_lang)
+                        #    web_translation_separators = translation.text
                         if not len(web_translation_separators) > 0:
                             use_api = False
                             # Faster google Chrome translate failed, using Selenium as backup
 
-                            if translation_engine != 'yandex' and driver is not None:
+                            if translation_engine != 'yandex' and driver is None:
                                 print(f"[Line {inspect.currentframe().f_lineno}] Starting Chrome browser\n")
                                 
                                 service = Service()                                
@@ -6180,7 +6196,13 @@ def minimize_browser():
 
 def document_split_phrases():
     # Split phrases into multiple lines to match source language number of lines
-    global docxfile_table_number_of_phrases, docxfile_table_number_of_characters, phrase_number_of_words, docxfile_table_number_of_words
+    global docxfile_table_number_of_phrases, docxfile_table_number_of_characters, phrase_number_of_words, docxfile_table_number_of_words, split_engine
+    global src_lang_name, dest_lang_name
+
+    oai_sub_splitter = None
+    if split_engine == "openai":
+        oai_sub_splitter = OpenAISubtitleSplitter()
+    
     for i, line in enumerate(from_text_table):
         if to_text_by_phrase_separator_table[i] != '':
             #docxfile_table_number_of_phrases = docxfile_table_number_of_phrases + 1
@@ -6189,6 +6211,10 @@ def document_split_phrases():
             #print("Phrase to split: %s" % (from_text_by_phrase_separator_table[i]))
             #print("number of words: %d" % (phrase_number_of_words))
             docxfile_table_number_of_words = docxfile_table_number_of_words + phrase_number_of_words
+            input_phrase_lines = ""
+            #translation_result_using_separator[i] = []
+            #translation_result_phrase_array[i] = []
+            
             try:
                 current_line = to_text_by_phrase_separator_table[i]
                 # Using () as separator for splitting phrases, not used anymore
@@ -6210,66 +6236,127 @@ def document_split_phrases():
                 except Exception:
                     var = traceback.format_exc()
                     print("  ERROR:%s<br>" % (var))
+                
+                
+                # --- Step 1: Build input safely ---
+                if str_nb_lines > 1:
+                    input_phrase_lines = "\n".join(
+                        from_text_table[i + idx] for idx in range(str_nb_lines)
+                    )
+                else:
+                    input_phrase_lines = current_line
 
-                if str_line_average > MAX_LINE_SIZE:
-                    #input("str_line_average > MAX_LINE_SIZE : %s > %s" % (str_line_average, MAX_LINE_SIZE))
-                    #str_line_average = MAX_LINE_SIZE
-                    str_line_average = math.ceil(str_line_average)
-                current_phrase_tokenized_array = tokenize_text_to_array(current_line, dest_lang)
-                lines_divided = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
 
-                #print "lines(%d)=%s<br>" % (len(lines), lines)
+                # --- Step 2: Split functions ---
+                def split_with_openai():
+                    response, lines = oai_sub_splitter.split_phrase(
+                        src_lang_name, dest_lang_name, input_phrase_lines, current_line
+                    )
+                    return lines
+
+
+                def split_with_algorithm():
+                    local_avg = str_line_average
+
+                    if local_avg > MAX_LINE_SIZE:
+                        local_avg = math.ceil(local_avg)
+
+                    tokens = tokenize_text_to_array(current_line, dest_lang)
+                    lines = divide_array(tokens, dest_lang, local_avg + 4)
+
+                    divide_max_try = MAX_LINE_SIZE
+                    while (len(lines) > str_nb_lines) and (divide_max_try > 0):
+                        local_avg += 1
+                        lines = divide_array(tokens, dest_lang, local_avg + 4)
+                        divide_max_try -= 1
+
+                    divide_max_try = MAX_LINE_SIZE
+                    local_avg = str_translation_len / str_nb_lines
+                    local_avg = math.ceil(local_avg)
+
+                    while (len(lines) <= str_nb_lines) and (len(lines) >= 1) and (divide_max_try > 0):
+                        local_avg -= 1
+                        attempt_lines = divide_array(tokens, dest_lang, local_avg + 4)
+
+                        if len(attempt_lines) <= str_nb_lines:
+                            lines = attempt_lines
+
+                        divide_max_try -= 1
+
+                    return lines
+
+
+                # --- Step 3: Choose split method ---
+                if split_engine == "openai":
+                    lines_divided = split_with_openai()
+                else:
+                    lines_divided = split_with_algorithm()
+
+
+                # --- Step 4: Normalize ---
+                if not lines_divided:
+                    lines_divided = [current_line]
+
+                lines_divided = [str(line).strip() for line in lines_divided]
+
+
+                # --- Step 5: Enforce exact number of lines ---
                 number_lines = len(lines_divided)
-
-                divide_max_try = MAX_LINE_SIZE
-                while (number_lines > str_nb_lines) and (divide_max_try > 0):
-                    str_line_average += 1
-                    print("Too many lines in split : %d, max %d ..... increasing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
-                    lines_divided_attempt = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
-                    lines_divided = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
-                    number_lines = len(lines_divided_attempt)
-                    #print("   lines in split : %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average))
-                    divide_max_try = divide_max_try - 1
-
-                #print("Before increasing line size -- %s (%d): %d " % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
-                number_lines = len(lines_divided)
-                divide_max_try = MAX_LINE_SIZE
-                str_line_average = str_translation_len / str_nb_lines
-                str_line_average = math.ceil(str_line_average)
-                #print("Before increasing line size: %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average + 4))
-                while (number_lines <= str_nb_lines) and (number_lines >= 1) and (divide_max_try > 0):
-                    str_line_average = str_line_average - 1
-                    print("In split lines, increasing line size: %d, max %d ..... reducing line size to max %d" % (number_lines,str_nb_lines, str_line_average + 4))
-                    lines_divided_attempt = divide_array(current_phrase_tokenized_array, dest_lang, str_line_average + 4)
-                    number_lines = len(lines_divided_attempt)
-                    if number_lines <= str_nb_lines:
-                        lines_divided = lines_divided_attempt
-                        #print(lines_divided)
-                    divide_max_try = divide_max_try - 1
-
-                number_lines = len(lines_divided)
-                translation_result_phrase_array[i] = lines_divided
-                for line_no in range (0, number_lines):
-                    translation_result_using_separator[line_no+i] = lines_divided[line_no].rstrip().lstrip()
-                    #if (line_no > 2):
-                    #    if (translation_result_using_separator[line_no+i][:1] == ','):
-                    #        translation_result_using_separator[line_no] = translation_result_using_separator[line_no] + ','
-                    #        translation_result_using_separator[line_no+i] = translation_result_using_separator[line_no+i][1:].lstrip()
-                number_lines = len(lines_divided)
-
-                try:
-                    print("Splitting phrase : %s (%d) = %d lines" % (to_text_by_phrase_separator_table[i], i, str_nb_lines + 0))
-                except Exception:
-                    try:
-                        print("%s (%d): %d " % (to_text_by_phrase_separator_table[i].encode("utf-8"), i, str_nb_lines + 0))
-                    except Exception:
-                        print("(unable to print content to screen) (%d): %d : " % (i, str_nb_lines + 0))
 
                 if number_lines != str_nb_lines:
+                    print(f"Adjusting output: {number_lines} -> {str_nb_lines}")
+
+                    if number_lines > str_nb_lines:
+                        lines_divided = lines_divided[:str_nb_lines - 1] + [
+                            " ".join(lines_divided[str_nb_lines - 1:])
+                        ]
+                    else:
+                        lines_divided += [""] * (str_nb_lines - number_lines)
+
+                    number_lines = len(lines_divided)
+
+
+                # --- Step 6: Store results ---
+                translation_result_phrase_array[i] = lines_divided
+
+                for line_no in range(number_lines):
+                    try:
+                        translation_result_using_separator[line_no + i] = lines_divided[line_no]
+                        print(f"{line_no} -> {lines_divided[line_no]}")
+                    except Exception:
+                        translation_result_using_separator[line_no + i] = "Error"
+
+
+                # --- Step 7: Logging ---
+                try:
+                    print(
+                        "Splitting phrase : %s (%d) = %d lines"
+                        % (to_text_by_phrase_separator_table[i], i, str_nb_lines)
+                    )
+                except Exception:
+                    try:
+                        print(
+                            "%s (%d): %d "
+                            % (to_text_by_phrase_separator_table[i].encode("utf-8"), i, str_nb_lines)
+                        )
+                    except Exception:
+                        print("(unable to print content to screen) (%d): %d" % (i, str_nb_lines))
+
+
+                # --- Final check ---
+                if number_lines != str_nb_lines:
                     print("Error in number of line %d, expected %d." % (number_lines, str_nb_lines))
-                    #frequency = 2500  # Set Frequency To 2500 Hertz
-                    #duration = 600  # Set Duration To 1000 ms == 1 second
-                    #winsound.Beep(frequency, duration)
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
             except Exception:
                 var = traceback.format_exc()
                 print("  ERROR:%s<br>" % (var))
@@ -7282,7 +7369,7 @@ def cleanup_selenium_chrome_temp_folders():
 
 
 def main() -> int:
-    global E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl, viewdocx, word_file_to_translate_save_as_path
+    global driver, E_mail_str, end_time, elapsed_time, translation_engine, engine_method, tried_login_in_deepl, viewdocx, word_file_to_translate_save_as_path
     global logged_into_deepl, deepl_nb_clear_cached_times, version_checker_sleep_seconds_on_update
     translation_succeded = False
 
