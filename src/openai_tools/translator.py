@@ -51,6 +51,9 @@ class OpenAITranslator:
     def get_db_connection(self):
         return mysql.connector.connect(**self.db_config)
 
+    def get_doc_id(self):
+        return self.doc_id
+
     @staticmethod
     def estimate_tokens(text: str) -> int:
         encoding = tiktoken.get_encoding("cl100k_base")
@@ -65,6 +68,8 @@ class OpenAITranslator:
         
         PRICES = {
             "gpt-5.4": {"input": 2.50, "output": 15.00},
+            "gpt-5.4-mini": {"input": 0.75, "output": 4.50},
+            "gpt-5.4-nano": {"input": 0.20, "output": 1.25},
             "gpt-5.2": {"input": 1.75, "output": 14.00},
             "gpt-5.1": {"input": 1.25, "output": 10.00},
             "gpt-5": {"input": 1.25, "output": 10.00},
@@ -504,11 +509,12 @@ class OpenAITranslator:
             cursor.execute(
                 """
                 INSERT INTO queries
-                (doc_id, model_name, prompt_json, response_json, execution_time_sec, input_tokens, output_tokens, total_tokens, cost_usd)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (doc_id, type, model_name, prompt_json, response_json, execution_time_sec, input_tokens, output_tokens, total_tokens, cost_usd)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     self.doc_id,
+                    "translate",
                     self.model,
                     json.dumps(prompt),
                     json.dumps(response_json),

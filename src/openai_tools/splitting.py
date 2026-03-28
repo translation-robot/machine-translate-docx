@@ -8,7 +8,7 @@ from openai import OpenAI
 import re
 
 class OpenAISubtitleSplitter:
-    def __init__(self, model="gpt-5.4", filename=None):
+    def __init__(self, model="gpt-5.4-mini", filename=None, doc_id=None):
         self.model = model
         self.api_key = os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
@@ -23,11 +23,14 @@ class OpenAISubtitleSplitter:
             "database": os.environ.get("MARIADB_DB", "translation")
         }
 
-        self.doc_id = None
+        if doc_id:
+            self.doc_id = doc_id
+        else:
+            self.doc_id = str(uuid.uuid4())
+            
         self.filename = None
-
         if filename:
-            self.set_filename(filename)
+            self.filename = filename
 
     def set_filename(self, filename):
         """Change active document context."""
@@ -65,6 +68,8 @@ class OpenAISubtitleSplitter:
         
         PRICES = {
             "gpt-5.4": {"input": 2.50, "output": 15.00},
+            "gpt-5.4-mini": {"input": 0.75, "output": 4.50},
+            "gpt-5.4-nano": {"input": 0.20, "output": 1.25},
             "gpt-5.2": {"input": 1.75, "output": 14.00},
             "gpt-5.1": {"input": 1.25, "output": 10.00},
             "gpt-5": {"input": 1.25, "output": 10.00},
@@ -274,31 +279,30 @@ class OpenAISubtitleSplitter:
                 print("Error in openai line splitting, too few lines")
             translated_text = out_lines
 
-        # Save query record
+         # Save query record
         try:
-            #conn = self.get_db_connection()
-            #cursor = conn.cursor()
-            #continue
-            #cursor.execute(
-            #    """
-            #    INSERT INTO queries
-            #    (doc_id, model_name, prompt_json, response_json, execution_time_sec, input_tokens, output_tokens, total_tokens, cost_usd)
-            #    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            #    """,
-            #    (
-            #        self.doc_id,
-            #        self.model,
-            #        json.dumps(prompt),
-            #        json.dumps(response_json),
-            #        elapsed_time,
-            #        cost_info["prompt_tokens"],
-            #        cost_info["completion_tokens"],
-            #        cost_info["total_tokens"],
-            #        cost_info["total_cost_usd"]
-            #    )
-            #)
-            #conn.commit()
-            pass
+            conn = self.get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO queries
+                (doc_id, type, model_name, prompt_json, response_json, execution_time_sec, input_tokens, output_tokens, total_tokens, cost_usd)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    self.doc_id,
+                    "split",
+                    self.model,
+                    json.dumps(prompt),
+                    json.dumps(response_json),
+                    elapsed_time,
+                    cost_info["prompt_tokens"],
+                    cost_info["completion_tokens"],
+                    cost_info["total_tokens"],
+                    cost_info["total_cost_usd"]
+                )
+            )
+            conn.commit()
         except Exception as e:
             print(f"[Warning] Failed to save query info: {e}")
         finally:

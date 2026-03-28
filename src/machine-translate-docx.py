@@ -1296,6 +1296,8 @@ def linux_distribution():
     except:
         return "N/A"
 
+oai_translator = None
+
 def print_os_info():
 
     print("""Python version: %s
@@ -1867,6 +1869,7 @@ def selenium_chrome_translate_maxchar_blocks():
     global driver
     global word_file_to_translate
     global src_lang_name, dest_lang_name
+    global oai_translator
     
     translation_succeded = True
     translated_blocks = []
@@ -6197,11 +6200,14 @@ def minimize_browser():
 def document_split_phrases():
     # Split phrases into multiple lines to match source language number of lines
     global docxfile_table_number_of_phrases, docxfile_table_number_of_characters, phrase_number_of_words, docxfile_table_number_of_words, split_engine
-    global src_lang_name, dest_lang_name
+    global src_lang_name, dest_lang_name, oai_translator
 
     oai_sub_splitter = None
     if split_engine == "openai":
-        oai_sub_splitter = OpenAISubtitleSplitter()
+        if oai_translator is not None:
+            oai_sub_splitter = OpenAISubtitleSplitter(filename=word_file_to_translate, doc_id=oai_translator.get_doc_id())
+        else:
+            oai_sub_splitter = OpenAISubtitleSplitter()
     
     for i, line in enumerate(from_text_table):
         if to_text_by_phrase_separator_table[i] != '':
@@ -6286,39 +6292,44 @@ def document_split_phrases():
                     return lines
 
 
-                # --- Step 3: Choose split method ---
-                if split_engine == "openai":
-                    lines_divided = split_with_openai()
-                else:
-                    lines_divided = split_with_algorithm()
-
-
-                # --- Step 4: Normalize ---
-                if not lines_divided:
+                # --- Only 1 line, no splitting ---
+                if str_nb_lines == 1:
                     lines_divided = [current_line]
-
-                lines_divided = [str(line).strip() for line in lines_divided]
-
-
-                # --- Step 5: Enforce exact number of lines ---
-                number_lines = len(lines_divided)
-
-                if number_lines != str_nb_lines:
-                    print(f"Adjusting output: {number_lines} -> {str_nb_lines}")
-
-                    if number_lines > str_nb_lines:
-                        lines_divided = lines_divided[:str_nb_lines - 1] + [
-                            " ".join(lines_divided[str_nb_lines - 1:])
-                        ]
+                if str_nb_lines > 1:
+                    if split_engine == "openai":
+                        lines_divided = split_with_openai()
                     else:
-                        lines_divided += [""] * (str_nb_lines - number_lines)
+                        lines_divided = split_with_algorithm()
 
+                    # --- Step 4: Normalize ---
+                    if not lines_divided:
+                        lines_divided = [current_line]
+
+                    lines_divided = [str(line).strip() for line in lines_divided]
+
+
+                    # --- Step 5: Enforce exact number of lines ---
                     number_lines = len(lines_divided)
+                    print(number_lines)
+                    print(lines_divided)
+
+                    if number_lines != str_nb_lines:
+                        print(f"Adjusting output: {number_lines} -> {str_nb_lines}")
+
+                        if number_lines > str_nb_lines:
+                            lines_divided = lines_divided[:str_nb_lines - 1] + [
+                                " ".join(lines_divided[str_nb_lines - 1:])
+                            ]
+                        else:
+                            lines_divided += [""] * (str_nb_lines - number_lines)
+
+                        number_lines = len(lines_divided)
 
 
                 # --- Step 6: Store results ---
                 translation_result_phrase_array[i] = lines_divided
 
+                number_lines = len(lines_divided)
                 for line_no in range(number_lines):
                     try:
                         translation_result_using_separator[line_no + i] = lines_divided[line_no]
@@ -6346,16 +6357,6 @@ def document_split_phrases():
                 # --- Final check ---
                 if number_lines != str_nb_lines:
                     print("Error in number of line %d, expected %d." % (number_lines, str_nb_lines))
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
                 
             except Exception:
                 var = traceback.format_exc()
