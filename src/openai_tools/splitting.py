@@ -32,6 +32,10 @@ class OpenAISubtitleSplitter:
         if filename:
             self.filename = filename
 
+    def set_model(self, model):
+        """Change openai model for this object."""
+        self.model = model
+        
     def set_filename(self, filename):
         """Change active document context."""
         self.filename = filename
@@ -131,6 +135,11 @@ class OpenAISubtitleSplitter:
             f"6. Ensure the resulting subtitles are easy to read, with smooth phrasing that respects natural breaks in {dest_lang}.\n"
             f"7. Output only the {dest_lang} text, line by line, with the same number of lines as the {source_lang} source, without labels, numbers, or extra formatting.\n"
             
+            f"CRITICAL:\n"
+            f"- You MUST output exactly {len(lines)} lines.\n"
+            f"- If you cannot split naturally, duplicate or break arbitrarily.\n"
+            f"- Never return fewer or more lines.\n"
+            
             f"{source_lang} source ({len(lines)} lines):\n"
             f"{numbered_text}\n"
             
@@ -180,6 +189,11 @@ class OpenAISubtitleSplitter:
             f"   - Output only the {dest_lang} text.\n"
             f"   - Use exactly {len(lines)} lines, matching the {source_lang} source line count.\n"
             f"   - Insert line breaks only; no paraphrasing, numbering, labels, or extra formatting.\n\n"
+            
+            f"CRITICAL:\n"
+            f"- You MUST output exactly {len(lines)} lines.\n"
+            f"- If you cannot split naturally, duplicate or break arbitrarily.\n"
+            f"- Never return fewer or more lines.\n"
             
             f"{source_lang} source ({len(lines)} lines):\n"
             f"{numbered_text}\n\n"
@@ -268,8 +282,12 @@ class OpenAISubtitleSplitter:
         # Validate line counts
         in_lines = source_text.split("\n")
         out_lines = splitted_text.split("\n")
+        num_in_lines = 0
+        num_newlines = 0
+        num_in_lines = source_text.count("\n") + 1
+        num_newlines = splitted_text.count("\n") + 1
 
-        if len(in_lines) != len(out_lines):
+        if num_in_lines != num_newlines:
             print("[WARNING] Line count mismatch!")
             print(f"Input lines: {len(in_lines)}, Output lines: {len(out_lines)}")
             out_lines = "\n".join(out_lines)

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2026-03-28"
+PROGRAM_VERSION="2026-03-29"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -5085,6 +5085,8 @@ def prepare_and_clear_cell_for_writing(row_n, translation_cell_text):
     paragraph_no = 0
     current_cell = table_cells[row_n][2]
 
+    current_cell._element.clear_content()
+    
     # Clear paragraphs in the cell
     for paragraph in current_cell.paragraphs:
         if paragraph_no != 0:
@@ -6255,10 +6257,67 @@ def document_split_phrases():
 
                 # --- Step 2: Split functions ---
                 def split_with_openai():
+                    def expected_line_count(text):
+                        if not text:
+                            return 0
+                        return text.count("\n") + 1
+
+                    def normalize(lines):
+                        # If string → split
+                        if isinstance(lines, str):
+                            lines = lines.strip().split("\n")
+
+                        # Ensure list of strings
+                        if isinstance(lines, list):
+                            return [str(l).strip() for l in lines if str(l).strip() != ""]
+
+                        return []
+
+                    def is_valid(lines, expected):
+                        return isinstance(lines, list) and len(lines) == expected
+
+                    expected = expected_line_count(input_phrase_lines)
+
+                    oai_sub_splitter.set_model('gpt-5.4-mini')
+                    # --- Try 2 times with default model ---
+                    for attempt in range(2):
+                        response, lines = oai_sub_splitter.split_phrase(
+                            src_lang_name, dest_lang_name, input_phrase_lines, current_line
+                        )
+
+                        lines = normalize(lines)
+
+                        if is_valid(lines, expected):
+                            return lines
+
+                        print(f"[Retry {attempt+1}] Invalid OpenAI split: got {len(lines)} expected {expected}")
+
+                    # --- Switch model ---
+                    print("[Switching model to gpt-5.4]")
+                    oai_sub_splitter.set_model('gpt-5.4')
+
                     response, lines = oai_sub_splitter.split_phrase(
                         src_lang_name, dest_lang_name, input_phrase_lines, current_line
                     )
-                    return lines
+
+                    # --- Final handling ---
+                    if isinstance(lines, list):
+                        lines = [str(l).strip() for l in lines if str(l).strip() != ""]
+                        if lines:
+                            return lines
+                        else:
+                            return []
+
+                    elif isinstance(lines, str):
+                        lines = lines.strip().split("\n")
+                        lines = [l.strip() for l in lines if l.strip() != ""]
+                        if lines:
+                            return [lines[0]]  # return first line only
+                        else:
+                            return []
+
+                    # fallback safety
+                    return []
 
 
                 def split_with_algorithm():
@@ -6298,6 +6357,11 @@ def document_split_phrases():
                 if str_nb_lines > 1:
                     if split_engine == "openai":
                         lines_divided = split_with_openai()
+                        
+                        number_lines = len(lines_divided)
+                        if number_lines != str_nb_lines:
+                            print('Fallback to algorythm line splitting')
+                            lines_divided = split_with_algorithm()
                     else:
                         lines_divided = split_with_algorithm()
 
@@ -6306,7 +6370,6 @@ def document_split_phrases():
                         lines_divided = [current_line]
 
                     lines_divided = [str(line).strip() for line in lines_divided]
-
 
                     # --- Step 5: Enforce exact number of lines ---
                     number_lines = len(lines_divided)
