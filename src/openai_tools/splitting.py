@@ -119,54 +119,7 @@ class OpenAISubtitleSplitter:
         lines = source_text.split("\n")
         numbered_lines = [f"Input line {i+1}: {line}" for i, line in enumerate(lines)]
         numbered_text = "\n".join(numbered_lines)
-        
-        prompt = (
-            f"You are given a subtitle text in {source_lang} (source language) and its translation in {dest_lang} (target language).\n"
-            
-            f"Task:\n"
-            
-            f"1. Reformat the {dest_lang} translation so that it has exactly the same number of lines as the {source_lang} source.\n"
-            f"2. Each line in the {source_lang} source should correspond to a line in the {dest_lang} output.\n"
-            f"3. Do not change any words or punctuation in the {dest_lang} translation.\n"
-            f"4. Preserve all elements such as emails, URLs, symbols, or emojis exactly as they appear in the original {dest_lang} translation.\n"
-            f"5. Line splitting rules:\n"
-            f" * If the {dest_lang} grammar naturally matches the {source_lang} line structure, keep the exact order and alignment.\n"
-            f" * If the grammar or phrasing does not match {source_lang}, prioritize natural, fluid readability for subtitles. Line count alignment is secondary, but the total number of lines must still match the {source_lang} source.\n"
-            f"6. Ensure the resulting subtitles are easy to read, with smooth phrasing that respects natural breaks in {dest_lang}.\n"
-            f"7. Output only the {dest_lang} text, line by line, with the same number of lines as the {source_lang} source, without labels, numbers, or extra formatting.\n"
-            
-            f"CRITICAL:\n"
-            f"- You MUST output exactly {len(lines)} lines.\n"
-            f"- If you cannot split naturally, duplicate or break arbitrarily.\n"
-            f"- Never return fewer or more lines.\n"
-            
-            f"{source_lang} source ({len(lines)} lines):\n"
-            f"{numbered_text}\n"
-            
-            f"{dest_lang} translation:\n"
-            f"{translation}\n"
-            
-            f"Expected output:\n"
-            
-            f"Split the {dest_lang} text into {len(lines)} lines.\n"
-            f"Prioritize natural, readable breaks for {dest_lang} subtitles.\n"
-            f"Preserve all original words and symbols exactly.\n"
-            f"Match line count exactly; keep exact order only if grammar naturally aligns.\n"
-            
-            f"Example:\n"
-            
-            f"{source_lang} source:\n"
-            f"I really enjoyed the movie\n"
-            f"and the amazing soundtrack.\n"
-            
-            f"{dest_lang} translation:\n"
-            f"J'ai vraiment apprécié le film et la bande-son incroyable.\n"
-            
-            f"Correct 2-line output:\n"
-            f"J'ai vraiment apprécié le film\n"
-            f"et la bande-son incroyable."
-        )
-        
+   
         prompt = (
             f"You are an elite video subtitle editor. You are given a subtitle text in {source_lang} (source language) and its translation in {dest_lang} (target language).\n\n"
             
