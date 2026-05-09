@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2026-03-29"
+PROGRAM_VERSION="2026-05-09"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -160,6 +160,7 @@ import json
 
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
+from docx.text.run import Run
 
 import glob
 from langcodes import *
@@ -1566,7 +1567,7 @@ if translation_engine.lower() == "chatgpt" and False:
         chrome_options.add_argument("--profile-directory=Default")  # Use the "Default" profile
 
         print(f"Using Chrome user data directory: {user_data_dir}")
-    #word_file_to_translate = r'X:\travail\smtv-hindi\NWN 584 sf2 - table fix1.doc'
+    #word_file_to_translate = r'X:\travail\smtv-hindi\NWN 5.5 sf2 - table fix1.doc'
     except:
         var = traceback.format_exc()
         print(var)
@@ -4728,6 +4729,12 @@ def get_run_shading_color(xml_run_str):
             pass
     return attrib_fill
 
+def iter_runs_including_hyperlinks(paragraph):
+    # python-docx paragraph.runs skips runs inside <w:hyperlink>.
+    # This returns all <w:r> runs in document order, including hyperlink display text.
+    for r in paragraph._p.iter(qn('w:r')):
+        yield Run(r, paragraph)
+
 # Return cell_non_greyed_text (string), cell_is_gray (integer for boolean)
 def get_cell_data(cell,row_n):
     global from_text_nb_lines_in_cell
@@ -4751,7 +4758,10 @@ def get_cell_data(cell,row_n):
         root = etree.fromstring(paragraph._p.xml)
         p_shading_color = get_paragraph_shading_color(paragraph._p.xml)
         
-        p_text = paragraph.text
+        # Changed: paragraph.text can miss text inside hyperlinks
+        paragraph_runs = list(iter_runs_including_hyperlinks(paragraph))
+        p_text = ''.join(run.text for run in paragraph_runs)
+
         nb_pause = len(re.findall('(?i)(<pause>)', p_text))
         nb_enter = len(re.findall('(?i)(<enter>)', p_text))
             
@@ -4766,7 +4776,9 @@ def get_cell_data(cell,row_n):
         #if n_paragraph > 1:
         #    print("paragraph %d" % (n_paragraph))
         previous_run_text = ""
-        for run in paragraph.runs:
+
+        # Changed: paragraph.runs skips hyperlink runs
+        for run in paragraph_runs:
             current_run_text = run.text
             
             #print("cell row %d has %d runs," % (row_n, len(paragraph.runs) ))
@@ -4841,6 +4853,7 @@ def get_cell_data(cell,row_n):
     #    print("FOUND A GRAY CELL")
     #time.sleep(4)
     return cell_non_greyed_text, cell_is_gray, cell_is_red
+
 
 
 
@@ -6278,7 +6291,7 @@ def document_split_phrases():
 
                     expected = expected_line_count(input_phrase_lines)
 
-                    oai_sub_splitter.set_model('gpt-5.4-mini')
+                    oai_sub_splitter.set_model('gpt-5.5')
                     # --- Try 2 times with default model ---
                     for attempt in range(2):
                         response, lines = oai_sub_splitter.split_phrase(
@@ -6293,8 +6306,8 @@ def document_split_phrases():
                         print(f"[Retry {attempt+1}] Invalid OpenAI split: got {len(lines)} expected {expected}")
 
                     # --- Switch model ---
-                    print("[Switching model to gpt-5.4]")
-                    oai_sub_splitter.set_model('gpt-5.4')
+                    print("[Switching model to gpt-5.5]")
+                    oai_sub_splitter.set_model()
 
                     response, lines = oai_sub_splitter.split_phrase(
                         src_lang_name, dest_lang_name, input_phrase_lines, current_line
