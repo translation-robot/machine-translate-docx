@@ -10,7 +10,7 @@ https://www.google.com/chrome/
 
 ### Download the binaries for windows 10 and 11 (64 bits) here:
 
-https://smch.ir/binaries/Machine%20Translation%20Robot%20Setup_2026-03-04.exe
+https://smch.ir/binaries/Machine%20Translation%20Robot%20Setup_2026-05-09.exe
 
 ### Download the binaries for windows 7, 8, 8.1 (32 bits, compatible 64 bits) here:
 
@@ -26,7 +26,7 @@ Download the binaries for macos here:
 
 Mac OS X dmg installer:
 
-https://smch.ir/binaries/MachineTranslator_2026-03-04.dmg
+https://smch.ir/binaries/MachineTranslator_2026-05-09.dmg
 
 Before installing the DMG installer, disable mac Gatekeeper:
 1. From Launchpad open the Term App
