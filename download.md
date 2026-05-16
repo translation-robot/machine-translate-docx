@@ -1,7 +1,7 @@
 
 # Download binaries for the machine translation robot.
 
-The latest version of the translation robot is 2026-03-04
+The latest version of the translation robot is 2026-05-09
 
 ## Windows version
 Require Chrome browser installed. No other software required. Download google chrome here :
