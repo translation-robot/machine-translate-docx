@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # - *- coding: utf- 8 - *-
-PROGRAM_VERSION="2026-05-09"
+PROGRAM_VERSION="2026-07-30"
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -1195,7 +1195,8 @@ else:
     translation_engine = ""
 
 if translation_engine in ['yandex', 'perplexity', 'chatgpt', 'deepl']:
-    showbrowser = True
+    if dest_lang != 'hi':
+        showbrowser = True
 elif translation_engine in ['deepl', 'chatgpt']:
     pass  # keep the value as is
 else:
@@ -1282,7 +1283,7 @@ else:
 # When translation engine is deepl or chatgpt : use undetected_chromedriver
 # Else, use standard selenium webdriver
 
-if translation_engine in ['perplexity', 'chatgpt'] and engine_method != "webservice":
+if (translation_engine in ['perplexity', 'chatgpt'] and engine_method != "webservice") or translation_engine =='deepl':
     import undetected_chromedriver as webdriver
 else:
     from selenium import webdriver  # regular selenium webdriver
@@ -2861,10 +2862,30 @@ def deepl_close_messages():
     """
     global closed_cookies_accept_message_bool, close_install_extension_message_bool, driver
     
+    # Wait for the shadow host
+    try:
+        wait = WebDriverWait(driver, 0.01, poll_frequency=0.001)
+
+        host = wait.until(
+            lambda d: d.find_element(By.ID, "usercentrics-cmp-ui")
+        )
+
+        shadow = host.shadow_root
+
+        accept = wait.until(
+            lambda d: shadow.find_element(By.ID, "accept")
+        )
+
+        accept.click()
+
+    except Exception:
+        pass
+    
     close_install_extension_message_bool = False
 
     # List of XPaths/CSS selectors for popups/messages
     xpath_selectors = [
+        "//button[contains(.,'Accept')]",
         "//button[contains(.,'Accept all cookies')]",
         "//button[contains(.,'Close')]",
         "//button[contains(.,'Accept')]",
@@ -2873,7 +2894,8 @@ def deepl_close_messages():
         "//div[@role='dialog']//button[@aria-label='Close']",
         "//button[@aria-label='Close AI Labs banner button']",  # New AI Labs close button
         "//div[@data-testid='above-navigation-banner']//button[.//svg]",
-        "//div[@data-testid='above-navigation-banner']//button"
+        "//div[@data-testid='above-navigation-banner']//button",
+        "//*[@id='accept']"
     ]
     css_selectors = [
         ".w-6 > .flex"  # install extension popup
@@ -2907,7 +2929,6 @@ def deepl_close_messages():
     if close_install_extension_message_bool:
         #Call another time in case some messages because layers order
         deepl_close_messages()
-
 
 
 def selenium_chrome_deepl_translate(to_translate, retry_count):
@@ -2983,7 +3004,7 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
 
                     return  # Success
                 except StaleElementReferenceException:
-                    # Element got replaced; retry
+                    # Element got replaced; 
                     continue
 
             print(f"[WARNING] Failed to ensure target language '{dest_lang_name}' ({dest_lang}): stale element after retries")
@@ -2999,6 +3020,10 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
         wait = WebDriverWait(driver, timeout)
 
         dest_lang = dest_lang.lower()
+        dest_lang_modified = dest_lang
+        # In Deepl, Punjabi code is 'pu' and not 'pa', it needs to be replaced
+        if dest_lang == 'pa':
+            dest_lang_modified
         dest_lang_name = dest_lang_name.lower()
 
         try:
@@ -3074,10 +3099,20 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                     WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
                 except:
                     pass
+                    
+                try:
+                    # Wait up to 10 seconds for the URL to become the expected one
+                    WebDriverWait(driver, 12).until(
+                        lambda d: d.current_url == "https://www.deepl.com/en/translator"
+                    )
+                    # Equivalent to page.content().encode("utf-8")
+                    driver.page_source.encode("utf-8")
+                except Exception:
+                    pass
                 
                 # Make sure the target language matches with the target language code or at least the target language name
                 try:
-                    ensure_target_language(driver, dest_lang=dest_lang, dest_lang_name=dest_lang_name)
+                    ensure_target_language(driver, dest_lang=dest_lang_modified, dest_lang_name=dest_lang_name)
                     WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
                 except:
                     pass
@@ -3107,6 +3142,14 @@ def selenium_chrome_deepl_translate(to_translate, retry_count):
                 except Exception:
                     pass  
                 
+                # Make sure the target language matches with the target language code or at least the target language name
+                try:
+                    ensure_target_language(driver, dest_lang=dest_lang, dest_lang_name=dest_lang_name)
+                    WebDriverWait(driver, 15).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+                except:
+                    var = traceback.format_exc()
+                    print(var)
+                    pass
             except:
                 print("Waiting for https://www.deepl.com/ ...")
                 sleep(1)
@@ -5831,7 +5874,7 @@ def generate_xlsx_file_from_phrases(xlsx_file_path):
 
 def deepl_double_linefeed_between_phrases(dest_lang):
     single_linefeed_phrase_separator_langs = ('ar', 'bg', 'cs', 'da', 'de', 'el', 'en', 'en-us', 'en-gb',
-                       'es', 'et', 'fi', 'fr', 'he', 'hu', 'id', 'it', 'ja', 'ko',
+                       'es', 'et', 'fi', 'fr', 'he', 'hu', 'id', 'it', 'ja', 'ko', 'hi',
                        'lt', 'lv', 'nb', 'nl', 'pl', 'pt', 'pt-br', 'pt-pt',
                        'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi', 'zh-hant', 'zh-hans')
     return dest_lang not in single_linefeed_phrase_separator_langs
@@ -6291,7 +6334,7 @@ def document_split_phrases():
 
                     expected = expected_line_count(input_phrase_lines)
 
-                    oai_sub_splitter.set_model('gpt-5.5')
+                    oai_sub_splitter.set_model('gpt-5.6-sol')
                     # --- Try 2 times with default model ---
                     for attempt in range(2):
                         response, lines = oai_sub_splitter.split_phrase(
@@ -6306,7 +6349,7 @@ def document_split_phrases():
                         print(f"[Retry {attempt+1}] Invalid OpenAI split: got {len(lines)} expected {expected}")
 
                     # --- Switch model ---
-                    print("[Switching model to gpt-5.5]")
+                    print("[Switching model to gpt-5.6-sol]")
                     oai_sub_splitter.set_model()
 
                     response, lines = oai_sub_splitter.split_phrase(

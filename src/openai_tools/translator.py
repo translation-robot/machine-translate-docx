@@ -8,7 +8,7 @@ from openai import OpenAI
 import re
 
 class OpenAITranslator:
-    def __init__(self, model="gpt-5.4", filename=None):
+    def __init__(self, model="gpt-5.6-sol", filename=None):
         self.model = model
         self.api_key = os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
@@ -67,6 +67,7 @@ class OpenAITranslator:
         completion_tokens = usage.get("completion_tokens", 0)
         
         PRICES = {
+            "gpt-5.6-sol": {"input": 5.00, "output": 30.00},
             "gpt-5.4": {"input": 2.50, "output": 15.00},
             "gpt-5.4-mini": {"input": 0.75, "output": 4.50},
             "gpt-5.4-nano": {"input": 0.20, "output": 1.25},
@@ -461,6 +462,7 @@ class OpenAITranslator:
         if "pro" in self.model:
             response = self.client.responses.create(
                 model=self.model,
+                prompt_cache_retention="24h",
                 input=[
                     {"role": "system", "content": "You are a professional translator."},
                     {"role": "user", "content": prompt}
@@ -469,6 +471,7 @@ class OpenAITranslator:
         else:
             response = self.client.chat.completions.create(
                 model=self.model,
+                prompt_cache_retention="24h",
                 messages=[
                     {"role": "system", "content": "You are a professional translator."},
                     {"role": "user", "content": prompt}
